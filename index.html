@@ -49,7 +49,7 @@
             width: 100%;
         }
 
-        /* VISTA CALENDARIO (Visible por defecto) */
+        /* VISTA CALENDARIO */
         #calendar-container { 
             width: 100%;
             height: 100%;
@@ -57,25 +57,25 @@
             padding: 10px; 
             box-sizing: border-box;
             overflow-y: auto;
-            display: block; /* Visible inicial */
+            display: block; 
         }
 
-        /* VISTA MAPA (Oculta por defecto) */
+        /* VISTA MAPA */
         #map-view {
             width: 100%;
             height: 100%;
             background: #e5e5e5;
-            display: none; /* Oculto inicial */
+            display: none; 
             position: relative;
         }
 
-        /* Botón Flotante "Volver" en el mapa */
+        /* Botón Flotante "Volver" */
         #btn-back-calendar {
             position: absolute;
             top: 20px;
             left: 50%;
             transform: translateX(-50%);
-            z-index: 1000; /* Encima del mapa */
+            z-index: 1000;
             background-color: white;
             color: #333;
             border: 1px solid #ccc;
@@ -89,14 +89,12 @@
             align-items: center;
             gap: 8px;
         }
-        #btn-back-calendar:hover {
-            background-color: #f8f9fa;
-        }
+        #btn-back-calendar:hover { background-color: #f8f9fa; }
 
         /* Botones Generales */
         .btn-action { background: #007bff; color: white; padding: 6px 12px; border-radius: 5px; cursor: pointer; border: none; font-size: 0.9rem; }
         .btn-secondary { background: #6c757d; color: white; padding: 6px 12px; border-radius: 5px; cursor: pointer; border: none; font-size: 0.9rem; }
-        .btn-map-toggle { background: #28a745; margin-right: 5px; } /* Botón verde para ir al mapa */
+        .btn-map-toggle { background: #28a745; margin-right: 5px; } 
         
         #logout-btn { display: none; }
         #admin-status { font-weight: bold; color: #28a745; display: none; margin-right: 10px; font-size: 0.8rem; }
@@ -106,7 +104,7 @@
         .modal-content { background-color: white; margin: 5% auto; padding: 20px; width: 90%; max-width: 350px; border-radius: 12px; position: relative; max-height: 90vh; overflow-y: auto;}
         .close-x { float: right; font-size: 20px; cursor: pointer; }
         
-        /* Inputs y Formularios */
+        /* Inputs */
         .form-group { margin-bottom: 15px; position: relative; } 
         label { display: block; margin-bottom: 5px; font-weight: 600; font-size: 0.9rem; }
         input { width: 100%; padding: 10px; box-sizing: border-box; border: 1px solid #ddd; border-radius: 6px; font-size: 1rem; }
@@ -151,7 +149,6 @@
         <h1>📅 Agenda</h1>
         <div class="header-controls">
             <button id="btn-go-map" class="btn-action btn-map-toggle" onclick="mostrarMapa()">🗺️ Mapa Global</button>
-            
             <span id="admin-status">🟢 Admin</span>
             <button id="btnLogin" class="btn-action" onclick="iniciarSesion()">🔒 Entrar</button>
             <button id="btnLogout" class="btn-secondary" id="logout-btn" onclick="cerrarSesion()" style="display:none;">Salir</button>
@@ -241,17 +238,37 @@
 
         // --- INICIALIZACIÓN ---
         document.addEventListener('DOMContentLoaded', async function() {
-            // 1. Iniciar Calendario
             var calendarEl = document.getElementById('calendar');
+            
+            // --- CONFIGURACIÓN DEL CALENDARIO ---
             calendar = new FullCalendar.Calendar(calendarEl, {
                 height: '100%',
                 initialView: 'dayGridMonth',
-                locale: 'es',
+                locale: 'es', // Intenta cargar idioma español
+                
+                // --- TRADUCCIÓN FORZADA DE BOTONES ---
+                buttonText: {
+                    today: 'Hoy',
+                    month: 'Mes',
+                    year:  'Año',
+                    list:  'Agenda'
+                },
+
                 headerToolbar: {
                     left: 'prev,next today',
                     center: 'title',
                     right: 'dayGridMonth,listYear' 
                 },
+                
+                // Textos específicos para las vistas
+                views: {
+                    dayGridMonth: { buttonText: 'Mes' },
+                    listYear: { 
+                        buttonText: 'Agenda',
+                        noEventsText: 'No hay reservas'
+                    }
+                },
+                
                 dateClick: function(info) {
                     if (esAdmin) abrirModalCrear(info.dateStr);
                 },
@@ -261,7 +278,7 @@
             });
             calendar.render();
 
-            // 2. Iniciar Mapa Leaflet (En memoria, aunque esté oculto)
+            // Iniciar Mapa (oculto en memoria)
             map = L.map('map-view').setView([23.6345, -102.5528], 5);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '&copy; OpenStreetMap contributors'
@@ -270,25 +287,21 @@
             await cargarReservas(); 
         });
 
-        // --- FUNCIONES DE CAMBIO DE VISTA ---
         window.mostrarMapa = function() {
             document.getElementById('calendar-container').style.display = 'none';
             document.getElementById('map-view').style.display = 'block';
-            document.getElementById('btn-go-map').style.display = 'none'; // Ocultar boton "ir a mapa"
-            
-            // CRUCIAL: Reajustar tamaño del mapa al hacerlo visible
+            document.getElementById('btn-go-map').style.display = 'none'; 
             setTimeout(() => { map.invalidateSize(); }, 100);
         }
 
         window.mostrarCalendario = function() {
             document.getElementById('map-view').style.display = 'none';
             document.getElementById('calendar-container').style.display = 'block';
-            document.getElementById('btn-go-map').style.display = 'inline-block'; // Mostrar boton "ir a mapa"
-            
-            calendar.updateSize(); // Reajustar calendario por si acaso
+            document.getElementById('btn-go-map').style.display = 'inline-block'; 
+            calendar.updateSize(); 
         }
 
-        // --- BÚSQUEDA Y SELECCIÓN ---
+        // --- BÚSQUEDA ---
         const inputCiudad = document.getElementById('ciudadInput');
         const listaSugerencias = document.getElementById('listaSugerencias');
         let timeoutBuscador = null;
@@ -315,15 +328,12 @@
 
                         if(resultadosFiltrados.length > 0) {
                             listaSugerencias.style.display = 'block';
-                            
                             resultadosFiltrados.forEach(lugar => {
                                 const item = document.createElement('li');
                                 item.className = 'suggestion-item';
                                 let icono = '🏙️'; 
                                 let nombrePrincipal = lugar.name || texto; 
-                                
                                 item.innerHTML = `<strong>${icono} ${nombrePrincipal}</strong><br><small style="color:#666;">${lugar.display_name}</small>`;
-                                
                                 item.onclick = function() {
                                     inputCiudad.value = nombrePrincipal; 
                                     inputCiudad.dataset.ubicacionCompleta = lugar.display_name;
@@ -343,14 +353,13 @@
             if (e.target !== inputCiudad) { listaSugerencias.style.display = 'none'; }
         });
 
-        // --- CARGA DE DATOS ---
+        // --- CARGA Y GUARDADO ---
         async function cargarReservas() {
             try {
                 const q = query(collection(db, "reservas"));
                 const querySnapshot = await getDocs(q);
                 
                 calendar.removeAllEvents();
-                
                 markers.forEach(marker => map.removeLayer(marker));
                 markers = [];
 
@@ -358,7 +367,6 @@
                     const data = documento.data();
                     if (!data.fechaInicio) return; 
 
-                    // Calendario
                     let inicio = data.fechaInicio; 
                     let fin = data.fechaFin;
                     let fechaFinVisual = new Date(fin + 'T00:00:00');
@@ -381,7 +389,6 @@
                         }
                     });
 
-                    // Mapa
                     if (data.lat && data.lng) {
                         const marker = L.marker([data.lat, data.lng]).addTo(map);
                         marker.bindPopup(`<b>${data.cliente}</b><br>${ciudadCorta}<br><small>${inicio}</small>`);
