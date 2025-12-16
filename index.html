@@ -2,8 +2,8 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reserva de Servicios - Completa</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Agenda de Servicios Inteligente</title>
     
     <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js'></script>
     <style>
@@ -28,7 +28,7 @@
             background: white; 
             padding: 10px 15px; 
             box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-            z-index: 10;
+            z-index: 20; /* Mayor que el mapa */
         }
         h1 { margin: 0; font-size: 1.2rem; color: #2c3e50; }
         
@@ -41,19 +41,50 @@
             position: relative;
         }
 
-        /* Botones */
+        /* Botones Generales */
         .login-btn { background: #007bff; color: white; padding: 5px 10px; border-radius: 5px; cursor: pointer; border: none; font-size: 0.9rem; }
         .logout-btn { background: #6c757d; display: none; padding: 5px 10px; border-radius: 5px; color: white; border: none;}
         #admin-status { font-weight: bold; color: #28a745; display: none; margin-right: 10px; font-size: 0.8rem; }
 
         /* Modales */
         .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); backdrop-filter: blur(2px); }
-        .modal-content { background-color: white; margin: 10% auto; padding: 20px; width: 90%; max-width: 350px; border-radius: 12px; }
+        .modal-content { background-color: white; margin: 5% auto; padding: 20px; width: 90%; max-width: 350px; border-radius: 12px; position: relative; max-height: 90vh; overflow-y: auto;}
         .close-x { float: right; font-size: 20px; cursor: pointer; }
-        input { width: 100%; padding: 8px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 4px; }
-        .btn-save { background: #28a745; color: white; border: none; padding: 10px; width: 100%; border-radius: 4px; margin-top: 5px;}
-        .btn-delete { background: #dc3545; color: white; border: none; padding: 10px; width: 100%; border-radius: 4px; margin-top: 5px;}
         
+        /* Inputs y Formularios */
+        .form-group { margin-bottom: 15px; position: relative; } /* Relative para el autocompletado */
+        label { display: block; margin-bottom: 5px; font-weight: 600; font-size: 0.9rem; }
+        input { width: 100%; padding: 10px; box-sizing: border-box; border: 1px solid #ddd; border-radius: 6px; font-size: 1rem; }
+        
+        .btn-save { background: #28a745; color: white; border: none; padding: 12px; width: 100%; border-radius: 6px; margin-top: 5px; font-weight: bold;}
+        .btn-delete { background: #dc3545; color: white; border: none; padding: 12px; width: 100%; border-radius: 6px; margin-top: 15px; font-weight: bold;}
+        .btn-map { background: #4285F4; color: white; text-decoration: none; padding: 8px 15px; border-radius: 20px; font-size: 0.9rem; display: inline-block; margin-top: 5px; }
+
+        /* --- ESTILOS DEL AUTOCOMPLETADO (Buscador) --- */
+        .suggestions-list {
+            position: absolute;
+            background: white;
+            border: 1px solid #ddd;
+            border-top: none;
+            width: 100%;
+            max-height: 150px;
+            overflow-y: auto;
+            z-index: 1001;
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            border-radius: 0 0 6px 6px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            display: none; /* Oculto por defecto */
+        }
+        .suggestion-item {
+            padding: 10px;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+            font-size: 0.9rem;
+        }
+        .suggestion-item:hover { background-color: #f0f2f5; }
+
         /* 4. COMPRESIÓN VISTA AÑO */
         .fc-multimonth-header { padding: 2px 0 !important; font-size: 0.9em; background: #f8f9fa; }
         .fc-multimonth-daygrid-table { font-size: 0.75em; }
@@ -79,10 +110,10 @@
 <body>
 
     <div class="header">
-        <h1>📅 Agenda de Servicios</h1>
+        <h1>📅 Agenda Geo-Localizada</h1>
         <div>
-            <span id="admin-status">🟢 Admin Activo</span>
-            <button id="btnLogin" class="login-btn" onclick="iniciarSesion()">🔒 Acceso Admin</button>
+            <span id="admin-status">🟢 Admin</span>
+            <button id="btnLogin" class="login-btn" onclick="iniciarSesion()">🔒 Entrar</button>
             <button id="btnLogout" class="login-btn logout-btn" onclick="cerrarSesion()">Salir</button>
         </div>
     </div>
@@ -101,13 +132,16 @@
                 <input type="date" id="fechaInicio">
             </div>
             <div class="form-group">
-                <label>Hasta (Último día de servicio):</label>
+                <label>Hasta:</label>
                 <input type="date" id="fechaFin">
             </div>
+            
             <div class="form-group">
-                <label>Ciudad:</label>
-                <input type="text" id="ciudadInput" placeholder="Ej. Madrid, CDMX...">
+                <label>Buscar Ciudad:</label>
+                <input type="text" id="ciudadInput" placeholder="Escribe para buscar (ej. Madrid)..." autocomplete="off">
+                <ul id="listaSugerencias" class="suggestions-list"></ul>
             </div>
+
             <div class="form-group">
                 <label>Cliente:</label>
                 <input type="text" id="nombreInput" placeholder="Nombre completo">
@@ -120,22 +154,17 @@
     <div id="detalleModal" class="modal">
         <div class="modal-content">
             <span class="close-x" onclick="cerrarModal('detalleModal')">&times;</span>
-            <h2 style="margin-top:0;">Detalles de Reserva</h2>
+            <h2 style="margin-top:0;">Detalles</h2>
             
-            <div class="info-row">
-                <div class="info-label">Ciudad:</div>
-                <div class="info-value" id="detCiudad"></div>
-            </div>
-            <div class="info-row">
-                <div class="info-label">Cliente:</div>
-                <div class="info-value" id="detCliente"></div>
-            </div>
-            <div class="info-row">
-                <div class="info-label">Fechas:</div>
-                <div class="info-value" id="detFechas"></div>
+            <p><strong>Cliente:</strong> <span id="detCliente"></span></p>
+            <p><strong>Ciudad:</strong> <span id="detCiudad"></span></p>
+            <p><strong>Fechas:</strong> <span id="detFechas"></span></p>
+            
+            <div style="text-align: center; margin: 15px 0;">
+                <a id="btnMapaLink" href="#" target="_blank" class="btn-map">🗺️ Ver en Google Maps</a>
             </div>
 
-            <button id="btnEliminar" class="btn-delete" style="display:none;" onclick="borrarReserva()">🗑️ Eliminar Reserva</button>
+            <button id="btnEliminar" class="btn-delete" style="display:none;" onclick="borrarReserva()">🗑️ Eliminar</button>
         </div>
     </div>
 
@@ -143,7 +172,7 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-// Your web app's Firebase configuration
+        // Your web app's Firebase configuration
 const firebaseConfig = {
   apiKey: "AIzaSyCN7AD2GO_Ks4tcMxLMkG6jODKUaTPwlIk",
   authDomain: "agendaservicios.firebaseapp.com",
@@ -151,43 +180,85 @@ const firebaseConfig = {
   storageBucket: "agendaservicios.firebasestorage.app",
   messagingSenderId: "1068275517204",
   appId: "1:1068275517204:web:9bdd41c8233bc1fda06401"
-};        // -------------------------------------------------------
+};
+        // -------------------------------------------------------
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         
         let calendar;
         let esAdmin = false;
-        let eventoSeleccionadoID = null; // Para saber qué borrar
-        
-        // --- 🔑 TU CONTRASEÑA ---
+        let eventoSeleccionadoID = null;
         const CONTRASEÑA_ADMIN = "servicio2024"; 
+
+        // --- CONFIGURACIÓN DEL BUSCADOR DE CIUDADES (JS) ---
+        const inputCiudad = document.getElementById('ciudadInput');
+        const listaSugerencias = document.getElementById('listaSugerencias');
+        let timeoutBuscador = null;
+
+        // Escuchar cuando el usuario escribe
+        inputCiudad.addEventListener('input', function() {
+            const texto = this.value;
+            listaSugerencias.innerHTML = ''; // Limpiar lista anterior
+            listaSugerencias.style.display = 'none';
+
+            if (texto.length < 3) return; // Esperar a que escriba 3 letras
+
+            // Esperar un poco para no saturar (Debounce)
+            clearTimeout(timeoutBuscador);
+            timeoutBuscador = setTimeout(async () => {
+                try {
+                    // LLAMADA A API GRATUITA DE OPENSTREETMAP (NOMINATIM)
+                    const respuesta = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${texto}&limit=5&accept-language=es`);
+                    const resultados = await respuesta.json();
+
+                    if (resultados.length > 0) {
+                        listaSugerencias.style.display = 'block';
+                        resultados.forEach(lugar => {
+                            const item = document.createElement('li');
+                            item.className = 'suggestion-item';
+                            // Mostramos el nombre completo (Display Name)
+                            item.innerText = lugar.display_name;
+                            
+                            // Al hacer clic en una sugerencia
+                            item.onclick = function() {
+                                inputCiudad.value = lugar.display_name; // Poner texto en input
+                                listaSugerencias.style.display = 'none'; // Ocultar lista
+                            };
+                            listaSugerencias.appendChild(item);
+                        });
+                    }
+                } catch (e) {
+                    console.error("Error buscando ciudad:", e);
+                }
+            }, 300); // 300ms de espera
+        });
+
+        // Ocultar lista si clic fuera
+        document.addEventListener('click', function(e) {
+            if (e.target !== inputCiudad) {
+                listaSugerencias.style.display = 'none';
+            }
+        });
+        // ---------------------------------------------------
 
         document.addEventListener('DOMContentLoaded', async function() {
             var calendarEl = document.getElementById('calendar');
-            
-            // Detectar móvil
             const esMovil = window.innerWidth < 768;
 
             calendar = new FullCalendar.Calendar(calendarEl, {
-                // --- CAMBIO CLAVE: USAR EL 100% DEL ALTO DISPONIBLE ---
-                height: '100%', 
-                // ------------------------------------------------------
-                
+                height: '100%',
                 initialView: 'dayGridMonth',
                 locale: 'es',
-                
                 headerToolbar: {
                     left: 'prev,next today',
                     center: 'title',
                     right: 'dayGridMonth,multiMonthYear,listYear' 
                 },
-                
                 views: {
                     dayGridMonth: { buttonText: 'Mes' },
                     multiMonthYear: { 
                         buttonText: 'Año',
-                        // En móvil probamos con 2 columnas para equilibrar
                         multiMonthMaxColumns: esMovil ? 2 : 4, 
                     },
                     listYear: { 
@@ -195,7 +266,6 @@ const firebaseConfig = {
                         noEventsText: 'No hay reservas'
                     }
                 },
-
                 dateClick: function(info) {
                     if (esAdmin) abrirModalCrear(info.dateStr);
                 },
@@ -208,35 +278,30 @@ const firebaseConfig = {
             calendar.render();
         });
 
-        // --- BASE DE DATOS ---
-
         async function cargarReservas() {
             try {
                 const q = query(collection(db, "reservas"));
                 const querySnapshot = await getDocs(q);
-                
                 calendar.removeAllEvents();
 
                 querySnapshot.forEach((documento) => {
                     const data = documento.data();
-                    const idDoc = documento.id; 
-
                     if (!data.fechaInicio && !data.fecha) return; 
                     
                     let inicio = data.fechaInicio || data.fecha; 
                     let fin = data.fechaFin || data.fecha;
-
-                    // Ajuste visual para FullCalendar (+1 día para que pinte la barra completa)
                     let fechaFinVisual = new Date(fin + 'T00:00:00');
                     if (isNaN(fechaFinVisual.getTime())) return;
 
                     fechaFinVisual.setDate(fechaFinVisual.getDate() + 1);
                     let fechaFinFormateada = fechaFinVisual.toISOString().split('T')[0];
+                    
+                    // Acortamos el nombre de la ciudad para el calendario si es muy largo
+                    let ciudadCorta = data.ciudad.split(",")[0]; 
 
                     calendar.addEvent({
-                        id: idDoc,
-                        // Texto que se verá: "Ciudad - Cliente"
-                        title: '📍 ' + data.ciudad + ' - ' + data.cliente, 
+                        id: documento.id,
+                        title: '📍 ' + ciudadCorta + ' - ' + data.cliente,
                         start: inicio,
                         end: fechaFinFormateada, 
                         allDay: true,
@@ -244,13 +309,12 @@ const firebaseConfig = {
                         borderColor: '#FF5733',
                         extendedProps: {
                             cliente: data.cliente,
-                            fechaFinReal: fin
+                            fechaFinReal: fin,
+                            ciudadCompleta: data.ciudad // Guardamos la dirección completa
                         }
                     });
                 });
-            } catch (error) {
-                console.error("Error cargando:", error);
-            }
+            } catch (error) { console.error(error); }
         }
 
         window.guardarReserva = async function() {
@@ -266,14 +330,12 @@ const firebaseConfig = {
                 alert("⛔ Fecha fin incorrecta"); return;
             }
 
-            // Validación de Conflicto
             const nuevaInicio = new Date(fechaInicioStr + 'T00:00:00');
             const nuevaFin = new Date(fechaFinStr + 'T00:00:00');
             const eventos = calendar.getEvents();
             let hayConflicto = false;
 
             for (const ev of eventos) {
-                // Si estamos borrando y volviendo a crear, no comparar consigo mismo (opcional avanzado)
                 const evInicio = ev.start; 
                 const evFin = ev.end; 
                 const nuevaFinComp = new Date(nuevaFin);
@@ -299,93 +361,68 @@ const firebaseConfig = {
                 await cargarReservas();
                 alert("✅ Guardado");
                 cerrarModal('reservaModal');
-            } catch (e) {
-                console.error(e);
-                alert("Error al guardar");
-            }
+            } catch (e) { console.error(e); alert("Error al guardar"); }
         }
 
         window.borrarReserva = async function() {
             if(!eventoSeleccionadoID) return;
-            
-            if(confirm("¿Estás seguro de que quieres eliminar esta reserva?")) {
+            if(confirm("¿Eliminar reserva?")) {
                 try {
-                    // Borrar de Firebase usando el ID
                     await deleteDoc(doc(db, "reservas", eventoSeleccionadoID));
-                    
-                    // Quitar del calendario visualmente
                     const evento = calendar.getEventById(eventoSeleccionadoID);
                     if(evento) evento.remove();
-
-                    alert("🗑️ Reserva eliminada.");
+                    alert("🗑️ Eliminada");
                     cerrarModal('detalleModal');
-                } catch (e) {
-                    console.error("Error borrando:", e);
-                    alert("No se pudo eliminar.");
-                }
+                } catch (e) { alert("Error borrando"); }
             }
         }
-
-        // --- INTERFAZ / MODALES ---
 
         window.abrirModalCrear = function(fecha) {
             document.getElementById('fechaInicio').value = fecha;
             document.getElementById('fechaFin').value = fecha;
+            document.getElementById('ciudadInput').value = ""; // Limpiar buscador
+            document.getElementById('nombreInput').value = "";
+            document.getElementById('listaSugerencias').style.display = 'none';
             document.getElementById('reservaModal').style.display = "block";
         }
 
         window.mostrarDetalles = function(evento) {
-            // Guardar ID por si se quiere borrar
             eventoSeleccionadoID = evento.id; 
+            
+            // Obtener ciudad completa
+            const ciudadCompleta = evento.extendedProps.ciudadCompleta || evento.title.replace('📍 ','');
 
-            // Llenar datos en el modal
-            document.getElementById('detCiudad').innerText = evento.title;
+            document.getElementById('detCiudad').innerText = ciudadCompleta;
             document.getElementById('detCliente').innerText = evento.extendedProps.cliente || "No especificado";
             
-            // Formato de fechas bonito
             const inicio = evento.start.toISOString().split('T')[0];
             const fin = evento.extendedProps.fechaFinReal;
             document.getElementById('detFechas').innerText = `${inicio} al ${fin}`;
 
-            // Mostrar botón borrar SOLO si es admin
+            // --- GENERAR LINK DE GOOGLE MAPS ---
+            const btnLink = document.getElementById('btnMapaLink');
+            // Creamos una URL de búsqueda de Google Maps
+            btnLink.href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ciudadCompleta)}`;
+            
             const btnEliminar = document.getElementById('btnEliminar');
-            if(esAdmin) {
-                btnEliminar.style.display = 'block';
-            } else {
-                btnEliminar.style.display = 'none';
-            }
+            btnEliminar.style.display = esAdmin ? 'block' : 'none';
 
             document.getElementById('detalleModal').style.display = "block";
         }
 
         window.cerrarModal = function(idModal) {
             document.getElementById(idModal).style.display = "none";
-            // Limpiar inputs si es el de crear
-            if(idModal === 'reservaModal') {
-                document.getElementById('ciudadInput').value = "";
-                document.getElementById('nombreInput').value = "";
-            }
         }
 
-        // Cerrar si clic fuera del modal
-        window.onclick = function(event) {
-            if (event.target.classList.contains('modal')) {
-                event.target.style.display = "none";
-            }
-        }
-
-        // --- LOGIN ---
         window.iniciarSesion = function() {
-            const pass = prompt("Contraseña de Admin:");
+            const pass = prompt("Contraseña Admin:");
             if (pass === CONTRASEÑA_ADMIN) {
                 esAdmin = true;
                 document.getElementById('btnLogin').style.display = 'none';
                 document.getElementById('btnLogout').style.display = 'inline-block';
                 document.getElementById('admin-status').style.display = 'inline';
-                alert("✅ Modo Admin Activo");
-            } else {
-                alert("❌ Incorrecto");
-            }
+                alert("✅ Admin Activo");
+            } else { alert("❌ Incorrecto"); }
         }
 
         window.cerrarSesion = function() {
