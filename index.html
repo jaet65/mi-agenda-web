@@ -7,50 +7,74 @@
     
     <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js'></script>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; background-color: #f0f2f5; color: #333; }
+        /* 1. OBLIGAR A QUE LA APP OCUPE TODA LA PANTALLA (SIN SCROLL EN EL BODY) */
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden; /* Evita doble barra de scroll */
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
+            display: flex;
+            flex-direction: column; /* Organiza header arriba y calendario abajo */
+        }
         
-        /* Cabecera */
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        h1 { margin: 0; font-size: 1.5rem; color: #2c3e50; }
+        /* 2. CABECERA FIJA (NO SE MUEVE) */
+        .header { 
+            flex-shrink: 0; /* No se encoge */
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            background: white; 
+            padding: 10px 15px; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            z-index: 10;
+        }
+        h1 { margin: 0; font-size: 1.2rem; color: #2c3e50; }
         
-        .login-btn { background: #007bff; color: white; padding: 8px 15px; border-radius: 5px; cursor: pointer; border: none; font-weight: bold; transition: 0.3s; }
-        .login-btn:hover { background: #0056b3; }
-        .logout-btn { background: #6c757d; display: none; }
-        
-        #calendar-container { max-width: 1000px; margin: 0 auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        
-        /* Modales */
+        /* 3. CONTENEDOR DEL CALENDARIO (LLENA EL RESTO DE LA PANTALLA) */
+        #calendar-container { 
+            flex-grow: 1; /* Ocupa todo el espacio sobrante */
+            background: white; 
+            padding: 10px; 
+            overflow: hidden; /* El scroll lo manejará el calendario internamente */
+            position: relative;
+        }
+
+        /* Botones */
+        .login-btn { background: #007bff; color: white; padding: 5px 10px; border-radius: 5px; cursor: pointer; border: none; font-size: 0.9rem; }
+        .logout-btn { background: #6c757d; display: none; padding: 5px 10px; border-radius: 5px; color: white; border: none;}
+        #admin-status { font-weight: bold; color: #28a745; display: none; margin-right: 10px; font-size: 0.8rem; }
+
+        /* Estilos de Modales (Sin cambios grandes) */
         .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); backdrop-filter: blur(2px); }
-        .modal-content { background-color: white; margin: 5% auto; padding: 25px; border: none; width: 90%; max-width: 400px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); position: relative; }
+        .modal-content { background-color: white; margin: 10% auto; padding: 20px; width: 90%; max-width: 350px; border-radius: 12px; }
+        .close-x { float: right; font-size: 20px; cursor: pointer; }
+        input { width: 100%; padding: 8px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 4px; }
+        .btn-save { background: #28a745; color: white; border: none; padding: 10px; width: 100%; border-radius: 4px; margin-top: 5px;}
+        .btn-delete { background: #dc3545; color: white; border: none; padding: 10px; width: 100%; border-radius: 4px; margin-top: 5px;}
         
-        .close-x { position: absolute; right: 15px; top: 10px; font-size: 24px; cursor: pointer; color: #aaa; }
-        .close-x:hover { color: #000; }
+        /* --- 4. COMPRESIÓN EXTREMA PARA LA VISTA DE AÑO --- */
+        /* Reducir espacio entre el título del mes y los días */
+        .fc-multimonth-header { padding: 2px 0 !important; font-size: 0.9em; background: #f8f9fa; }
+        
+        /* Reducir el espacio de cada celda de día */
+        .fc-multimonth-daygrid-table { font-size: 0.75em; }
+        .fc-daygrid-day-frame { min-height: auto !important; } /* Quitar altura mínima */
+        .fc-daygrid-day-top { flex-direction: row; } /* Ahorra espacio vertical */
+        
+        /* Reducir márgenes entre meses */
+        .fc-multimonth-month { padding: 0 5px 5px 5px !important; }
 
-        .form-group { margin-bottom: 15px; }
-        label { display: block; margin-bottom: 5px; font-weight: 600; font-size: 0.9rem; }
-        input { width: 100%; padding: 10px; box-sizing: border-box; border: 1px solid #ddd; border-radius: 6px; font-size: 1rem; }
-        
-        .btn-save { background-color: #28a745; color: white; border: none; padding: 12px; border-radius: 6px; cursor: pointer; width: 100%; margin-top: 10px; font-size: 1rem; font-weight: bold; }
-        .btn-save:hover { background-color: #218838; }
-        
-        .btn-delete { background-color: #dc3545; color: white; border: none; padding: 12px; border-radius: 6px; cursor: pointer; width: 100%; margin-top: 10px; font-size: 1rem; font-weight: bold; }
-        .btn-delete:hover { background-color: #c82333; }
-
-        #admin-status { font-weight: bold; color: #28a745; display: none; margin-right: 15px; font-size: 0.9rem; }
-        
-        /* Detalles del evento */
-        .info-row { margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid #eee; }
-        .info-label { font-weight: bold; color: #666; font-size: 0.85rem; }
-        .info-value { font-size: 1.1rem; }
-
-        /* --- ESTILOS ESPECÍFICOS PARA LA VISTA AGENDA --- */
-        /* Ocultar el punto de color */
-        .fc-list-event-graphic { display: none !important; }
-        /* Ocultar la hora */
-        .fc-list-event-time { display: none !important; }
-        
-        /* Ajustar el texto para que se vea bien alineado */
-        .fc-list-event-title { padding-left: 0 !important; font-size: 1rem; }
+        /* Ajustes Móvil */
+        @media (max-width: 768px) {
+            h1 { font-size: 1rem; }
+            .header { padding: 5px 10px; }
+            /* Barra de herramientas del calendario más compacta */
+            .fc-header-toolbar { margin-bottom: 5px !important; }
+            .fc-toolbar-title { font-size: 1.1rem !important; }
+            .fc-button { padding: 4px 8px !important; font-size: 0.8em !important; }
+        }
     </style>
 </head>
 <body>
@@ -142,45 +166,40 @@ const firebaseConfig = {
 
         document.addEventListener('DOMContentLoaded', async function() {
             var calendarEl = document.getElementById('calendar');
+            
+            // Detectar móvil
+            const esMovil = window.innerWidth < 768;
 
             calendar = new FullCalendar.Calendar(calendarEl, {
+                // --- CAMBIO CLAVE: USAR EL 100% DEL ALTO DISPONIBLE ---
+                height: '100%', 
+                // ------------------------------------------------------
+                
                 initialView: 'dayGridMonth',
                 locale: 'es',
                 
-                // --- BOTONES (Agregamos 'listYear') ---
                 headerToolbar: {
                     left: 'prev,next today',
                     center: 'title',
-                    // Aquí agregamos el botón de Agenda al final
-                    right: 'dayGridMonth,vistaSemestre,multiMonthYear,listYear' 
+                    right: 'dayGridMonth,multiMonthYear,listYear' 
                 },
                 
-                // --- CONFIGURACIÓN DE VISTAS ---
                 views: {
                     dayGridMonth: { buttonText: 'Mes' },
-                    multiMonthYear: { buttonText: 'Año', multiMonthMaxColumns: 4 },
-                    vistaSemestre: { 
-                        type: 'multiMonthYear',
-                        duration: { months: 6 },
-                        buttonText: 'Semestre',
-                        multiMonthMaxColumns: 3 
+                    multiMonthYear: { 
+                        buttonText: 'Año',
+                        // En móvil probamos con 2 columnas para equilibrar
+                        multiMonthMaxColumns: esMovil ? 2 : 4, 
                     },
                     listYear: { 
                         buttonText: 'Agenda',
-                        noEventsText: 'No hay reservas para mostrar'
-                        // Al no poner nada más aquí, volverá a mostrar el rango (Ej: 10 ene - 15 ene)
+                        noEventsText: 'No hay reservas'
                     }
                 },
-                // ------------------------------------
 
-                // Clic en un día vacío (Solo funciona en vistas de calendario, no en lista)
                 dateClick: function(info) {
-                    if (esAdmin) {
-                        abrirModalCrear(info.dateStr);
-                    }
+                    if (esAdmin) abrirModalCrear(info.dateStr);
                 },
-                
-                // Clic en un evento existente (Funciona en todas las vistas)
                 eventClick: function(info) {
                     mostrarDetalles(info.event);
                 }
