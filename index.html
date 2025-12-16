@@ -58,7 +58,8 @@
         
         .btn-save { background: #28a745; color: white; border: none; padding: 12px; width: 100%; border-radius: 6px; margin-top: 5px; font-weight: bold;}
         .btn-delete { background: #dc3545; color: white; border: none; padding: 12px; width: 100%; border-radius: 6px; margin-top: 15px; font-weight: bold;}
-        .btn-map { background: #4285F4; color: white; text-decoration: none; padding: 8px 15px; border-radius: 20px; font-size: 0.9rem; display: inline-block; margin-top: 5px; }
+        
+        /* NOTA: Se eliminó el estilo .btn-map que ya no se usa */
 
         /* --- ESTILOS DEL AUTOCOMPLETADO (Buscador) --- */
         .suggestions-list {
@@ -124,7 +125,7 @@
 
     <div id="reservaModal" class="modal">
         <div class="modal-content">
-            <span class="close-x" onclick="cerrarModal('reservaModal')">&times;</span>
+            <span class="close-x" onclick="cerrarModal('reservaModal')">×</span>
             <h2 style="margin-top:0;">Nueva Reserva</h2>
             
             <div class="form-group">
@@ -138,7 +139,7 @@
             
             <div class="form-group">
                 <label>Buscar Ciudad:</label>
-                <input type="text" id="ciudadInput" placeholder="Escribe para buscar (ej. Madrid)..." autocomplete="off">
+                <input type="text" id="ciudadInput" placeholder="Escribe ciudad (ej. Monterrey)..." autocomplete="off">
                 <ul id="listaSugerencias" class="suggestions-list"></ul>
             </div>
 
@@ -153,17 +154,13 @@
 
     <div id="detalleModal" class="modal">
         <div class="modal-content">
-            <span class="close-x" onclick="cerrarModal('detalleModal')">&times;</span>
+            <span class="close-x" onclick="cerrarModal('detalleModal')">×</span>
             <h2 style="margin-top:0;">Detalles</h2>
             
             <p><strong>Cliente:</strong> <span id="detCliente"></span></p>
             <p><strong>Ciudad:</strong> <span id="detCiudad"></span></p>
             <p><strong>Fechas:</strong> <span id="detFechas"></span></p>
             
-            <div style="text-align: center; margin: 15px 0;">
-                <a id="btnMapaLink" href="#" target="_blank" class="btn-map">🗺️ Ver en Google Maps</a>
-            </div>
-
             <button id="btnEliminar" class="btn-delete" style="display:none;" onclick="borrarReserva()">🗑️ Eliminar</button>
         </div>
     </div>
@@ -173,14 +170,14 @@
         import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         // Your web app's Firebase configuration
-const firebaseConfig = {
-  apiKey: "AIzaSyCN7AD2GO_Ks4tcMxLMkG6jODKUaTPwlIk",
-  authDomain: "agendaservicios.firebaseapp.com",
-  projectId: "agendaservicios",
-  storageBucket: "agendaservicios.firebasestorage.app",
-  messagingSenderId: "1068275517204",
-  appId: "1:1068275517204:web:9bdd41c8233bc1fda06401"
-};
+        const firebaseConfig = {
+          apiKey: "AIzaSyCN7AD2GO_Ks4tcMxLMkG6jODKUaTPwlIk",
+          authDomain: "agendaservicios.firebaseapp.com",
+          projectId: "agendaservicios",
+          storageBucket: "agendaservicios.firebasestorage.app",
+          messagingSenderId: "1068275517204",
+          appId: "1:1068275517204:web:9bdd41c8233bc1fda06401"
+        };
         // -------------------------------------------------------
 
         const app = initializeApp(firebaseConfig);
@@ -191,47 +188,59 @@ const firebaseConfig = {
         let eventoSeleccionadoID = null;
         const CONTRASEÑA_ADMIN = "servicio2024"; 
 
-        // --- CONFIGURACIÓN DEL BUSCADOR DE CIUDADES (JS) ---
+        // --- CONFIGURACIÓN DEL BUSCADOR DE CIUDADES (RESTRICTIVO) ---
         const inputCiudad = document.getElementById('ciudadInput');
         const listaSugerencias = document.getElementById('listaSugerencias');
         let timeoutBuscador = null;
 
-        // Escuchar cuando el usuario escribe
         inputCiudad.addEventListener('input', function() {
             const texto = this.value;
-            listaSugerencias.innerHTML = ''; // Limpiar lista anterior
+            listaSugerencias.innerHTML = ''; 
             listaSugerencias.style.display = 'none';
 
-            if (texto.length < 3) return; // Esperar a que escriba 3 letras
+            if (texto.length < 3) return; 
 
-            // Esperar un poco para no saturar (Debounce)
             clearTimeout(timeoutBuscador);
             timeoutBuscador = setTimeout(async () => {
                 try {
-                    // LLAMADA A API GRATUITA DE OPENSTREETMAP (NOMINATIM)
-                    const respuesta = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${texto}&limit=5&accept-language=es`);
+                    // Mantenemos countrycodes=mx para limitar a México
+                    const respuesta = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${texto}&limit=8&accept-language=es&countrycodes=mx&addressdetails=1`);
                     const resultados = await respuesta.json();
 
                     if (resultados.length > 0) {
-                        listaSugerencias.style.display = 'block';
-                        resultados.forEach(lugar => {
-                            const item = document.createElement('li');
-                            item.className = 'suggestion-item';
-                            // Mostramos el nombre completo (Display Name)
-                            item.innerText = lugar.display_name;
-                            
-                            // Al hacer clic en una sugerencia
-                            item.onclick = function() {
-                                inputCiudad.value = lugar.display_name; // Poner texto en input
-                                listaSugerencias.style.display = 'none'; // Ocultar lista
-                            };
-                            listaSugerencias.appendChild(item);
+                        
+                        // FILTRADO ESTRICTO: Solo Ciudades / Localidades
+                        const resultadosFiltrados = resultados.filter(lugar => {
+                            return lugar.class === 'place' || lugar.class === 'boundary';
                         });
+
+                        if(resultadosFiltrados.length > 0) {
+                            listaSugerencias.style.display = 'block';
+                            
+                            resultadosFiltrados.forEach(lugar => {
+                                const item = document.createElement('li');
+                                item.className = 'suggestion-item';
+                                
+                                // Usamos icono de ciudad siempre
+                                let icono = '🏙️'; 
+
+                                let nombrePrincipal = lugar.name || texto; 
+                                
+                                item.innerHTML = `<strong>${icono} ${nombrePrincipal}</strong><br><small style="color:#666;">${lugar.display_name}</small>`;
+                                
+                                item.onclick = function() {
+                                    inputCiudad.value = nombrePrincipal; 
+                                    inputCiudad.dataset.ubicacionCompleta = lugar.display_name;
+                                    listaSugerencias.style.display = 'none'; 
+                                };
+                                listaSugerencias.appendChild(item);
+                            });
+                        }
                     }
                 } catch (e) {
-                    console.error("Error buscando ciudad:", e);
+                    console.error("Error buscando:", e);
                 }
-            }, 300); // 300ms de espera
+            }, 300); 
         });
 
         // Ocultar lista si clic fuera
@@ -296,7 +305,6 @@ const firebaseConfig = {
                     fechaFinVisual.setDate(fechaFinVisual.getDate() + 1);
                     let fechaFinFormateada = fechaFinVisual.toISOString().split('T')[0];
                     
-                    // Acortamos el nombre de la ciudad para el calendario si es muy largo
                     let ciudadCorta = data.ciudad.split(",")[0]; 
 
                     calendar.addEvent({
@@ -310,7 +318,7 @@ const firebaseConfig = {
                         extendedProps: {
                             cliente: data.cliente,
                             fechaFinReal: fin,
-                            ciudadCompleta: data.ciudad // Guardamos la dirección completa
+                            ciudadCompleta: data.ciudad 
                         }
                     });
                 });
@@ -380,7 +388,7 @@ const firebaseConfig = {
         window.abrirModalCrear = function(fecha) {
             document.getElementById('fechaInicio').value = fecha;
             document.getElementById('fechaFin').value = fecha;
-            document.getElementById('ciudadInput').value = ""; // Limpiar buscador
+            document.getElementById('ciudadInput').value = ""; 
             document.getElementById('nombreInput').value = "";
             document.getElementById('listaSugerencias').style.display = 'none';
             document.getElementById('reservaModal').style.display = "block";
@@ -389,7 +397,6 @@ const firebaseConfig = {
         window.mostrarDetalles = function(evento) {
             eventoSeleccionadoID = evento.id; 
             
-            // Obtener ciudad completa
             const ciudadCompleta = evento.extendedProps.ciudadCompleta || evento.title.replace('📍 ','');
 
             document.getElementById('detCiudad').innerText = ciudadCompleta;
@@ -399,10 +406,7 @@ const firebaseConfig = {
             const fin = evento.extendedProps.fechaFinReal;
             document.getElementById('detFechas').innerText = `${inicio} al ${fin}`;
 
-            // --- GENERAR LINK DE GOOGLE MAPS ---
-            const btnLink = document.getElementById('btnMapaLink');
-            // Creamos una URL de búsqueda de Google Maps
-            btnLink.href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ciudadCompleta)}`;
+            // SE ELIMINÓ LA LÓGICA DEL LINK DE MAPAS AQUÍ
             
             const btnEliminar = document.getElementById('btnEliminar');
             btnEliminar.style.display = esAdmin ? 'block' : 'none';
