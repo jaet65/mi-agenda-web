@@ -7,21 +7,21 @@
     
     <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js'></script>
     <style>
-        /* 1. OBLIGAR A QUE LA APP OCUPE TODA LA PANTALLA (SIN SCROLL EN EL BODY) */
+        /* 1. LAYOUT DE PANTALLA COMPLETA */
         html, body {
             height: 100%;
             margin: 0;
             padding: 0;
-            overflow: hidden; /* Evita doble barra de scroll */
+            overflow: hidden; 
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: #f0f2f5;
             display: flex;
-            flex-direction: column; /* Organiza header arriba y calendario abajo */
+            flex-direction: column; 
         }
         
-        /* 2. CABECERA FIJA (NO SE MUEVE) */
+        /* 2. CABECERA */
         .header { 
-            flex-shrink: 0; /* No se encoge */
+            flex-shrink: 0; 
             display: flex; 
             justify-content: space-between; 
             align-items: center; 
@@ -32,12 +32,12 @@
         }
         h1 { margin: 0; font-size: 1.2rem; color: #2c3e50; }
         
-        /* 3. CONTENEDOR DEL CALENDARIO (LLENA EL RESTO DE LA PANTALLA) */
+        /* 3. CONTENEDOR DEL CALENDARIO */
         #calendar-container { 
-            flex-grow: 1; /* Ocupa todo el espacio sobrante */
+            flex-grow: 1; 
             background: white; 
             padding: 10px; 
-            overflow: hidden; /* El scroll lo manejará el calendario internamente */
+            overflow: hidden; 
             position: relative;
         }
 
@@ -46,7 +46,7 @@
         .logout-btn { background: #6c757d; display: none; padding: 5px 10px; border-radius: 5px; color: white; border: none;}
         #admin-status { font-weight: bold; color: #28a745; display: none; margin-right: 10px; font-size: 0.8rem; }
 
-        /* Estilos de Modales (Sin cambios grandes) */
+        /* Modales */
         .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); backdrop-filter: blur(2px); }
         .modal-content { background-color: white; margin: 10% auto; padding: 20px; width: 90%; max-width: 350px; border-radius: 12px; }
         .close-x { float: right; font-size: 20px; cursor: pointer; }
@@ -54,23 +54,22 @@
         .btn-save { background: #28a745; color: white; border: none; padding: 10px; width: 100%; border-radius: 4px; margin-top: 5px;}
         .btn-delete { background: #dc3545; color: white; border: none; padding: 10px; width: 100%; border-radius: 4px; margin-top: 5px;}
         
-        /* --- 4. COMPRESIÓN EXTREMA PARA LA VISTA DE AÑO --- */
-        /* Reducir espacio entre el título del mes y los días */
+        /* 4. COMPRESIÓN VISTA AÑO */
         .fc-multimonth-header { padding: 2px 0 !important; font-size: 0.9em; background: #f8f9fa; }
-        
-        /* Reducir el espacio de cada celda de día */
         .fc-multimonth-daygrid-table { font-size: 0.75em; }
-        .fc-daygrid-day-frame { min-height: auto !important; } /* Quitar altura mínima */
-        .fc-daygrid-day-top { flex-direction: row; } /* Ahorra espacio vertical */
-        
-        /* Reducir márgenes entre meses */
+        .fc-daygrid-day-frame { min-height: auto !important; }
+        .fc-daygrid-day-top { flex-direction: row; } 
         .fc-multimonth-month { padding: 0 5px 5px 5px !important; }
+
+        /* --- 5. CORRECCIÓN AGENDA (QUITA PUNTOS Y HORA) --- */
+        .fc-list-event-graphic { display: none !important; }
+        .fc-list-event-time { display: none !important; }
+        .fc-list-event-title { padding-left: 0 !important; cursor: pointer; }
 
         /* Ajustes Móvil */
         @media (max-width: 768px) {
             h1 { font-size: 1rem; }
             .header { padding: 5px 10px; }
-            /* Barra de herramientas del calendario más compacta */
             .fc-header-toolbar { margin-bottom: 5px !important; }
             .fc-toolbar-title { font-size: 1.1rem !important; }
             .fc-button { padding: 4px 8px !important; font-size: 0.8em !important; }
