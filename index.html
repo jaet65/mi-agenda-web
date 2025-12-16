@@ -3,11 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Agenda de Servicios Inteligente</title>
+    <title>Agenda Geo-Localizada</title>
     
     <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js'></script>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
     <style>
-        /* 1. LAYOUT DE PANTALLA COMPLETA */
+        /* 1. LAYOUT GENERAL */
         html, body {
             height: 100%;
             margin: 0;
@@ -28,40 +32,89 @@
             background: white; 
             padding: 10px 15px; 
             box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-            z-index: 20; /* Mayor que el mapa */
+            z-index: 20; 
         }
         h1 { margin: 0; font-size: 1.2rem; color: #2c3e50; }
         
-        /* 3. CONTENEDOR DEL CALENDARIO */
+        .header-controls {
+            display: flex;
+            gap: 10px;
+        }
+
+        /* 3. CONTENEDOR PRINCIPAL */
+        #main-container {
+            flex-grow: 1;
+            position: relative;
+            overflow: hidden;
+            width: 100%;
+        }
+
+        /* VISTA CALENDARIO (Visible por defecto) */
         #calendar-container { 
-            flex-grow: 1; 
+            width: 100%;
+            height: 100%;
             background: white; 
             padding: 10px; 
-            overflow: hidden; 
+            box-sizing: border-box;
+            overflow-y: auto;
+            display: block; /* Visible inicial */
+        }
+
+        /* VISTA MAPA (Oculta por defecto) */
+        #map-view {
+            width: 100%;
+            height: 100%;
+            background: #e5e5e5;
+            display: none; /* Oculto inicial */
             position: relative;
         }
 
+        /* Botón Flotante "Volver" en el mapa */
+        #btn-back-calendar {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000; /* Encima del mapa */
+            background-color: white;
+            color: #333;
+            border: 1px solid #ccc;
+            padding: 10px 20px;
+            border-radius: 30px;
+            font-weight: bold;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+            cursor: pointer;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        #btn-back-calendar:hover {
+            background-color: #f8f9fa;
+        }
+
         /* Botones Generales */
-        .login-btn { background: #007bff; color: white; padding: 5px 10px; border-radius: 5px; cursor: pointer; border: none; font-size: 0.9rem; }
-        .logout-btn { background: #6c757d; display: none; padding: 5px 10px; border-radius: 5px; color: white; border: none;}
+        .btn-action { background: #007bff; color: white; padding: 6px 12px; border-radius: 5px; cursor: pointer; border: none; font-size: 0.9rem; }
+        .btn-secondary { background: #6c757d; color: white; padding: 6px 12px; border-radius: 5px; cursor: pointer; border: none; font-size: 0.9rem; }
+        .btn-map-toggle { background: #28a745; margin-right: 5px; } /* Botón verde para ir al mapa */
+        
+        #logout-btn { display: none; }
         #admin-status { font-weight: bold; color: #28a745; display: none; margin-right: 10px; font-size: 0.8rem; }
 
         /* Modales */
-        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); backdrop-filter: blur(2px); }
+        .modal { display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); backdrop-filter: blur(2px); }
         .modal-content { background-color: white; margin: 5% auto; padding: 20px; width: 90%; max-width: 350px; border-radius: 12px; position: relative; max-height: 90vh; overflow-y: auto;}
         .close-x { float: right; font-size: 20px; cursor: pointer; }
         
         /* Inputs y Formularios */
-        .form-group { margin-bottom: 15px; position: relative; } /* Relative para el autocompletado */
+        .form-group { margin-bottom: 15px; position: relative; } 
         label { display: block; margin-bottom: 5px; font-weight: 600; font-size: 0.9rem; }
         input { width: 100%; padding: 10px; box-sizing: border-box; border: 1px solid #ddd; border-radius: 6px; font-size: 1rem; }
         
         .btn-save { background: #28a745; color: white; border: none; padding: 12px; width: 100%; border-radius: 6px; margin-top: 5px; font-weight: bold;}
         .btn-delete { background: #dc3545; color: white; border: none; padding: 12px; width: 100%; border-radius: 6px; margin-top: 15px; font-weight: bold;}
         
-        /* NOTA: Se eliminó el estilo .btn-map que ya no se usa */
-
-        /* --- ESTILOS DEL AUTOCOMPLETADO (Buscador) --- */
+        /* Buscador */
         .suggestions-list {
             position: absolute;
             background: white;
@@ -76,7 +129,7 @@
             margin: 0;
             border-radius: 0 0 6px 6px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            display: none; /* Oculto por defecto */
+            display: none; 
         }
         .suggestion-item {
             padding: 10px;
@@ -86,41 +139,37 @@
         }
         .suggestion-item:hover { background-color: #f0f2f5; }
 
-        /* 4. COMPRESIÓN VISTA AÑO */
-        .fc-multimonth-header { padding: 2px 0 !important; font-size: 0.9em; background: #f8f9fa; }
-        .fc-multimonth-daygrid-table { font-size: 0.75em; }
-        .fc-daygrid-day-frame { min-height: auto !important; }
-        .fc-daygrid-day-top { flex-direction: row; } 
-        .fc-multimonth-month { padding: 0 5px 5px 5px !important; }
-
-        /* --- 5. CORRECCIÓN AGENDA (QUITA PUNTOS Y HORA) --- */
+        /* FullCalendar Tweaks */
+        .fc-header-toolbar { font-size: 0.85em; }
         .fc-list-event-graphic { display: none !important; }
         .fc-list-event-time { display: none !important; }
-        .fc-list-event-title { padding-left: 0 !important; cursor: pointer; }
-
-        /* Ajustes Móvil */
-        @media (max-width: 768px) {
-            h1 { font-size: 1rem; }
-            .header { padding: 5px 10px; }
-            .fc-header-toolbar { margin-bottom: 5px !important; }
-            .fc-toolbar-title { font-size: 1.1rem !important; }
-            .fc-button { padding: 4px 8px !important; font-size: 0.8em !important; }
-        }
     </style>
 </head>
 <body>
 
     <div class="header">
-        <h1>📅 Agenda Geo-Localizada</h1>
-        <div>
+        <h1>📅 Agenda</h1>
+        <div class="header-controls">
+            <button id="btn-go-map" class="btn-action btn-map-toggle" onclick="mostrarMapa()">🗺️ Mapa Global</button>
+            
             <span id="admin-status">🟢 Admin</span>
-            <button id="btnLogin" class="login-btn" onclick="iniciarSesion()">🔒 Entrar</button>
-            <button id="btnLogout" class="login-btn logout-btn" onclick="cerrarSesion()">Salir</button>
+            <button id="btnLogin" class="btn-action" onclick="iniciarSesion()">🔒 Entrar</button>
+            <button id="btnLogout" class="btn-secondary" id="logout-btn" onclick="cerrarSesion()" style="display:none;">Salir</button>
         </div>
     </div>
 
-    <div id="calendar-container">
-        <div id='calendar'></div>
+    <div id="main-container">
+        
+        <div id="calendar-container">
+            <div id='calendar'></div>
+        </div>
+        
+        <div id="map-view">
+            <button id="btn-back-calendar" onclick="mostrarCalendario()">
+                📅 Volver al Calendario
+            </button>
+        </div>
+
     </div>
 
     <div id="reservaModal" class="modal">
@@ -140,6 +189,8 @@
             <div class="form-group">
                 <label>Buscar Ciudad:</label>
                 <input type="text" id="ciudadInput" placeholder="Escribe ciudad (ej. Monterrey)..." autocomplete="off">
+                <input type="hidden" id="latTemp">
+                <input type="hidden" id="lonTemp">
                 <ul id="listaSugerencias" class="suggestions-list"></ul>
             </div>
 
@@ -169,7 +220,6 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-        // Your web app's Firebase configuration
         const firebaseConfig = {
           apiKey: "AIzaSyCN7AD2GO_Ks4tcMxLMkG6jODKUaTPwlIk",
           authDomain: "agendaservicios.firebaseapp.com",
@@ -178,17 +228,67 @@
           messagingSenderId: "1068275517204",
           appId: "1:1068275517204:web:9bdd41c8233bc1fda06401"
         };
-        // -------------------------------------------------------
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         
         let calendar;
+        let map; 
+        let markers = []; 
         let esAdmin = false;
         let eventoSeleccionadoID = null;
         const CONTRASEÑA_ADMIN = "servicio2024"; 
 
-        // --- CONFIGURACIÓN DEL BUSCADOR DE CIUDADES (RESTRICTIVO) ---
+        // --- INICIALIZACIÓN ---
+        document.addEventListener('DOMContentLoaded', async function() {
+            // 1. Iniciar Calendario
+            var calendarEl = document.getElementById('calendar');
+            calendar = new FullCalendar.Calendar(calendarEl, {
+                height: '100%',
+                initialView: 'dayGridMonth',
+                locale: 'es',
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'dayGridMonth,listYear' 
+                },
+                dateClick: function(info) {
+                    if (esAdmin) abrirModalCrear(info.dateStr);
+                },
+                eventClick: function(info) {
+                    mostrarDetalles(info.event);
+                }
+            });
+            calendar.render();
+
+            // 2. Iniciar Mapa Leaflet (En memoria, aunque esté oculto)
+            map = L.map('map-view').setView([23.6345, -102.5528], 5);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap contributors'
+            }).addTo(map);
+
+            await cargarReservas(); 
+        });
+
+        // --- FUNCIONES DE CAMBIO DE VISTA ---
+        window.mostrarMapa = function() {
+            document.getElementById('calendar-container').style.display = 'none';
+            document.getElementById('map-view').style.display = 'block';
+            document.getElementById('btn-go-map').style.display = 'none'; // Ocultar boton "ir a mapa"
+            
+            // CRUCIAL: Reajustar tamaño del mapa al hacerlo visible
+            setTimeout(() => { map.invalidateSize(); }, 100);
+        }
+
+        window.mostrarCalendario = function() {
+            document.getElementById('map-view').style.display = 'none';
+            document.getElementById('calendar-container').style.display = 'block';
+            document.getElementById('btn-go-map').style.display = 'inline-block'; // Mostrar boton "ir a mapa"
+            
+            calendar.updateSize(); // Reajustar calendario por si acaso
+        }
+
+        // --- BÚSQUEDA Y SELECCIÓN ---
         const inputCiudad = document.getElementById('ciudadInput');
         const listaSugerencias = document.getElementById('listaSugerencias');
         let timeoutBuscador = null;
@@ -197,19 +297,18 @@
             const texto = this.value;
             listaSugerencias.innerHTML = ''; 
             listaSugerencias.style.display = 'none';
+            document.getElementById('latTemp').value = "";
+            document.getElementById('lonTemp').value = "";
 
             if (texto.length < 3) return; 
 
             clearTimeout(timeoutBuscador);
             timeoutBuscador = setTimeout(async () => {
                 try {
-                    // Mantenemos countrycodes=mx para limitar a México
                     const respuesta = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${texto}&limit=8&accept-language=es&countrycodes=mx&addressdetails=1`);
                     const resultados = await respuesta.json();
 
                     if (resultados.length > 0) {
-                        
-                        // FILTRADO ESTRICTO: Solo Ciudades / Localidades
                         const resultadosFiltrados = resultados.filter(lugar => {
                             return lugar.class === 'place' || lugar.class === 'boundary';
                         });
@@ -220,10 +319,7 @@
                             resultadosFiltrados.forEach(lugar => {
                                 const item = document.createElement('li');
                                 item.className = 'suggestion-item';
-                                
-                                // Usamos icono de ciudad siempre
                                 let icono = '🏙️'; 
-
                                 let nombrePrincipal = lugar.name || texto; 
                                 
                                 item.innerHTML = `<strong>${icono} ${nombrePrincipal}</strong><br><small style="color:#666;">${lugar.display_name}</small>`;
@@ -231,80 +327,43 @@
                                 item.onclick = function() {
                                     inputCiudad.value = nombrePrincipal; 
                                     inputCiudad.dataset.ubicacionCompleta = lugar.display_name;
+                                    document.getElementById('latTemp').value = lugar.lat;
+                                    document.getElementById('lonTemp').value = lugar.lon;
                                     listaSugerencias.style.display = 'none'; 
                                 };
                                 listaSugerencias.appendChild(item);
                             });
                         }
                     }
-                } catch (e) {
-                    console.error("Error buscando:", e);
-                }
+                } catch (e) { console.error("Error buscando:", e); }
             }, 300); 
         });
 
-        // Ocultar lista si clic fuera
         document.addEventListener('click', function(e) {
-            if (e.target !== inputCiudad) {
-                listaSugerencias.style.display = 'none';
-            }
-        });
-        // ---------------------------------------------------
-
-        document.addEventListener('DOMContentLoaded', async function() {
-            var calendarEl = document.getElementById('calendar');
-            const esMovil = window.innerWidth < 768;
-
-            calendar = new FullCalendar.Calendar(calendarEl, {
-                height: '100%',
-                initialView: 'dayGridMonth',
-                locale: 'es',
-                headerToolbar: {
-                    left: 'prev,next today',
-                    center: 'title',
-                    right: 'dayGridMonth,multiMonthYear,listYear' 
-                },
-                views: {
-                    dayGridMonth: { buttonText: 'Mes' },
-                    multiMonthYear: { 
-                        buttonText: 'Año',
-                        multiMonthMaxColumns: esMovil ? 2 : 4, 
-                    },
-                    listYear: { 
-                        buttonText: 'Agenda',
-                        noEventsText: 'No hay reservas'
-                    }
-                },
-                dateClick: function(info) {
-                    if (esAdmin) abrirModalCrear(info.dateStr);
-                },
-                eventClick: function(info) {
-                    mostrarDetalles(info.event);
-                }
-            });
-
-            await cargarReservas();
-            calendar.render();
+            if (e.target !== inputCiudad) { listaSugerencias.style.display = 'none'; }
         });
 
+        // --- CARGA DE DATOS ---
         async function cargarReservas() {
             try {
                 const q = query(collection(db, "reservas"));
                 const querySnapshot = await getDocs(q);
+                
                 calendar.removeAllEvents();
+                
+                markers.forEach(marker => map.removeLayer(marker));
+                markers = [];
 
                 querySnapshot.forEach((documento) => {
                     const data = documento.data();
-                    if (!data.fechaInicio && !data.fecha) return; 
-                    
-                    let inicio = data.fechaInicio || data.fecha; 
-                    let fin = data.fechaFin || data.fecha;
-                    let fechaFinVisual = new Date(fin + 'T00:00:00');
-                    if (isNaN(fechaFinVisual.getTime())) return;
+                    if (!data.fechaInicio) return; 
 
+                    // Calendario
+                    let inicio = data.fechaInicio; 
+                    let fin = data.fechaFin;
+                    let fechaFinVisual = new Date(fin + 'T00:00:00');
                     fechaFinVisual.setDate(fechaFinVisual.getDate() + 1);
                     let fechaFinFormateada = fechaFinVisual.toISOString().split('T')[0];
-                    
                     let ciudadCorta = data.ciudad.split(",")[0]; 
 
                     calendar.addEvent({
@@ -321,6 +380,13 @@
                             ciudadCompleta: data.ciudad 
                         }
                     });
+
+                    // Mapa
+                    if (data.lat && data.lng) {
+                        const marker = L.marker([data.lat, data.lng]).addTo(map);
+                        marker.bindPopup(`<b>${data.cliente}</b><br>${ciudadCorta}<br><small>${inicio}</small>`);
+                        markers.push(marker);
+                    }
                 });
             } catch (error) { console.error(error); }
         }
@@ -330,32 +396,11 @@
             const fechaFinStr = document.getElementById('fechaFin').value;
             const ciudad = document.getElementById('ciudadInput').value;
             const nombre = document.getElementById('nombreInput').value;
+            const lat = document.getElementById('latTemp').value;
+            const lon = document.getElementById('lonTemp').value;
 
-            if(ciudad === "" || nombre === "" || fechaInicioStr === "" || fechaFinStr === "") {
+            if(ciudad === "" || nombre === "" || fechaInicioStr === "") {
                 alert("⚠️ Llena todos los campos"); return;
-            }
-            if(fechaFinStr < fechaInicioStr) {
-                alert("⛔ Fecha fin incorrecta"); return;
-            }
-
-            const nuevaInicio = new Date(fechaInicioStr + 'T00:00:00');
-            const nuevaFin = new Date(fechaFinStr + 'T00:00:00');
-            const eventos = calendar.getEvents();
-            let hayConflicto = false;
-
-            for (const ev of eventos) {
-                const evInicio = ev.start; 
-                const evFin = ev.end; 
-                const nuevaFinComp = new Date(nuevaFin);
-                nuevaFinComp.setDate(nuevaFinComp.getDate() + 1);
-
-                if (nuevaInicio < evFin && nuevaFinComp > evInicio) {
-                    hayConflicto = true; break;
-                }
-            }
-
-            if (hayConflicto) {
-                alert("⛔ ¡FECHAS YA OCUPADAS!"); return;
             }
 
             try {
@@ -364,6 +409,8 @@
                     fechaFin: fechaFinStr,
                     ciudad: ciudad,
                     cliente: nombre,
+                    lat: lat, 
+                    lng: lon, 
                     creado: new Date()
                 });
                 await cargarReservas();
@@ -377,8 +424,7 @@
             if(confirm("¿Eliminar reserva?")) {
                 try {
                     await deleteDoc(doc(db, "reservas", eventoSeleccionadoID));
-                    const evento = calendar.getEventById(eventoSeleccionadoID);
-                    if(evento) evento.remove();
+                    await cargarReservas(); 
                     alert("🗑️ Eliminada");
                     cerrarModal('detalleModal');
                 } catch (e) { alert("Error borrando"); }
@@ -390,27 +436,23 @@
             document.getElementById('fechaFin').value = fecha;
             document.getElementById('ciudadInput').value = ""; 
             document.getElementById('nombreInput').value = "";
+            document.getElementById('latTemp').value = ""; 
+            document.getElementById('lonTemp').value = "";
             document.getElementById('listaSugerencias').style.display = 'none';
             document.getElementById('reservaModal').style.display = "block";
         }
 
         window.mostrarDetalles = function(evento) {
             eventoSeleccionadoID = evento.id; 
-            
-            const ciudadCompleta = evento.extendedProps.ciudadCompleta || evento.title.replace('📍 ','');
-
+            const ciudadCompleta = evento.extendedProps.ciudadCompleta || evento.title;
             document.getElementById('detCiudad').innerText = ciudadCompleta;
             document.getElementById('detCliente').innerText = evento.extendedProps.cliente || "No especificado";
-            
             const inicio = evento.start.toISOString().split('T')[0];
             const fin = evento.extendedProps.fechaFinReal;
             document.getElementById('detFechas').innerText = `${inicio} al ${fin}`;
-
-            // SE ELIMINÓ LA LÓGICA DEL LINK DE MAPAS AQUÍ
             
             const btnEliminar = document.getElementById('btnEliminar');
             btnEliminar.style.display = esAdmin ? 'block' : 'none';
-
             document.getElementById('detalleModal').style.display = "block";
         }
 
