@@ -141,6 +141,9 @@
         .fc-header-toolbar { font-size: 0.85em; }
         .fc-list-event-graphic { display: none !important; }
         .fc-list-event-time { display: none !important; }
+        /* Ajuste para que la vista de año se vea bien */
+        .fc-multimonth-header { background: #f8f9fa; padding: 5px 0; }
+        .fc-multimonth-title { font-size: 1em; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -239,14 +242,15 @@
         // --- INICIALIZACIÓN ---
         document.addEventListener('DOMContentLoaded', async function() {
             var calendarEl = document.getElementById('calendar');
-            
+            const esMovil = window.innerWidth < 768; // Detectar móvil
+
             // --- CONFIGURACIÓN DEL CALENDARIO ---
             calendar = new FullCalendar.Calendar(calendarEl, {
                 height: '100%',
                 initialView: 'dayGridMonth',
-                locale: 'es', // Intenta cargar idioma español
+                locale: 'es',
                 
-                // --- TRADUCCIÓN FORZADA DE BOTONES ---
+                // Botones traducidos
                 buttonText: {
                     today: 'Hoy',
                     month: 'Mes',
@@ -254,15 +258,21 @@
                     list:  'Agenda'
                 },
 
+                // AQUI ESTABA EL ERROR: Agregamos 'multiMonthYear'
                 headerToolbar: {
                     left: 'prev,next today',
                     center: 'title',
-                    right: 'dayGridMonth,listYear' 
+                    right: 'dayGridMonth,multiMonthYear,listYear' 
                 },
                 
-                // Textos específicos para las vistas
+                // Configuración de Vistas
                 views: {
                     dayGridMonth: { buttonText: 'Mes' },
+                    // Configuración específica de la vista anual
+                    multiMonthYear: { 
+                        buttonText: 'Año',
+                        multiMonthMaxColumns: esMovil ? 1 : 4 // 1 columna en móvil, 4 en PC
+                    },
                     listYear: { 
                         buttonText: 'Agenda',
                         noEventsText: 'No hay reservas'
