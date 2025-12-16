@@ -3,175 +3,378 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reserva de Servicios</title>
+    <title>Reserva de Servicios - Completa</title>
     
     <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js'></script>
     <style>
-        body { font-family: Arial, sans-serif; padding: 20px; background-color: #f4f4f4; }
-        #calendar-container { max-width: 900px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-        h1 { text-align: center; color: #333; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; background-color: #f0f2f5; color: #333; }
         
-        /* Estilos del Modal (Ventana emergente) */
-        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); }
-        .modal-content { background-color: white; margin: 15% auto; padding: 20px; border: 1px solid #888; width: 300px; border-radius: 8px; }
+        /* Cabecera */
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        h1 { margin: 0; font-size: 1.5rem; color: #2c3e50; }
+        
+        .login-btn { background: #007bff; color: white; padding: 8px 15px; border-radius: 5px; cursor: pointer; border: none; font-weight: bold; transition: 0.3s; }
+        .login-btn:hover { background: #0056b3; }
+        .logout-btn { background: #6c757d; display: none; }
+        
+        #calendar-container { max-width: 1000px; margin: 0 auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        
+        /* Modales */
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); backdrop-filter: blur(2px); }
+        .modal-content { background-color: white; margin: 5% auto; padding: 25px; border: none; width: 90%; max-width: 400px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); position: relative; }
+        
+        .close-x { position: absolute; right: 15px; top: 10px; font-size: 24px; cursor: pointer; color: #aaa; }
+        .close-x:hover { color: #000; }
+
         .form-group { margin-bottom: 15px; }
-        label { display: block; margin-bottom: 5px; }
-        input { width: 100%; padding: 8px; box-sizing: border-box; }
-        button { padding: 10px 15px; cursor: pointer; border: none; border-radius: 4px; }
-        .btn-save { background-color: #28a745; color: white; }
-        .btn-cancel { background-color: #dc3545; color: white; margin-left: 10px; }
+        label { display: block; margin-bottom: 5px; font-weight: 600; font-size: 0.9rem; }
+        input { width: 100%; padding: 10px; box-sizing: border-box; border: 1px solid #ddd; border-radius: 6px; font-size: 1rem; }
+        
+        .btn-save { background-color: #28a745; color: white; border: none; padding: 12px; border-radius: 6px; cursor: pointer; width: 100%; margin-top: 10px; font-size: 1rem; font-weight: bold; }
+        .btn-save:hover { background-color: #218838; }
+        
+        .btn-delete { background-color: #dc3545; color: white; border: none; padding: 12px; border-radius: 6px; cursor: pointer; width: 100%; margin-top: 10px; font-size: 1rem; font-weight: bold; }
+        .btn-delete:hover { background-color: #c82333; }
+
+        #admin-status { font-weight: bold; color: #28a745; display: none; margin-right: 15px; font-size: 0.9rem; }
+        
+        /* Detalles del evento */
+        .info-row { margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid #eee; }
+        .info-label { font-weight: bold; color: #666; font-size: 0.85rem; }
+        .info-value { font-size: 1.1rem; }
+
+        /* --- ESTILOS ESPECÍFICOS PARA LA VISTA AGENDA --- */
+        /* Ocultar el punto de color */
+        .fc-list-event-graphic { display: none !important; }
+        /* Ocultar la hora */
+        .fc-list-event-time { display: none !important; }
+        
+        /* Ajustar el texto para que se vea bien alineado */
+        .fc-list-event-title { padding-left: 0 !important; font-size: 1rem; }
     </style>
 </head>
 <body>
 
-    <h1>📅 Calendario de Servicios</h1>
+    <div class="header">
+        <h1>📅 Agenda de Servicios</h1>
+        <div>
+            <span id="admin-status">🟢 Admin Activo</span>
+            <button id="btnLogin" class="login-btn" onclick="iniciarSesion()">🔒 Acceso Admin</button>
+            <button id="btnLogout" class="login-btn logout-btn" onclick="cerrarSesion()">Salir</button>
+        </div>
+    </div>
+
     <div id="calendar-container">
         <div id='calendar'></div>
     </div>
 
     <div id="reservaModal" class="modal">
         <div class="modal-content">
-            <h3>Nueva Reserva</h3>
-            <p>Fecha: <span id="fechaSeleccionada"></span></p>
+            <span class="close-x" onclick="cerrarModal('reservaModal')">&times;</span>
+            <h2 style="margin-top:0;">Nueva Reserva</h2>
             
             <div class="form-group">
-                <label>Ciudad del Servicio:</label>
+                <label>Desde:</label>
+                <input type="date" id="fechaInicio">
+            </div>
+            <div class="form-group">
+                <label>Hasta (Último día de servicio):</label>
+                <input type="date" id="fechaFin">
+            </div>
+            <div class="form-group">
+                <label>Ciudad:</label>
                 <input type="text" id="ciudadInput" placeholder="Ej. Madrid, CDMX...">
             </div>
             <div class="form-group">
-                <label>Nombre Cliente:</label>
+                <label>Cliente:</label>
                 <input type="text" id="nombreInput" placeholder="Nombre completo">
             </div>
 
-            <button onclick="guardarReserva()" class="btn-save">Reservar</button>
-            <button onclick="cerrarModal()" class="btn-cancel">Cancelar</button>
+            <button onclick="guardarReserva()" class="btn-save">💾 Guardar Reserva</button>
+        </div>
+    </div>
+
+    <div id="detalleModal" class="modal">
+        <div class="modal-content">
+            <span class="close-x" onclick="cerrarModal('detalleModal')">&times;</span>
+            <h2 style="margin-top:0;">Detalles de Reserva</h2>
+            
+            <div class="info-row">
+                <div class="info-label">Ciudad:</div>
+                <div class="info-value" id="detCiudad"></div>
+            </div>
+            <div class="info-row">
+                <div class="info-label">Cliente:</div>
+                <div class="info-value" id="detCliente"></div>
+            </div>
+            <div class="info-row">
+                <div class="info-label">Fechas:</div>
+                <div class="info-value" id="detFechas"></div>
+            </div>
+
+            <button id="btnEliminar" class="btn-delete" style="display:none;" onclick="borrarReserva()">🗑️ Eliminar Reserva</button>
         </div>
     </div>
 
     <script type="module">
-        // Importar Firebase
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, getDocs, query, where } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-        // Your web app's Firebase configuration
-        const firebaseConfig = {
-            apiKey: "AIzaSyCN7AD2GO_Ks4tcMxLMkG6jODKUaTPwlIk",
-            authDomain: "agendaservicios.firebaseapp.com",
-            projectId: "agendaservicios",
-            storageBucket: "agendaservicios.firebasestorage.app",
-            messagingSenderId: "1068275517204",
-            appId: "1:1068275517204:web:9bdd41c8233bc1fda06401"
-        };
-        // -----------------------------------------------------------
+// Your web app's Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyCN7AD2GO_Ks4tcMxLMkG6jODKUaTPwlIk",
+  authDomain: "agendaservicios.firebaseapp.com",
+  projectId: "agendaservicios",
+  storageBucket: "agendaservicios.firebasestorage.app",
+  messagingSenderId: "1068275517204",
+  appId: "1:1068275517204:web:9bdd41c8233bc1fda06401"
+};        // -------------------------------------------------------
 
-        // Iniciar Firebase
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         
         let calendar;
-        let fechaActualStr = "";
+        let esAdmin = false;
+        let eventoSeleccionadoID = null; // Para saber qué borrar
+        
+        // --- 🔑 TU CONTRASEÑA ---
+        const CONTRASEÑA_ADMIN = "servicio2024"; 
 
         document.addEventListener('DOMContentLoaded', async function() {
             var calendarEl = document.getElementById('calendar');
 
-            // Configurar Calendario
             calendar = new FullCalendar.Calendar(calendarEl, {
                 initialView: 'dayGridMonth',
-                locale: 'es', // Español
+                locale: 'es',
+                
+                // --- BOTONES (Agregamos 'listYear') ---
                 headerToolbar: {
                     left: 'prev,next today',
                     center: 'title',
-                    right: ''
+                    // Aquí agregamos el botón de Agenda al final
+                    right: 'dayGridMonth,vistaSemestre,multiMonthYear,listYear' 
                 },
+                
+                // --- CONFIGURACIÓN DE VISTAS ---
+                views: {
+                    dayGridMonth: { buttonText: 'Mes' },
+                    multiMonthYear: { buttonText: 'Año', multiMonthMaxColumns: 4 },
+                    vistaSemestre: { 
+                        type: 'multiMonthYear',
+                        duration: { months: 6 },
+                        buttonText: 'Semestre',
+                        multiMonthMaxColumns: 3 
+                    },
+                    listYear: { 
+                        buttonText: 'Agenda',
+                        noEventsText: 'No hay reservas para mostrar'
+                        // Al no poner nada más aquí, volverá a mostrar el rango (Ej: 10 ene - 15 ene)
+                    }
+                },
+                // ------------------------------------
+
+                // Clic en un día vacío (Solo funciona en vistas de calendario, no en lista)
                 dateClick: function(info) {
-                    abrirModal(info.dateStr);
+                    if (esAdmin) {
+                        abrirModalCrear(info.dateStr);
+                    }
+                },
+                
+                // Clic en un evento existente (Funciona en todas las vistas)
+                eventClick: function(info) {
+                    mostrarDetalles(info.event);
                 }
             });
 
-            // Cargar eventos guardados
             await cargarReservas();
             calendar.render();
         });
 
-        // Función para leer de la base de datos y pintar el calendario
+        // --- BASE DE DATOS ---
+
         async function cargarReservas() {
-            const q = query(collection(db, "reservas"));
-            const querySnapshot = await getDocs(q);
-            
-            // Limpiar eventos actuales para no duplicar
-            calendar.removeAllEvents();
+            try {
+                const q = query(collection(db, "reservas"));
+                const querySnapshot = await getDocs(q);
+                
+                calendar.removeAllEvents();
 
-            querySnapshot.forEach((doc) => {
-                const data = doc.data();
-                calendar.addEvent({
-                    title: '📍 ' + data.ciudad, // Muestra la ciudad en el calendario
-                    start: data.fecha,
-                    allDay: true,
-                    backgroundColor: '#FF5733', // Color rojo/naranja para ocupado
-                    borderColor: '#FF5733'
+                querySnapshot.forEach((documento) => {
+                    const data = documento.data();
+                    const idDoc = documento.id; 
+
+                    if (!data.fechaInicio && !data.fecha) return; 
+                    
+                    let inicio = data.fechaInicio || data.fecha; 
+                    let fin = data.fechaFin || data.fecha;
+
+                    // Ajuste visual para FullCalendar (+1 día para que pinte la barra completa)
+                    let fechaFinVisual = new Date(fin + 'T00:00:00');
+                    if (isNaN(fechaFinVisual.getTime())) return;
+
+                    fechaFinVisual.setDate(fechaFinVisual.getDate() + 1);
+                    let fechaFinFormateada = fechaFinVisual.toISOString().split('T')[0];
+
+                    calendar.addEvent({
+                        id: idDoc,
+                        // Texto que se verá: "Ciudad - Cliente"
+                        title: '📍 ' + data.ciudad + ' - ' + data.cliente, 
+                        start: inicio,
+                        end: fechaFinFormateada, 
+                        allDay: true,
+                        backgroundColor: '#FF5733',
+                        borderColor: '#FF5733',
+                        extendedProps: {
+                            cliente: data.cliente,
+                            fechaFinReal: fin
+                        }
+                    });
                 });
-            });
-        }
-
-        // Funciones del Modal (Ventana emergente)
-        window.abrirModal = function(fecha) {
-            fechaActualStr = fecha;
-            
-            // Verificar si ya está ocupado visualmente (simple)
-            // Una verificación más segura se hace en base de datos, pero para empezar esto sirve
-            let eventos = calendar.getEvents();
-            let estaOcupado = eventos.some(ev => ev.startStr === fecha);
-
-            if(estaOcupado) {
-                alert("Esta fecha ya está reservada.");
-                return;
+            } catch (error) {
+                console.error("Error cargando:", error);
             }
-
-            document.getElementById('fechaSeleccionada').innerText = fecha;
-            document.getElementById('reservaModal').style.display = "block";
         }
 
-        window.cerrarModal = function() {
-            document.getElementById('reservaModal').style.display = "none";
-            document.getElementById('ciudadInput').value = "";
-            document.getElementById('nombreInput').value = "";
-        }
-
-        // Función para Guardar en Firebase
         window.guardarReserva = async function() {
+            const fechaInicioStr = document.getElementById('fechaInicio').value;
+            const fechaFinStr = document.getElementById('fechaFin').value;
             const ciudad = document.getElementById('ciudadInput').value;
             const nombre = document.getElementById('nombreInput').value;
 
-            if(ciudad === "" || nombre === "") {
-                alert("Por favor llena todos los campos");
-                return;
+            if(ciudad === "" || nombre === "" || fechaInicioStr === "" || fechaFinStr === "") {
+                alert("⚠️ Llena todos los campos"); return;
+            }
+            if(fechaFinStr < fechaInicioStr) {
+                alert("⛔ Fecha fin incorrecta"); return;
+            }
+
+            // Validación de Conflicto
+            const nuevaInicio = new Date(fechaInicioStr + 'T00:00:00');
+            const nuevaFin = new Date(fechaFinStr + 'T00:00:00');
+            const eventos = calendar.getEvents();
+            let hayConflicto = false;
+
+            for (const ev of eventos) {
+                // Si estamos borrando y volviendo a crear, no comparar consigo mismo (opcional avanzado)
+                const evInicio = ev.start; 
+                const evFin = ev.end; 
+                const nuevaFinComp = new Date(nuevaFin);
+                nuevaFinComp.setDate(nuevaFinComp.getDate() + 1);
+
+                if (nuevaInicio < evFin && nuevaFinComp > evInicio) {
+                    hayConflicto = true; break;
+                }
+            }
+
+            if (hayConflicto) {
+                alert("⛔ ¡FECHAS YA OCUPADAS!"); return;
             }
 
             try {
-                // Guardar en la nube
                 await addDoc(collection(db, "reservas"), {
-                    fecha: fechaActualStr,
+                    fechaInicio: fechaInicioStr,
+                    fechaFin: fechaFinStr,
                     ciudad: ciudad,
                     cliente: nombre,
                     creado: new Date()
                 });
-
-                // Actualizar calendario visualmente
-                calendar.addEvent({
-                    title: '📍 ' + ciudad,
-                    start: fechaActualStr,
-                    allDay: true,
-                    backgroundColor: '#FF5733',
-                    borderColor: '#FF5733'
-                });
-
-                alert("¡Reserva guardada con éxito!");
-                cerrarModal();
-
+                await cargarReservas();
+                alert("✅ Guardado");
+                cerrarModal('reservaModal');
             } catch (e) {
-                console.error("Error al guardar: ", e);
-                alert("Hubo un error al guardar.");
+                console.error(e);
+                alert("Error al guardar");
             }
+        }
+
+        window.borrarReserva = async function() {
+            if(!eventoSeleccionadoID) return;
+            
+            if(confirm("¿Estás seguro de que quieres eliminar esta reserva?")) {
+                try {
+                    // Borrar de Firebase usando el ID
+                    await deleteDoc(doc(db, "reservas", eventoSeleccionadoID));
+                    
+                    // Quitar del calendario visualmente
+                    const evento = calendar.getEventById(eventoSeleccionadoID);
+                    if(evento) evento.remove();
+
+                    alert("🗑️ Reserva eliminada.");
+                    cerrarModal('detalleModal');
+                } catch (e) {
+                    console.error("Error borrando:", e);
+                    alert("No se pudo eliminar.");
+                }
+            }
+        }
+
+        // --- INTERFAZ / MODALES ---
+
+        window.abrirModalCrear = function(fecha) {
+            document.getElementById('fechaInicio').value = fecha;
+            document.getElementById('fechaFin').value = fecha;
+            document.getElementById('reservaModal').style.display = "block";
+        }
+
+        window.mostrarDetalles = function(evento) {
+            // Guardar ID por si se quiere borrar
+            eventoSeleccionadoID = evento.id; 
+
+            // Llenar datos en el modal
+            document.getElementById('detCiudad').innerText = evento.title;
+            document.getElementById('detCliente').innerText = evento.extendedProps.cliente || "No especificado";
+            
+            // Formato de fechas bonito
+            const inicio = evento.start.toISOString().split('T')[0];
+            const fin = evento.extendedProps.fechaFinReal;
+            document.getElementById('detFechas').innerText = `${inicio} al ${fin}`;
+
+            // Mostrar botón borrar SOLO si es admin
+            const btnEliminar = document.getElementById('btnEliminar');
+            if(esAdmin) {
+                btnEliminar.style.display = 'block';
+            } else {
+                btnEliminar.style.display = 'none';
+            }
+
+            document.getElementById('detalleModal').style.display = "block";
+        }
+
+        window.cerrarModal = function(idModal) {
+            document.getElementById(idModal).style.display = "none";
+            // Limpiar inputs si es el de crear
+            if(idModal === 'reservaModal') {
+                document.getElementById('ciudadInput').value = "";
+                document.getElementById('nombreInput').value = "";
+            }
+        }
+
+        // Cerrar si clic fuera del modal
+        window.onclick = function(event) {
+            if (event.target.classList.contains('modal')) {
+                event.target.style.display = "none";
+            }
+        }
+
+        // --- LOGIN ---
+        window.iniciarSesion = function() {
+            const pass = prompt("Contraseña de Admin:");
+            if (pass === CONTRASEÑA_ADMIN) {
+                esAdmin = true;
+                document.getElementById('btnLogin').style.display = 'none';
+                document.getElementById('btnLogout').style.display = 'inline-block';
+                document.getElementById('admin-status').style.display = 'inline';
+                alert("✅ Modo Admin Activo");
+            } else {
+                alert("❌ Incorrecto");
+            }
+        }
+
+        window.cerrarSesion = function() {
+            esAdmin = false;
+            document.getElementById('btnLogin').style.display = 'inline-block';
+            document.getElementById('btnLogout').style.display = 'none';
+            document.getElementById('admin-status').style.display = 'none';
         }
     </script>
 </body>
