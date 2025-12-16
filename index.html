@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reserva de Servicios</title>
+    
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js'></script>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background-color: #f4f4f4; }
+        #calendar-container { max-width: 900px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        h1 { text-align: center; color: #333; }
+        
+        /* Estilos del Modal (Ventana emergente) */
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); }
+        .modal-content { background-color: white; margin: 15% auto; padding: 20px; border: 1px solid #888; width: 300px; border-radius: 8px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; }
+        input { width: 100%; padding: 8px; box-sizing: border-box; }
+        button { padding: 10px 15px; cursor: pointer; border: none; border-radius: 4px; }
+        .btn-save { background-color: #28a745; color: white; }
+        .btn-cancel { background-color: #dc3545; color: white; margin-left: 10px; }
+    </style>
+</head>
+<body>
+
+    <h1>📅 Calendario de Servicios</h1>
+    <div id="calendar-container">
+        <div id='calendar'></div>
+    </div>
+
+    <div id="reservaModal" class="modal">
+        <div class="modal-content">
+            <h3>Nueva Reserva</h3>
+            <p>Fecha: <span id="fechaSeleccionada"></span></p>
+            
+            <div class="form-group">
+                <label>Ciudad del Servicio:</label>
+                <input type="text" id="ciudadInput" placeholder="Ej. Madrid, CDMX...">
+            </div>
+            <div class="form-group">
+                <label>Nombre Cliente:</label>
+                <input type="text" id="nombreInput" placeholder="Nombre completo">
+            </div>
+
+            <button onclick="guardarReserva()" class="btn-save">Reservar</button>
+            <button onclick="cerrarModal()" class="btn-cancel">Cancelar</button>
+        </div>
+    </div>
+
+    <script type="module">
+        // Importar Firebase
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, getDocs, query, where } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        // Your web app's Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyCN7AD2GO_Ks4tcMxLMkG6jODKUaTPwlIk",
+            authDomain: "agendaservicios.firebaseapp.com",
+            projectId: "agendaservicios",
+            storageBucket: "agendaservicios.firebasestorage.app",
+            messagingSenderId: "1068275517204",
+            appId: "1:1068275517204:web:9bdd41c8233bc1fda06401"
+        };
+        // -----------------------------------------------------------
+
+        // Iniciar Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        
+        let calendar;
+        let fechaActualStr = "";
+
+        document.addEventListener('DOMContentLoaded', async function() {
+            var calendarEl = document.getElementById('calendar');
+
+            // Configurar Calendario
+            calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                locale: 'es', // Español
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: ''
+                },
+                dateClick: function(info) {
+                    abrirModal(info.dateStr);
+                }
+            });
+
+            // Cargar eventos guardados
+            await cargarReservas();
+            calendar.render();
+        });
+
+        // Función para leer de la base de datos y pintar el calendario
+        async function cargarReservas() {
+            const q = query(collection(db, "reservas"));
+            const querySnapshot = await getDocs(q);
+            
+            // Limpiar eventos actuales para no duplicar
+            calendar.removeAllEvents();
+
+            querySnapshot.forEach((doc) => {
+                const data = doc.data();
+                calendar.addEvent({
+                    title: '📍 ' + data.ciudad, // Muestra la ciudad en el calendario
+                    start: data.fecha,
+                    allDay: true,
+                    backgroundColor: '#FF5733', // Color rojo/naranja para ocupado
+                    borderColor: '#FF5733'
+                });
+            });
+        }
+
+        // Funciones del Modal (Ventana emergente)
+        window.abrirModal = function(fecha) {
+            fechaActualStr = fecha;
+            
+            // Verificar si ya está ocupado visualmente (simple)
+            // Una verificación más segura se hace en base de datos, pero para empezar esto sirve
+            let eventos = calendar.getEvents();
+            let estaOcupado = eventos.some(ev => ev.startStr === fecha);
+
+            if(estaOcupado) {
+                alert("Esta fecha ya está reservada.");
+                return;
+            }
+
+            document.getElementById('fechaSeleccionada').innerText = fecha;
+            document.getElementById('reservaModal').style.display = "block";
+        }
+
+        window.cerrarModal = function() {
+            document.getElementById('reservaModal').style.display = "none";
+            document.getElementById('ciudadInput').value = "";
+            document.getElementById('nombreInput').value = "";
+        }
+
+        // Función para Guardar en Firebase
+        window.guardarReserva = async function() {
+            const ciudad = document.getElementById('ciudadInput').value;
+            const nombre = document.getElementById('nombreInput').value;
+
+            if(ciudad === "" || nombre === "") {
+                alert("Por favor llena todos los campos");
+                return;
+            }
+
+            try {
+                // Guardar en la nube
+                await addDoc(collection(db, "reservas"), {
+                    fecha: fechaActualStr,
+                    ciudad: ciudad,
+                    cliente: nombre,
+                    creado: new Date()
+                });
+
+                // Actualizar calendario visualmente
+                calendar.addEvent({
+                    title: '📍 ' + ciudad,
+                    start: fechaActualStr,
+                    allDay: true,
+                    backgroundColor: '#FF5733',
+                    borderColor: '#FF5733'
+                });
+
+                alert("¡Reserva guardada con éxito!");
+                cerrarModal();
+
+            } catch (e) {
+                console.error("Error al guardar: ", e);
+                alert("Hubo un error al guardar.");
+            }
+        }
+    </script>
+</body>
+</html>
