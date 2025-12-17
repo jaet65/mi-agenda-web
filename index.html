@@ -5,6 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Agenda TrackSIM</title>
     
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#ffffff">
+    <link rel="apple-touch-icon" href="favicon.ico">
+    <link rel="icon" type="image/png" href="favicon.ico">
+
     <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js'></script>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -32,13 +37,75 @@
             background: white; 
             padding: 10px 15px; 
             box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-            z-index: 20; 
+            z-index: 1500; /* Encima del mapa */
+            position: relative; 
         }
-        h1 { margin: 0; font-size: 1.2rem; color: #2c3e50; }
-        
-        .header-controls {
+        h1 { 
+            margin: 0; 
+            font-size: 1.2rem; 
+            color: #2c3e50; 
             display: flex;
-            gap: 10px;
+            align-items: center;
+        }
+        .header-gif {
+            height: 35px;
+            margin-right: 10px;
+            vertical-align: middle;
+        }
+        
+        .header-controls { display: flex; align-items: center; gap: 10px; }
+        .desktop-buttons { display: flex; align-items: center; gap: 10px; }
+
+        /* HAMBURGUESA */
+        .hamburger-btn {
+            display: none; 
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #333;
+            padding: 5px;
+        }
+
+        /* MENÚ MÓVIL */
+        .mobile-menu {
+            display: none; 
+            position: absolute;
+            top: 100%;
+            right: 0;
+            width: 200px;
+            background: white;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            border-radius: 0 0 0 8px;
+            flex-direction: column;
+            padding: 10px;
+            z-index: 3000; 
+        }
+        .mobile-menu.open { display: flex; }
+        
+        .mobile-menu button {
+            width: 100%;
+            margin-bottom: 8px;
+            text-align: left;
+            padding: 10px;
+            background: #f8f9fa;
+            border: 1px solid #eee;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.95rem;
+        }
+        .mobile-menu button:hover { background: #e9ecef; }
+
+        #admin-stats {
+            display: none; 
+            font-size: 0.85rem;
+            color: #555;
+            background: #f8f9fa;
+            padding: 5px 10px;
+            border-radius: 20px;
+            border: 1px solid #ddd;
+            margin-right: 10px;
+            font-weight: 600;
         }
 
         /* 3. CONTENEDOR PRINCIPAL */
@@ -64,12 +131,87 @@
         #map-view {
             width: 100%;
             height: 100%;
-            background: #e5e5e5;
             display: none; 
-            position: relative;
+            flex-direction: row; 
         }
 
-        /* Botón Flotante "Volver" */
+        #map-sidebar {
+            width: 300px;
+            background: white;
+            border-right: 1px solid #ddd;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            z-index: 10;
+        }
+
+        .map-year-controls {
+            display: flex;
+            justify-content: center; 
+            gap: 10px;
+            align-items: center;
+            padding: 10px 15px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #ddd;
+        }
+        .map-year-btn {
+            background: white;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            cursor: pointer;
+            padding: 4px 10px;
+            font-weight: bold;
+            color: #555;
+            transition: all 0.2s;
+        }
+        .map-year-btn:hover { background: #e2e6ea; }
+        #map-year-display { font-weight: bold; font-size: 1.1rem; color: #2c3e50; min-width: 50px; text-align: center; }
+
+        #map-sidebar h3 {
+            padding: 10px 15px;
+            margin: 0;
+            background: #fff;
+            border-bottom: 1px solid #eee;
+            font-size: 0.9rem;
+            color: #7f8c8d;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        #lista-rutas {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .ruta-item {
+            padding: 15px;
+            border-bottom: 1px solid #f0f0f0;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .ruta-item:hover { background-color: #e3effd; }
+        .ruta-item.active { background-color: #e3effd; border-left: 4px solid #007bff; }
+        
+        .ruta-ciudad { font-weight: bold; font-size: 1rem; color: #333; }
+        .ruta-fechas { font-size: 0.85rem; color: #007bff; margin-top: 4px; font-weight: 500; }
+        .ruta-cliente { font-size: 0.8rem; color: #666; margin-top: 4px; line-height: 1.4; }
+        .ruta-cliente span { display: block; }
+
+        .ruta-item.pasada { background-color: #fafafa; }
+        .ruta-item.pasada .ruta-ciudad { color: #999; }
+        .ruta-item.pasada .ruta-fechas { color: #aaa; }
+        .ruta-item.pasada .ruta-cliente { color: #ccc; }
+        .ruta-item.pasada:hover { background-color: #f0f0f0; }
+
+        #map-canvas {
+            flex-grow: 1;
+            position: relative;
+            background: #e5e5e5;
+        }
+
+        /* Botones Flotantes */
         #btn-back-calendar {
             position: absolute;
             top: 20px;
@@ -79,32 +221,74 @@
             background-color: white;
             color: #333;
             border: 1px solid #ccc;
-            padding: 10px 20px;
+            padding: 8px 16px;
             border-radius: 30px;
             font-weight: bold;
             box-shadow: 0 4px 6px rgba(0,0,0,0.2);
             cursor: pointer;
             font-size: 0.9rem;
-            display: flex;
-            align-items: center;
-            gap: 8px;
         }
         #btn-back-calendar:hover { background-color: #f8f9fa; }
 
-        /* Botones Generales */
+        #btn-fit-map {
+            position: absolute;
+            top: 20px;
+            right: 20px; 
+            z-index: 1000;
+            background-color: white;
+            color: #333;
+            border: 1px solid #ccc;
+            padding: 8px 16px;
+            border-radius: 30px;
+            font-weight: bold;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+        #btn-fit-map:hover { background-color: #f8f9fa; }
+
+        /* ESTILOS COMUNES */
         .btn-action { background: #007bff; color: white; padding: 6px 12px; border-radius: 5px; cursor: pointer; border: none; font-size: 0.9rem; }
         .btn-secondary { background: #6c757d; color: white; padding: 6px 12px; border-radius: 5px; cursor: pointer; border: none; font-size: 0.9rem; }
         .btn-map-toggle { background: #28a745; margin-right: 5px; } 
-        
         #logout-btn { display: none; }
         #admin-status { font-weight: bold; color: #28a745; display: none; margin-right: 10px; font-size: 0.8rem; }
+
+        /* MEDIA QUERIES (Móvil) */
+        @media (max-width: 768px) {
+            .desktop-buttons { display: none; } 
+            .hamburger-btn { display: block; }
+            
+            #map-view { flex-direction: column-reverse; } 
+            #map-sidebar { width: 100%; height: 30%; }
+            #map-canvas { height: 70%; }
+
+            #btn-back-calendar {
+                top: 10px;
+                padding: 6px 12px;
+                font-size: 0.85rem;
+            }
+            #btn-fit-map {
+                top: auto; 
+                bottom: 20px; 
+                right: 15px;
+                padding: 10px;
+                border-radius: 50%; 
+                width: 45px;
+                height: 45px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 1.2rem;
+                box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            }
+        }
 
         /* Modales */
         .modal { display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); backdrop-filter: blur(2px); }
         .modal-content { background-color: white; margin: 5% auto; padding: 20px; width: 90%; max-width: 350px; border-radius: 12px; position: relative; max-height: 90vh; overflow-y: auto;}
         .close-x { float: right; font-size: 20px; cursor: pointer; }
         
-        /* Inputs */
         .form-group { margin-bottom: 15px; position: relative; } 
         label { display: block; margin-bottom: 5px; font-weight: 600; font-size: 0.9rem; }
         input { width: 100%; padding: 10px; box-sizing: border-box; border: 1px solid #ddd; border-radius: 6px; font-size: 1rem; }
@@ -112,7 +296,6 @@
         .btn-save { background: #28a745; color: white; border: none; padding: 12px; width: 100%; border-radius: 6px; margin-top: 5px; font-weight: bold;}
         .btn-delete { background: #dc3545; color: white; border: none; padding: 12px; width: 100%; border-radius: 6px; margin-top: 15px; font-weight: bold;}
         
-        /* Buscador */
         .suggestions-list {
             position: absolute;
             background: white;
@@ -137,11 +320,9 @@
         }
         .suggestion-item:hover { background-color: #f0f2f5; }
 
-        /* FullCalendar Tweaks */
         .fc-header-toolbar { font-size: 0.85em; }
         .fc-list-event-graphic { display: none !important; }
         .fc-list-event-time { display: none !important; }
-        /* Ajuste para que la vista de año se vea bien */
         .fc-multimonth-header { background: #f8f9fa; padding: 5px 0; }
         .fc-multimonth-title { font-size: 1em; font-weight: bold; }
     </style>
@@ -149,27 +330,57 @@
 <body>
 
     <div class="header">
-        <h1>📅 Agenda TrackSIM</h1>
+        <h1>
+            <img src="TrackSIM LOGO GIF.gif" alt="TrackSIM" class="header-gif">
+            Agenda TrackSIM
+        </h1>
         <div class="header-controls">
-            <button id="btn-go-map" class="btn-action btn-map-toggle" onclick="mostrarMapa()">🗺️ Mapa Global</button>
-            <span id="admin-status">🟢 Admin</span>
-            <button id="btnLogin" class="btn-action" onclick="iniciarSesion()">🔒 Entrar</button>
-            <button id="btnLogout" class="btn-secondary" id="logout-btn" onclick="cerrarSesion()" style="display:none;">Salir</button>
+            <span id="admin-stats"></span>
+            
+            <div class="desktop-buttons">
+                <button id="btn-export" class="btn-action" style="background:#f39c12;" onclick="exportarCalendario()">📤 Exportar Calendario</button>
+                <button id="btn-go-map" class="btn-action btn-map-toggle" onclick="mostrarMapa()">🗺️ Mapa Global</button>
+                <span id="admin-status">🟢 Admin</span>
+                <button id="btnLogin" class="btn-action" onclick="iniciarSesion()">🔒 Entrar</button>
+                <button id="btnLogout" class="btn-secondary" id="logout-btn" onclick="cerrarSesion()" style="display:none;">Salir</button>
+            </div>
+
+            <button class="hamburger-btn" onclick="toggleMenu()">☰</button>
+        </div>
+
+        <div id="mobile-menu" class="mobile-menu">
+            <button id="mobile-btn-export" onclick="exportarCalendario(); toggleMenu()">📤 Exportar Calendario</button>
+            <button id="mobile-btn-map" onclick="mostrarMapa(); toggleMenu()">🗺️ Mapa Global</button>
+            <span id="mobile-admin-status" style="display:none; padding:10px; font-weight:bold; color:#28a745;">🟢 Admin</span>
+            <button id="mobile-btn-login" onclick="iniciarSesion(); toggleMenu()">🔒 Entrar</button>
+            <button id="mobile-btn-logout" style="display:none;" onclick="cerrarSesion(); toggleMenu()">Salir</button>
         </div>
     </div>
 
     <div id="main-container">
-        
         <div id="calendar-container">
             <div id='calendar'></div>
         </div>
-        
-        <div id="map-view">
-            <button id="btn-back-calendar" onclick="mostrarCalendario()">
-                📅 Volver al Calendario
-            </button>
+        <div id="map-view" style="display:none;">
+            <div id="map-sidebar">
+                <div class="map-year-controls">
+                    <button class="map-year-btn" onclick="cambiarAnoMapa(-1)">&lt;</button>
+                    <span id="map-year-display"></span>
+                    <button class="map-year-btn" onclick="cambiarAnoMapa(1)">&gt;</button>
+                </div>
+                <h3>📍 Itinerario</h3>
+                <ul id="lista-rutas"></ul>
+            </div>
+            <div id="map-canvas">
+                <button id="btn-back-calendar" onclick="mostrarCalendario()">
+                    📅 Volver al Calendario
+                </button>
+                
+                <button id="btn-fit-map" onclick="ajustarMapa()">
+                    🌍
+                </button>
+            </div>
         </div>
-
     </div>
 
     <div id="reservaModal" class="modal">
@@ -203,22 +414,29 @@
         </div>
     </div>
 
+    <div id="successModal" class="modal">
+        <div class="modal-content" style="text-align: center;">
+            <span class="close-x" onclick="cerrarModal('successModal')">×</span>
+            <h2 style="color:#28a745; margin-top:0;">✅ ¡Reserva Guardada!</h2>
+            <p>La reserva se ha registrado correctamente.</p>
+            <button onclick="cerrarModal('successModal')" class="btn-secondary" style="margin-top:15px; width:100%;">Cerrar</button>
+        </div>
+    </div>
+
     <div id="detalleModal" class="modal">
         <div class="modal-content">
             <span class="close-x" onclick="cerrarModal('detalleModal')">×</span>
             <h2 style="margin-top:0;">Detalles</h2>
-            
             <p><strong>Cliente:</strong> <span id="detCliente"></span></p>
             <p><strong>Ciudad:</strong> <span id="detCiudad"></span></p>
             <p><strong>Fechas:</strong> <span id="detFechas"></span></p>
-            
             <button id="btnEliminar" class="btn-delete" style="display:none;" onclick="borrarReserva()">🗑️ Eliminar</button>
         </div>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, where, writeBatch } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         const firebaseConfig = {
           apiKey: "AIzaSyCN7AD2GO_Ks4tcMxLMkG6jODKUaTPwlIk",
@@ -237,81 +455,527 @@
         let markers = []; 
         let esAdmin = false;
         let eventoSeleccionadoID = null;
-        const CONTRASEÑA_ADMIN = "admin"; 
+        let grupoSeleccionadoID = null; 
+        let statsPorAno = {}; 
+        
+        let globalReservas = []; 
+        let currentMapYear = new Date().getFullYear(); 
 
-        // --- INICIALIZACIÓN ---
+        const CONTRASEÑA_ADMIN = "servicio2024"; 
+
+        const blueIcon = new L.Icon({
+            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
+            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41]
+        });
+
+        const redIcon = new L.Icon({
+            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41]
+        });
+
+        const greyIcon = new L.Icon({
+            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-grey.png',
+            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41]
+        });
+
         document.addEventListener('DOMContentLoaded', async function() {
             var calendarEl = document.getElementById('calendar');
-            const esMovil = window.innerWidth < 768; // Detectar móvil
+            const esMovil = window.innerWidth < 768; 
 
-            // --- CONFIGURACIÓN DEL CALENDARIO ---
             calendar = new FullCalendar.Calendar(calendarEl, {
                 height: '100%',
-                initialView: 'dayGridMonth',
+                initialView: 'multiMonthYear', 
                 locale: 'es',
-                
-                // Botones traducidos
-                buttonText: {
-                    today: 'Hoy',
-                    month: 'Mes',
-                    year:  'Año',
-                    list:  'Agenda'
+                customButtons: {
+                    btnHoy: {
+                        text: 'Hoy',
+                        click: function() {
+                            calendar.changeView('dayGridMonth');
+                            calendar.today();
+                        }
+                    }
                 },
-
-                // AQUI ESTABA EL ERROR: Agregamos 'multiMonthYear'
+                buttonText: { month: 'Mes', year:  'Año', list:  'Agenda' },
                 headerToolbar: {
-                    left: 'prev,next today',
+                    left: 'prev,next btnHoy', 
                     center: 'title',
                     right: 'dayGridMonth,multiMonthYear,listYear' 
                 },
-                
-                // Configuración de Vistas
                 views: {
                     dayGridMonth: { buttonText: 'Mes' },
-                    // Configuración específica de la vista anual
-                    multiMonthYear: { 
-                        buttonText: 'Año',
-                        multiMonthMaxColumns: esMovil ? 1 : 4 // 1 columna en móvil, 4 en PC
-                    },
-                    listYear: { 
-                        buttonText: 'Agenda',
-                        noEventsText: 'No hay reservas'
-                    }
+                    multiMonthYear: { buttonText: 'Año', multiMonthMaxColumns: esMovil ? 1 : 4 },
+                    listYear: { buttonText: 'Agenda', noEventsText: 'No hay reservas' }
                 },
-                
-                dateClick: function(info) {
-                    if (esAdmin) abrirModalCrear(info.dateStr);
-                },
-                eventClick: function(info) {
-                    mostrarDetalles(info.event);
-                }
+                dateClick: function(info) { if (esAdmin) abrirModalCrear(info.dateStr); },
+                eventClick: function(info) { mostrarDetalles(info.event); }
             });
             calendar.render();
 
-            // Iniciar Mapa (oculto en memoria)
-            map = L.map('map-view').setView([23.6345, -102.5528], 5);
+            map = L.map('map-canvas').setView([23.6345, -102.5528], 5);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '&copy; OpenStreetMap contributors'
             }).addTo(map);
 
+            document.getElementById('map-year-display').textContent = currentMapYear;
+
             await cargarReservas(); 
         });
 
+        window.toggleMenu = function() {
+            const menu = document.getElementById('mobile-menu');
+            menu.classList.toggle('open');
+        }
+
+        window.ajustarMapa = function() {
+            if (markers.length > 0) {
+                const group = new L.featureGroup(markers);
+                map.fitBounds(group.getBounds(), { padding: [50, 50] });
+            } else {
+                map.setView([23.6345, -102.5528], 5); 
+            }
+        }
+
+        function calcularEstadisticas(reservasSnap) {
+            statsPorAno = {}; 
+            reservasSnap.forEach(doc => {
+                const data = doc.data();
+                if (!data.fechaInicio || !data.fechaFin) return;
+                let current = new Date(data.fechaInicio + 'T00:00:00');
+                let end = new Date(data.fechaFin + 'T00:00:00');
+                while (current <= end) {
+                    const year = current.getFullYear();
+                    const day = current.getDay();
+                    if (!statsPorAno[year]) statsPorAno[year] = 0;
+                    if (day >= 1 && day <= 5) statsPorAno[year] += 0.2; 
+                    else if (day === 6) statsPorAno[year] += 0.1;
+                    current.setDate(current.getDate() + 1);
+                }
+            });
+            actualizarHeaderAdmin();
+        }
+
+        function actualizarHeaderAdmin() {
+            const statsDiv = document.getElementById('admin-stats');
+            if (esAdmin) {
+                const years = Object.keys(statsPorAno).sort();
+                if (years.length === 0) statsDiv.textContent = "0 Semanas";
+                else {
+                    const text = years.map(y => `${y}: ${statsPorAno[y].toFixed(1)} Sem`).join(' | ');
+                    statsDiv.textContent = "📊 " + text;
+                }
+                statsDiv.style.display = 'inline-block';
+            } else { statsDiv.style.display = 'none'; }
+        }
+
+        window.cambiarAnoMapa = function(delta) {
+            currentMapYear += delta;
+            document.getElementById('map-year-display').textContent = currentMapYear;
+            actualizarMapaYLista(); 
+        }
+
         window.mostrarMapa = function() {
             document.getElementById('calendar-container').style.display = 'none';
-            document.getElementById('map-view').style.display = 'block';
+            document.getElementById('map-view').style.display = 'flex';
+            
+            // Ocultar botón desktop
             document.getElementById('btn-go-map').style.display = 'none'; 
+            // Manejo especial móvil
+            document.getElementById('mobile-btn-map').style.display = 'none';
+            
             setTimeout(() => { map.invalidateSize(); }, 100);
         }
 
         window.mostrarCalendario = function() {
             document.getElementById('map-view').style.display = 'none';
             document.getElementById('calendar-container').style.display = 'block';
+            
+            // Restaurar botones
             document.getElementById('btn-go-map').style.display = 'inline-block'; 
+            document.getElementById('mobile-btn-map').style.display = 'block';
+            
             calendar.updateSize(); 
         }
 
-        // --- BÚSQUEDA ---
+        function configurarDiasEspeciales() {
+            calendar.addEvent({ daysOfWeek: [0], display: 'background', color: '#e0e0e0' });
+            calendar.addEvent({ daysOfWeek: [6], display: 'background', color: '#fff9c4' });
+        }
+
+        function calcularRangosSinDomingo(fechaInicioStr, fechaFinStr) {
+            let start = new Date(fechaInicioStr + 'T00:00:00');
+            let end = new Date(fechaFinStr + 'T00:00:00');
+            let diasHabiles = [];
+            let current = new Date(start);
+            while (current <= end) {
+                if (current.getDay() !== 0) diasHabiles.push(new Date(current));
+                current.setDate(current.getDate() + 1);
+            }
+            let rangos = [];
+            if (diasHabiles.length === 0) return rangos;
+            let rangoActual = { start: new Date(diasHabiles[0]), end: new Date(diasHabiles[0]) };
+            for (let i = 1; i < diasHabiles.length; i++) {
+                let prev = diasHabiles[i-1];
+                let curr = diasHabiles[i];
+                let diff = (curr - prev) / (1000 * 60 * 60 * 24);
+                if (diff === 1) rangoActual.end = new Date(curr);
+                else { rangos.push(rangoActual); rangoActual = { start: new Date(curr), end: new Date(curr) }; }
+            }
+            rangos.push(rangoActual);
+            return rangos;
+        }
+
+        function formatearFecha(fechaStr) {
+            if(!fechaStr) return "";
+            const partes = fechaStr.split('-');
+            const anio = partes[0];
+            const mesNum = parseInt(partes[1]) - 1; 
+            const dia = partes[2];
+            const meses = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+            return `${dia}/${meses[mesNum]}/${anio}`;
+        }
+
+        async function cargarReservas() {
+            try {
+                const q = query(collection(db, "reservas"));
+                const querySnapshot = await getDocs(q);
+                
+                calcularEstadisticas(querySnapshot); 
+                calendar.removeAllEvents();
+                configurarDiasEspeciales(); 
+
+                globalReservas = []; 
+
+                querySnapshot.forEach((documento) => {
+                    const data = documento.data();
+                    if (!data.fechaInicio) return; 
+
+                    let inicio = data.fechaInicio; 
+                    let fin = data.fechaFin;
+                    
+                    let startObj = new Date(inicio + 'T00:00:00');
+                    let endObj = new Date(fin + 'T00:00:00');
+
+                    globalReservas.push({
+                        id: documento.id,
+                        data: data,
+                        start: startObj,
+                        end: endObj
+                    });
+
+                    let fechaFinVisual = new Date(endObj);
+                    fechaFinVisual.setDate(fechaFinVisual.getDate() + 1);
+                    let fechaFinFormateada = fechaFinVisual.toISOString().split('T')[0];
+                    let ciudadCorta = data.ciudad ? data.ciudad.split(",")[0] : "Sin ciudad"; 
+
+                    calendar.addEvent({
+                        id: documento.id,
+                        title: '📍 ' + ciudadCorta + ' - ' + data.cliente,
+                        start: inicio,
+                        end: fechaFinFormateada, 
+                        allDay: true,
+                        backgroundColor: '#FF5733',
+                        borderColor: '#FF5733',
+                        extendedProps: {
+                            cliente: data.cliente,
+                            fechaFinReal: fin,
+                            ciudadCompleta: data.ciudad,
+                            groupId: data.groupId 
+                        }
+                    });
+                });
+
+                actualizarMapaYLista();
+
+            } catch (error) { console.error(error); }
+        }
+
+        function actualizarMapaYLista(centrarHoy = false) {
+            const listaDelAnio = globalReservas.filter(r => {
+                const yearInicio = r.start.getFullYear();
+                const yearFin = r.end.getFullYear();
+                return yearInicio === currentMapYear || yearFin === currentMapYear;
+            });
+
+            const statsByCity = {};
+            listaDelAnio.forEach(r => {
+                const ciudad = r.data.ciudad ? r.data.ciudad.split(",")[0].trim() : "Desconocida";
+                if (!statsByCity[ciudad]) statsByCity[ciudad] = { clients: new Set(), days: 0 };
+                if (r.data.cliente) statsByCity[ciudad].clients.add(r.data.cliente);
+                let current = new Date(r.start);
+                while (current <= r.end) {
+                    if (current.getDay() !== 0) statsByCity[ciudad].days++;
+                    current.setDate(current.getDate() + 1);
+                }
+            });
+
+            markers.forEach(marker => map.removeLayer(marker));
+            markers = [];
+
+            const hoy = new Date();
+            hoy.setHours(0,0,0,0);
+
+            const pasadas = listaDelAnio.filter(r => r.end < hoy);
+            const futuras = listaDelAnio.filter(r => r.end >= hoy);
+
+            pasadas.sort((a, b) => b.end - a.end);
+            futuras.sort((a, b) => a.start - b.start);
+
+            let listaVisualizar = [...listaDelAnio];
+            listaVisualizar.sort((a, b) => a.start - b.start);
+
+            let reservaDestacada = listaVisualizar.find(r => r.start <= hoy && r.end >= hoy);
+            if (!reservaDestacada) {
+                reservaDestacada = listaVisualizar.find(r => r.start > hoy);
+            }
+            if (!reservaDestacada && listaVisualizar.length > 0) {
+                const soloPasadas = listaVisualizar.filter(r => r.end < hoy);
+                if (soloPasadas.length > 0) {
+                    reservaDestacada = soloPasadas[soloPasadas.length - 1];
+                }
+            }
+
+            const rutasAgrupadas = [];
+            const obtenerCiudad = (r) => r.data.ciudad ? r.data.ciudad.split(",")[0].trim() : "Desconocida";
+
+            listaVisualizar.forEach((reserva, index) => {
+                const ciudadActual = obtenerCiudad(reserva);
+                const reservaEsPasada = (reserva.end < hoy);
+                
+                if (index === 0) {
+                    rutasAgrupadas.push({
+                        ciudad: ciudadActual,
+                        inicio: reserva.data.fechaInicio,
+                        fin: reserva.data.fechaFin,
+                        clientes: [reserva.data.cliente],
+                        reservasOriginales: [reserva], 
+                        lat: reserva.data.lat, 
+                        lng: reserva.data.lng,
+                        esPasado: reservaEsPasada
+                    });
+                    return;
+                }
+
+                const ultimoGrupo = rutasAgrupadas[rutasAgrupadas.length - 1];
+                
+                if (ultimoGrupo.ciudad === ciudadActual && ultimoGrupo.esPasado === reservaEsPasada) {
+                    ultimoGrupo.fin = reserva.data.fechaFin; 
+                    if (!ultimoGrupo.clientes.includes(reserva.data.cliente)) {
+                        ultimoGrupo.clientes.push(reserva.data.cliente); 
+                    }
+                    ultimoGrupo.reservasOriginales.push(reserva);
+                } else {
+                    rutasAgrupadas.push({
+                        ciudad: ciudadActual,
+                        inicio: reserva.data.fechaInicio,
+                        fin: reserva.data.fechaFin,
+                        clientes: [reserva.data.cliente],
+                        reservasOriginales: [reserva],
+                        lat: reserva.data.lat,
+                        lng: reserva.data.lng,
+                        esPasado: reservaEsPasada
+                    });
+                }
+            });
+
+            const ulLista = document.getElementById('lista-rutas');
+            ulLista.innerHTML = ''; 
+
+            if (rutasAgrupadas.length === 0) {
+                ulLista.innerHTML = '<li style="padding:15px;color:#999;text-align:center;">Sin reservas este año.</li>';
+            }
+
+            rutasAgrupadas.forEach(grupo => {
+                const li = document.createElement('li');
+                li.className = 'ruta-item';
+                if (grupo.esPasado) li.classList.add('pasada');
+
+                const contieneDestacada = grupo.reservasOriginales.includes(reservaDestacada);
+                if (contieneDestacada) li.classList.add('active');
+
+                const listaClientesHTML = grupo.clientes.map(c => `<span>• ${c}</span>`).join('');
+                
+                li.innerHTML = `
+                    <div class="ruta-ciudad">${grupo.ciudad}</div>
+                    <div class="ruta-fechas">📅 ${formatearFecha(grupo.inicio)} ➝ ${formatearFecha(grupo.fin)}</div>
+                    <div class="ruta-cliente">${listaClientesHTML}</div>
+                `;
+                li.onclick = () => { if (grupo.lat && grupo.lng) {
+                    map.flyTo([grupo.lat, grupo.lng], 10);
+                    setTimeout(() => {
+                        const markerEncontrado = markers.find(m => {
+                            const mLL = m.getLatLng();
+                            return Math.abs(mLL.lat - grupo.lat) < 0.0001 && Math.abs(mLL.lng - grupo.lng) < 0.0001;
+                        });
+                        if(markerEncontrado) markerEncontrado.openPopup();
+                    }, 300);
+                }};
+                ulLista.appendChild(li);
+            });
+
+            let marcadorDestacadoRef = null;
+
+            listaVisualizar.forEach(r => {
+                const d = r.data;
+                if (d.lat && d.lng) {
+                    let iconoUsar = blueIcon;
+                    let zIndex = 0;
+
+                    if (r === reservaDestacada) {
+                        iconoUsar = redIcon;
+                        zIndex = 1000;
+                    } else if (r.end < hoy) {
+                        iconoUsar = greyIcon; 
+                    }
+
+                    const marker = L.marker([d.lat, d.lng], {
+                        icon: iconoUsar,
+                        zIndexOffset: zIndex
+                    }).addTo(map);
+
+                    const ciudadCorta = d.ciudad ? d.ciudad.split(",")[0].trim() : "Sin ciudad";
+                    const stats = statsByCity[ciudadCorta] || { clients: new Set(), days: 0 };
+                    
+                    const popupContent = `
+                        <div style="text-align:center;">
+                            <h3 style="margin:0 0 5px 0; color:#333;">${ciudadCorta}</h3>
+                            <div style="font-size:0.9em; color:#666; margin-bottom:8px;">Resumen Anual (${currentMapYear})</div>
+                            <div style="text-align:left; font-size:0.95em;">
+                                👥 <b>Clientes únicos:</b> ${stats.clients.size}<br>
+                                ⏱️ <b>Días de servicio:</b> ${stats.days}
+                            </div>
+                        </div>
+                    `;
+
+                    marker.bindPopup(popupContent);
+                    
+                    if (r === reservaDestacada) {
+                        marcadorDestacadoRef = marker;
+                    }
+                    markers.push(marker);
+                }
+            });
+
+            if (centrarHoy && marcadorDestacadoRef) {
+                const latLng = marcadorDestacadoRef.getLatLng();
+                map.flyTo(latLng, 10);
+                setTimeout(() => { marcadorDestacadoRef.openPopup(); }, 300);
+            }
+        }
+
+        window.guardarReserva = async function() {
+            const fechaInicioStr = document.getElementById('fechaInicio').value;
+            const fechaFinStr = document.getElementById('fechaFin').value;
+            const ciudad = document.getElementById('ciudadInput').value;
+            const nombre = document.getElementById('nombreInput').value;
+            const lat = document.getElementById('latTemp').value;
+            const lon = document.getElementById('lonTemp').value;
+
+            if(ciudad === "" || nombre === "" || fechaInicioStr === "") {
+                alert("⚠️ Llena todos los campos"); return;
+            }
+
+            const rangos = calcularRangosSinDomingo(fechaInicioStr, fechaFinStr);
+            if (rangos.length === 0) { alert("⚠️ No has seleccionado ningún día laborable."); return; }
+            const grupoId = Date.now().toString(); 
+
+            try {
+                for (let rango of rangos) {
+                    let fInicio = rango.start.toISOString().split('T')[0];
+                    let fFin = rango.end.toISOString().split('T')[0];
+                    await addDoc(collection(db, "reservas"), {
+                        fechaInicio: fInicio,
+                        fechaFin: fFin,
+                        ciudad: ciudad,
+                        cliente: nombre,
+                        lat: lat, lng: lon, groupId: grupoId, creado: new Date()
+                    });
+                }
+                
+                await cargarReservas();
+                cerrarModal('reservaModal');
+                
+                document.getElementById('successModal').style.display = "block";
+
+            } catch (e) { console.error(e); alert("Error al guardar"); }
+        }
+
+        window.borrarReserva = async function() {
+            if(!eventoSeleccionadoID) return;
+            let mensaje = "¿Eliminar este segmento de reserva?";
+            let borrarTodoElGrupo = false;
+
+            if (grupoSeleccionadoID) {
+                if(confirm("Esta reserva es parte de un grupo dividido.\n\n¿Quieres borrar TODAS las partes?\n(Aceptar = Todo el grupo / Cancelar = Solo este día)")) {
+                    borrarTodoElGrupo = true;
+                }
+            } else { if(!confirm(mensaje)) return; }
+
+            try {
+                if (borrarTodoElGrupo && grupoSeleccionadoID) {
+                    const q = query(collection(db, "reservas"), where("groupId", "==", grupoSeleccionadoID));
+                    const querySnapshot = await getDocs(q);
+                    querySnapshot.forEach((docSnap) => { deleteDoc(doc(db, "reservas", docSnap.id)); });
+                    alert("🗑️ Grupo eliminado.");
+                } else {
+                    await deleteDoc(doc(db, "reservas", eventoSeleccionadoID));
+                    alert("🗑️ Segmento eliminado.");
+                }
+                await cargarReservas(); 
+                cerrarModal('detalleModal');
+            } catch (e) { console.error(e); alert("Error borrando"); }
+        }
+
+        window.exportarCalendario = async function() {
+            if(!confirm("¿Descargar archivo para Google Calendar con todas las reservas?")) return;
+            try {
+                const q = query(collection(db, "reservas"));
+                const querySnapshot = await getDocs(q);
+                let icsContent = "BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//Agenda Geo-Localizada//ES\nCALSCALE:GREGORIAN\nMETHOD:PUBLISH\n";
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    if (!data.fechaInicio || !data.fechaFin) return;
+                    const fechaInicio = data.fechaInicio.replace(/-/g, '');
+                    let finObj = new Date(data.fechaFin + 'T00:00:00');
+                    finObj.setDate(finObj.getDate() + 1); 
+                    const fechaFin = finObj.toISOString().split('T')[0].replace(/-/g, '');
+                    const titulo = `Servicio: ${data.cliente}`;
+                    const descripcion = `Cliente: ${data.cliente}\\nCiudad: ${data.ciudad}`;
+                    const ubicacion = data.ciudad || "";
+                    const uid = doc.id; 
+                    icsContent += "BEGIN:VEVENT\n";
+                    icsContent += `UID:${uid}@tuagenda.com\n`;
+                    icsContent += `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, '').split('.')[0]}Z\n`;
+                    icsContent += `DTSTART;VALUE=DATE:${fechaInicio}\n`;
+                    icsContent += `DTEND;VALUE=DATE:${fechaFin}\n`;
+                    icsContent += `SUMMARY:${titulo}\n`;
+                    icsContent += `DESCRIPTION:${descripcion}\n`;
+                    icsContent += `LOCATION:${ubicacion}\n`;
+                    icsContent += "END:VEVENT\n";
+                });
+                icsContent += "END:VCALENDAR";
+                const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
+                const link = document.createElement('a');
+                link.href = window.URL.createObjectURL(blob);
+                link.setAttribute('download', 'agenda_completa.ics');
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                alert("✅ Archivo descargado.\n\nSúbelo a Google Calendar (Configuración > Importar y exportar).");
+            } catch (e) { console.error(e); alert("Error al exportar datos."); }
+        }
+
         const inputCiudad = document.getElementById('ciudadInput');
         const listaSugerencias = document.getElementById('listaSugerencias');
         let timeoutBuscador = null;
@@ -330,23 +994,16 @@
                 try {
                     const respuesta = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${texto}&limit=8&accept-language=es&countrycodes=mx&addressdetails=1`);
                     const resultados = await respuesta.json();
-
                     if (resultados.length > 0) {
-                        const resultadosFiltrados = resultados.filter(lugar => {
-                            return lugar.class === 'place' || lugar.class === 'boundary';
-                        });
-
-                        if(resultadosFiltrados.length > 0) {
+                        const filtrados = resultados.filter(l => l.class === 'place' || l.class === 'boundary');
+                        if(filtrados.length > 0) {
                             listaSugerencias.style.display = 'block';
-                            resultadosFiltrados.forEach(lugar => {
+                            filtrados.forEach(lugar => {
                                 const item = document.createElement('li');
                                 item.className = 'suggestion-item';
-                                let icono = '🏙️'; 
-                                let nombrePrincipal = lugar.name || texto; 
-                                item.innerHTML = `<strong>${icono} ${nombrePrincipal}</strong><br><small style="color:#666;">${lugar.display_name}</small>`;
+                                item.innerHTML = `<strong>🏙️ ${lugar.name}</strong><br><small>${lugar.display_name}</small>`;
                                 item.onclick = function() {
-                                    inputCiudad.value = nombrePrincipal; 
-                                    inputCiudad.dataset.ubicacionCompleta = lugar.display_name;
+                                    inputCiudad.value = lugar.name; 
                                     document.getElementById('latTemp').value = lugar.lat;
                                     document.getElementById('lonTemp').value = lugar.lon;
                                     listaSugerencias.style.display = 'none'; 
@@ -355,98 +1012,11 @@
                             });
                         }
                     }
-                } catch (e) { console.error("Error buscando:", e); }
+                } catch (e) { console.error(e); }
             }, 300); 
         });
 
-        document.addEventListener('click', function(e) {
-            if (e.target !== inputCiudad) { listaSugerencias.style.display = 'none'; }
-        });
-
-        // --- CARGA Y GUARDADO ---
-        async function cargarReservas() {
-            try {
-                const q = query(collection(db, "reservas"));
-                const querySnapshot = await getDocs(q);
-                
-                calendar.removeAllEvents();
-                markers.forEach(marker => map.removeLayer(marker));
-                markers = [];
-
-                querySnapshot.forEach((documento) => {
-                    const data = documento.data();
-                    if (!data.fechaInicio) return; 
-
-                    let inicio = data.fechaInicio; 
-                    let fin = data.fechaFin;
-                    let fechaFinVisual = new Date(fin + 'T00:00:00');
-                    fechaFinVisual.setDate(fechaFinVisual.getDate() + 1);
-                    let fechaFinFormateada = fechaFinVisual.toISOString().split('T')[0];
-                    let ciudadCorta = data.ciudad.split(",")[0]; 
-
-                    calendar.addEvent({
-                        id: documento.id,
-                        title: '📍 ' + ciudadCorta + ' - ' + data.cliente,
-                        start: inicio,
-                        end: fechaFinFormateada, 
-                        allDay: true,
-                        backgroundColor: '#FF5733',
-                        borderColor: '#FF5733',
-                        extendedProps: {
-                            cliente: data.cliente,
-                            fechaFinReal: fin,
-                            ciudadCompleta: data.ciudad 
-                        }
-                    });
-
-                    if (data.lat && data.lng) {
-                        const marker = L.marker([data.lat, data.lng]).addTo(map);
-                        marker.bindPopup(`<b>${data.cliente}</b><br>${ciudadCorta}<br><small>${inicio}</small>`);
-                        markers.push(marker);
-                    }
-                });
-            } catch (error) { console.error(error); }
-        }
-
-        window.guardarReserva = async function() {
-            const fechaInicioStr = document.getElementById('fechaInicio').value;
-            const fechaFinStr = document.getElementById('fechaFin').value;
-            const ciudad = document.getElementById('ciudadInput').value;
-            const nombre = document.getElementById('nombreInput').value;
-            const lat = document.getElementById('latTemp').value;
-            const lon = document.getElementById('lonTemp').value;
-
-            if(ciudad === "" || nombre === "" || fechaInicioStr === "") {
-                alert("⚠️ Llena todos los campos"); return;
-            }
-
-            try {
-                await addDoc(collection(db, "reservas"), {
-                    fechaInicio: fechaInicioStr,
-                    fechaFin: fechaFinStr,
-                    ciudad: ciudad,
-                    cliente: nombre,
-                    lat: lat, 
-                    lng: lon, 
-                    creado: new Date()
-                });
-                await cargarReservas();
-                alert("✅ Guardado");
-                cerrarModal('reservaModal');
-            } catch (e) { console.error(e); alert("Error al guardar"); }
-        }
-
-        window.borrarReserva = async function() {
-            if(!eventoSeleccionadoID) return;
-            if(confirm("¿Eliminar reserva?")) {
-                try {
-                    await deleteDoc(doc(db, "reservas", eventoSeleccionadoID));
-                    await cargarReservas(); 
-                    alert("🗑️ Eliminada");
-                    cerrarModal('detalleModal');
-                } catch (e) { alert("Error borrando"); }
-            }
-        }
+        document.addEventListener('click', function(e) { if (e.target !== inputCiudad) listaSugerencias.style.display = 'none'; });
 
         window.abrirModalCrear = function(fecha) {
             document.getElementById('fechaInicio').value = fecha;
@@ -461,21 +1031,19 @@
 
         window.mostrarDetalles = function(evento) {
             eventoSeleccionadoID = evento.id; 
+            grupoSeleccionadoID = evento.extendedProps.groupId || null;
             const ciudadCompleta = evento.extendedProps.ciudadCompleta || evento.title;
             document.getElementById('detCiudad').innerText = ciudadCompleta;
             document.getElementById('detCliente').innerText = evento.extendedProps.cliente || "No especificado";
             const inicio = evento.start.toISOString().split('T')[0];
             const fin = evento.extendedProps.fechaFinReal;
             document.getElementById('detFechas').innerText = `${inicio} al ${fin}`;
-            
             const btnEliminar = document.getElementById('btnEliminar');
             btnEliminar.style.display = esAdmin ? 'block' : 'none';
             document.getElementById('detalleModal').style.display = "block";
         }
 
-        window.cerrarModal = function(idModal) {
-            document.getElementById(idModal).style.display = "none";
-        }
+        window.cerrarModal = function(idModal) { document.getElementById(idModal).style.display = "none"; }
 
         window.iniciarSesion = function() {
             const pass = prompt("Contraseña Admin:");
@@ -484,6 +1052,12 @@
                 document.getElementById('btnLogin').style.display = 'none';
                 document.getElementById('btnLogout').style.display = 'inline-block';
                 document.getElementById('admin-status').style.display = 'inline';
+                
+                document.getElementById('mobile-btn-login').style.display = 'none';
+                document.getElementById('mobile-btn-logout').style.display = 'block';
+                document.getElementById('mobile-admin-status').style.display = 'block';
+                
+                actualizarHeaderAdmin(); 
                 alert("✅ Admin Activo");
             } else { alert("❌ Incorrecto"); }
         }
@@ -493,6 +1067,12 @@
             document.getElementById('btnLogin').style.display = 'inline-block';
             document.getElementById('btnLogout').style.display = 'none';
             document.getElementById('admin-status').style.display = 'none';
+            
+            document.getElementById('mobile-btn-login').style.display = 'block';
+            document.getElementById('mobile-btn-logout').style.display = 'none';
+            document.getElementById('mobile-admin-status').style.display = 'none';
+            
+            actualizarHeaderAdmin(); 
         }
     </script>
 </body>
