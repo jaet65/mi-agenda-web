@@ -4,6 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Agenda TrackSIM</title>
+
+    <meta property="og:title" content="Agenda TrackSIM">
+    <meta property="og:description" content="Gestión de itinerarios y servicios geo-localizados.">
+    <meta property="og:image" content="favicon2.ico">
+    <meta property="og:url" content="https://velvety-douhua-81552c.netlify.app/"> <meta property="og:type" content="website">
     
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#ffffff">
@@ -338,8 +343,11 @@
             <span id="admin-stats"></span>
             
             <div class="desktop-buttons">
-                <button id="btn-export" class="btn-action" style="background:#f39c12;" onclick="exportarCalendario()">📤 Exportar Calendario</button>
-                <button id="btn-go-map" class="btn-action btn-map-toggle" onclick="mostrarMapa()">🗺️ Mapa Global</button>
+                <button class="btn-secondary" onclick="compartirApp()">🔗 Compartir</button>
+                <button class="btn-secondary" onclick="verQR()">📱 QR</button>
+                
+                <button id="btn-export" class="btn-action" style="background:#f39c12;" onclick="exportarCalendario()">📤 Exportar</button>
+                <button id="btn-go-map" class="btn-action btn-map-toggle" onclick="mostrarMapa()">🗺️ Mapa</button>
                 <span id="admin-status">🟢 Admin</span>
                 <button id="btnLogin" class="btn-action" onclick="iniciarSesion()">🔒 Entrar</button>
                 <button id="btnLogout" class="btn-secondary" id="logout-btn" onclick="cerrarSesion()" style="display:none;">Salir</button>
@@ -349,6 +357,10 @@
         </div>
 
         <div id="mobile-menu" class="mobile-menu">
+            <button onclick="compartirApp(); toggleMenu()">🔗 Compartir App</button>
+            <button onclick="verQR(); toggleMenu()">📱 Ver Código QR</button>
+            <hr style="width:100%; border:0; border-top:1px solid #eee; margin:5px 0;">
+            
             <button id="mobile-btn-export" onclick="exportarCalendario(); toggleMenu()">📤 Exportar Calendario</button>
             <button id="mobile-btn-map" onclick="mostrarMapa(); toggleMenu()">🗺️ Mapa Global</button>
             <span id="mobile-admin-status" style="display:none; padding:10px; font-weight:bold; color:#28a745;">🟢 Admin</span>
@@ -380,6 +392,17 @@
                     🌍
                 </button>
             </div>
+        </div>
+    </div>
+
+    <div id="qrModal" class="modal">
+        <div class="modal-content" style="text-align: center;">
+            <span class="close-x" onclick="cerrarModal('qrModal')">×</span>
+            <h2 style="margin-top:0;">Escanea para abrir</h2>
+            <p>Comparte la agenda escaneando este código:</p>
+            <img id="imagenQR" src="" alt="QR Code" style="width: 200px; height: 200px; margin: 10px auto;">
+            <p style="font-size:0.8rem; color:#666;">Agenda TrackSIM</p>
+            <button onclick="cerrarModal('qrModal')" class="btn-secondary" style="width:100%; margin-top:10px;">Cerrar</button>
         </div>
     </div>
 
@@ -1073,6 +1096,42 @@
             document.getElementById('mobile-admin-status').style.display = 'none';
             
             actualizarHeaderAdmin(); 
+        }
+
+        // --- FUNCIÓN COMPARTIR NATIVO (WhatsApp, etc.) ---
+        window.compartirApp = async function() {
+            const datosCompartir = {
+                title: 'Agenda TrackSIM',
+                text: 'Accede a la agenda de servicios geo-localizada aquí:',
+                url: window.location.href // Toma la URL actual automáticamente
+            };
+
+            // Verificar si el navegador soporta compartir nativo (Casi todos los móviles lo hacen)
+            if (navigator.share) {
+                try {
+                    await navigator.share(datosCompartir);
+                } catch (err) {
+                    console.log('Error al compartir o cancelado:', err);
+                }
+            } else {
+                // Fallback para PC antigua: Copiar al portapapeles
+                try {
+                    await navigator.clipboard.writeText(window.location.href);
+                    alert("📋 ¡Enlace copiado al portapapeles!");
+                } catch (err) {
+                    prompt("Copia este enlace:", window.location.href);
+                }
+            }
+        }
+
+        // --- FUNCIÓN VER QR ---
+        window.verQR = function() {
+            const urlActual = window.location.href;
+            // Usamos una API pública y rápida para generar el QR sin librerías pesadas
+            const urlQR = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(urlActual)}`;
+            
+            document.getElementById('imagenQR').src = urlQR;
+            document.getElementById('qrModal').style.display = "block";
         }
     </script>
 </body>
