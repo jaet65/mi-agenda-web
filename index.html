@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Agenda Geo-Localizada</title>
+    <title>Agenda TrackSIM</title>
     
     <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js'></script>
     
@@ -149,7 +149,7 @@
 <body>
 
     <div class="header">
-        <h1>📅 Agenda</h1>
+        <h1>📅 Agenda TrackSIM</h1>
         <div class="header-controls">
             <button id="btn-go-map" class="btn-action btn-map-toggle" onclick="mostrarMapa()">🗺️ Mapa Global</button>
             <span id="admin-status">🟢 Admin</span>
@@ -237,7 +237,7 @@
         let markers = []; 
         let esAdmin = false;
         let eventoSeleccionadoID = null;
-        const CONTRASEÑA_ADMIN = "servicio2024"; 
+        const CONTRASEÑA_ADMIN = "admin"; 
 
         // --- INICIALIZACIÓN ---
         document.addEventListener('DOMContentLoaded', async function() {
