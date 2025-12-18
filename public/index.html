@@ -397,11 +397,9 @@
     </div>
 
     <div id="main-container">
-        
         <div id="calendar-container">
             <div id='calendar'></div>
         </div>
-
         <div id="agenda-view">
             <div style="text-align:center; margin-bottom:20px;">
                 <h2 style="color:#2c3e50; margin-bottom:5px;">Agenda de Servicios</h2>
@@ -409,7 +407,6 @@
             </div>
             <ul id="lista-agenda-custom" class="agenda-list"></ul>
         </div>
-
         <div id="map-view" style="display:none;">
             <div id="map-sidebar">
                 <div class="map-year-controls">
@@ -604,6 +601,16 @@
                 dateClick: function(info) { 
                     if (!esAdmin) return;
                     
+                    // 1. BLOQUEAR DOMINGOS (Para celdas vacías)
+                    const parts = info.dateStr.split('-');
+                    const localDate = new Date(parts[0], parts[1]-1, parts[2]);
+
+                    if (localDate.getDay() === 0) {
+                        alert("⛔ Servicio no disponible los domingos.");
+                        return;
+                    }
+
+                    // 2. VALIDAR FECHA OCUPADA
                     const fechaClickeada = info.dateStr;
                     const ocupado = globalReservas.some(r => {
                         return fechaClickeada >= r.data.fechaInicio && fechaClickeada <= r.data.fechaFin;
@@ -615,7 +622,23 @@
                         abrirModalCrear(info.dateStr); 
                     }
                 },
-                eventClick: function(info) { mostrarDetalles(info.event); }
+                eventClick: function(info) { 
+                    // 3. IGNORAR CLICS EN EL COLOR DE FONDO (Sábados/Domingos)
+                    if (info.event.display === 'background') {
+                        return; // Simplemente no hacer nada, dejar pasar el clic si es necesario o ignorarlo
+                    }
+
+                    // 4. BLOQUEAR DETALLES DE EVENTOS REALES EN DOMINGO (Si hubiera)
+                    // Usamos getDay() que devuelve 0 para Domingo
+                    if (info.event.start.getDay() === 0) {
+                        info.jsEvent.preventDefault();
+                        info.jsEvent.stopPropagation(); // Evitar doble burbuja
+                        alert("⛔ Servicio no disponible los domingos.");
+                        return;
+                    }
+                    
+                    mostrarDetalles(info.event); 
+                }
             });
             calendar.render();
 
@@ -801,33 +824,139 @@
             if (e.target !== inputCiudad) listaSugerenciasCiudad.style.display = 'none'; 
         });
 
-        // --- FUNCIONES COMPARTIR ---
-        window.compartirApp = async function() {
-            const datos = { title: 'Agenda TrackSIM', text: 'Accede a la agenda:', url: window.location.href };
-            if (navigator.share) { try { await navigator.share(datos); } catch (e) {} } 
-            else { try { await navigator.clipboard.writeText(window.location.href); alert("¡Enlace copiado!"); } catch (e) { prompt("Copia:", window.location.href); } }
+        // --- GUARDAR RESERVA (CON FLUJO INTELIGENTE) ---
+        window.guardarReserva = async function() {
+            const fechaInicioStr = document.getElementById('fechaInicio').value;
+            const fechaFinStr = document.getElementById('fechaFin').value;
+            const ciudad = document.getElementById('ciudadInput').value;
+            const nombre = document.getElementById('nombreInput').value;
+            const direccion = document.getElementById('direccionInput').value;
+            let lat = document.getElementById('latTemp').value;
+            let lon = document.getElementById('lonTemp').value;
+
+            // 1. Validar Obligatorios
+            if(nombre === "" || fechaInicioStr === "") {
+                alert("⚠️ Faltan datos obligatorios: Cliente o Fechas."); return;
+            }
+
+            // 2. Si falta Ciudad y hay Dirección, buscar coincidencias
+            if (ciudad === "" && direccion.length > 2) {
+                const btn = document.querySelector('#reservaModal .btn-save');
+                const textoOriginal = btn.innerHTML;
+                btn.innerHTML = `<span class="loader"></span> Buscando...`;
+                btn.disabled = true;
+                
+                try {
+                    const queryEncoded = encodeURIComponent(direccion);
+                    const resp = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${queryEncoded}&limit=5&accept-language=es&countrycodes=mx&addressdetails=1`);
+                    const resultados = await resp.json();
+                    
+                    if (resultados.length > 0) {
+                        mostrarSelectorUbicacion(resultados);
+                    } else {
+                        // Fallback CP
+                        const cpMatch = direccion.match(/\b\d{5}\b/);
+                        if(cpMatch) {
+                            const respCP = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${cpMatch[0]}&limit=5&accept-language=es&countrycodes=mx&addressdetails=1`);
+                            const resultadosCP = await respCP.json();
+                            if(resultadosCP.length > 0) {
+                                mostrarSelectorUbicacion(resultadosCP.map(r => ({...r, display_name: "📍 (Zona CP) " + r.display_name})));
+                            } else {
+                                mostrarModalSinResultados();
+                            }
+                        } else {
+                            mostrarModalSinResultados();
+                        }
+                    }
+                } catch(e) {
+                    console.error(e);
+                    alert("Error al buscar ubicación. Ingresa la ciudad manualmente.");
+                    habilitarManual();
+                }
+                btn.innerHTML = textoOriginal;
+                btn.disabled = false;
+                return; // Detener flujo
+            }
+
+            // 3. Procesar Guardado
+            let ciudadFinal = ciudad || "Sin Ciudad";
+            
+            const rangos = calcularRangosSinDomingo(fechaInicioStr, fechaFinStr);
+            if (rangos.length === 0) { alert("⚠️ No has seleccionado ningún día laborable."); return; }
+            const grupoId = Date.now().toString(); 
+
+            try {
+                if (modoEdicion && idGrupoEdicion) {
+                    const q = query(collection(db, "reservas"), where("groupId", "==", idGrupoEdicion));
+                    const querySnapshot = await getDocs(q);
+                    const batch = writeBatch(db); 
+                    querySnapshot.forEach((doc) => { batch.delete(doc.ref); });
+                    await batch.commit();
+                }
+                for (let rango of rangos) {
+                    let fInicio = rango.start.toISOString().split('T')[0];
+                    let fFin = rango.end.toISOString().split('T')[0];
+                    await addDoc(collection(db, "reservas"), {
+                        fechaInicio: fInicio,
+                        fechaFin: fFin,
+                        ciudad: ciudadFinal,
+                        cliente: nombre,
+                        direccion: direccion,
+                        lat: lat, lng: lon, groupId: grupoId, creado: new Date()
+                    });
+                }
+                await cargarReservas();
+                cerrarModal('reservaModal');
+                document.getElementById('successModal').style.display = "block";
+            } catch (e) { console.error(e); alert("Error al guardar"); }
         }
 
-        window.verQR = function() {
-            const urlActual = window.location.href;
-            const urlQR = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(urlActual)}`;
-            document.getElementById('imagenQR').src = urlQR;
-            document.getElementById('qrModal').style.display = "block";
+        window.mostrarSelectorUbicacion = function(resultados) {
+            const lista = document.getElementById('listaCoincidencias');
+            lista.innerHTML = "";
+            resultados.forEach(lugar => {
+                const li = document.createElement('li');
+                li.className = 'match-item';
+                li.innerHTML = `<strong>${lugar.address.city || lugar.address.town || lugar.address.county || 'Ubicación'}</strong><small>${lugar.display_name}</small>`;
+                li.onclick = function() {
+                    const addr = lugar.address;
+                    const ciudad = addr.city || addr.town || addr.village || addr.municipality || addr.county || addr.state_district || "Desconocida";
+                    document.getElementById('ciudadInput').value = ciudad;
+                    document.getElementById('latTemp').value = lugar.lat;
+                    document.getElementById('lonTemp').value = lugar.lon;
+                    cerrarModal('selectionModal');
+                    guardarReserva(); 
+                };
+                lista.appendChild(li);
+            });
+            document.getElementById('selectionModal').style.display = 'block';
+        }
+        
+        window.mostrarModalSinResultados = function() {
+             const lista = document.getElementById('listaCoincidencias');
+             lista.innerHTML = "<li style='padding:15px; color:#666;'>No se encontraron coincidencias exactas.</li>";
+             document.getElementById('selectionModal').style.display = 'block';
         }
 
-        window.toggleMenu = function() {
-            const menu = document.getElementById('mobile-menu');
-            menu.classList.toggle('open');
+        window.habilitarManual = function() {
+            const inputC = document.getElementById('ciudadInput');
+            inputC.readOnly = false;
+            inputC.placeholder = "Escribe ciudad para buscar...";
+            inputC.focus();
+            cerrarModal('selectionModal');
+        }
+        
+        window.usarSinCiudad = function() {
+            document.getElementById('ciudadInput').value = "Sin Ciudad";
+            cerrarModal('selectionModal');
+            guardarReserva();
         }
 
-        window.ajustarMapa = function() {
-            if (markers.length > 0) {
-                const group = new L.featureGroup(markers);
-                map.fitBounds(group.getBounds(), { padding: [50, 50] });
-            } else { map.setView([23.6345, -102.5528], 5); }
+        window.reintentarDireccion = function() {
+            cerrarModal('selectionModal');
+            document.getElementById('direccionInput').focus();
         }
 
-        // --- FUNCIONES DE ESTADISTICAS Y MAPA (RECUPERADAS) ---
         function calcularEstadisticas(reservasSnap) {
             statsPorAno = {}; 
             reservasSnap.forEach(doc => {
@@ -1207,159 +1336,6 @@
                 map.flyTo(latLng, 10);
                 setTimeout(() => { marcadorDestacadoRef.openPopup(); }, 300);
             }
-        }
-
-        window.prepararEdicion = function() {
-            const reserva = globalReservas.find(r => r.id === eventoSeleccionadoID);
-            if (!reserva) return;
-            document.getElementById('fechaInicio').value = reserva.data.fechaInicio;
-            document.getElementById('fechaFin').value = reserva.data.fechaFin;
-            document.getElementById('ciudadInput').value = reserva.data.ciudad;
-            document.getElementById('nombreInput').value = reserva.data.cliente;
-            document.getElementById('direccionInput').value = reserva.data.direccion || "";
-            document.getElementById('latTemp').value = reserva.data.lat;
-            document.getElementById('lonTemp').value = reserva.data.lng;
-            modoEdicion = true;
-            idGrupoEdicion = reserva.data.groupId;
-            const btnGuardar = document.querySelector('#reservaModal .btn-save');
-            btnGuardar.textContent = "🔄 Actualizar Reserva";
-            btnGuardar.style.background = "#ffc107";
-            btnGuardar.style.color = "#333";
-            cerrarModal('detalleModal');
-            document.getElementById('reservaModal').style.display = 'block';
-        }
-
-        // --- GUARDAR RESERVA (CON FLUJO INTELIGENTE) ---
-        window.guardarReserva = async function() {
-            const fechaInicioStr = document.getElementById('fechaInicio').value;
-            const fechaFinStr = document.getElementById('fechaFin').value;
-            const ciudad = document.getElementById('ciudadInput').value;
-            const nombre = document.getElementById('nombreInput').value;
-            const direccion = document.getElementById('direccionInput').value;
-            let lat = document.getElementById('latTemp').value;
-            let lon = document.getElementById('lonTemp').value;
-
-            // 1. Validar Obligatorios (Solo Fechas y Cliente)
-            if(nombre === "" || fechaInicioStr === "") {
-                alert("⚠️ Faltan datos obligatorios: Cliente o Fechas."); return;
-            }
-
-            // 2. Si falta Ciudad y hay Dirección, buscar coincidencias
-            if (ciudad === "" && direccion.length > 2) {
-                const btn = document.querySelector('#reservaModal .btn-save');
-                const textoOriginal = btn.innerHTML;
-                btn.innerHTML = `<span class="loader"></span> Buscando...`;
-                btn.disabled = true;
-                
-                try {
-                    const queryEncoded = encodeURIComponent(direccion);
-                    const resp = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${queryEncoded}&limit=5&accept-language=es&countrycodes=mx&addressdetails=1`);
-                    const resultados = await resp.json();
-                    
-                    if (resultados.length > 0) {
-                        mostrarSelectorUbicacion(resultados);
-                    } else {
-                        // Fallback CP
-                        const cpMatch = direccion.match(/\b\d{5}\b/);
-                        if(cpMatch) {
-                            const respCP = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${cpMatch[0]}&limit=5&accept-language=es&countrycodes=mx&addressdetails=1`);
-                            const resultadosCP = await respCP.json();
-                            if(resultadosCP.length > 0) {
-                                mostrarSelectorUbicacion(resultadosCP.map(r => ({...r, display_name: "📍 (Zona CP) " + r.display_name})));
-                            } else {
-                                mostrarModalSinResultados();
-                            }
-                        } else {
-                            mostrarModalSinResultados();
-                        }
-                    }
-                } catch(e) {
-                    console.error(e);
-                    alert("Error al buscar ubicación. Ingresa la ciudad manualmente.");
-                    habilitarManual();
-                }
-                btn.innerHTML = textoOriginal;
-                btn.disabled = false;
-                return; // Detener flujo
-            }
-
-            // 3. Procesar Guardado
-            let ciudadFinal = ciudad || "Sin Ciudad";
-            
-            const rangos = calcularRangosSinDomingo(fechaInicioStr, fechaFinStr);
-            if (rangos.length === 0) { alert("⚠️ No has seleccionado ningún día laborable."); return; }
-            const grupoId = Date.now().toString(); 
-
-            try {
-                if (modoEdicion && idGrupoEdicion) {
-                    const q = query(collection(db, "reservas"), where("groupId", "==", idGrupoEdicion));
-                    const querySnapshot = await getDocs(q);
-                    const batch = writeBatch(db); 
-                    querySnapshot.forEach((doc) => { batch.delete(doc.ref); });
-                    await batch.commit();
-                }
-                for (let rango of rangos) {
-                    let fInicio = rango.start.toISOString().split('T')[0];
-                    let fFin = rango.end.toISOString().split('T')[0];
-                    await addDoc(collection(db, "reservas"), {
-                        fechaInicio: fInicio,
-                        fechaFin: fFin,
-                        ciudad: ciudadFinal,
-                        cliente: nombre,
-                        direccion: direccion,
-                        lat: lat, lng: lon, groupId: grupoId, creado: new Date()
-                    });
-                }
-                await cargarReservas();
-                cerrarModal('reservaModal');
-                document.getElementById('successModal').style.display = "block";
-            } catch (e) { console.error(e); alert("Error al guardar"); }
-        }
-
-        window.mostrarSelectorUbicacion = function(resultados) {
-            const lista = document.getElementById('listaCoincidencias');
-            lista.innerHTML = "";
-            resultados.forEach(lugar => {
-                const li = document.createElement('li');
-                li.className = 'match-item';
-                li.innerHTML = `<strong>${lugar.address.city || lugar.address.town || lugar.address.county || 'Ubicación'}</strong><small>${lugar.display_name}</small>`;
-                li.onclick = function() {
-                    const addr = lugar.address;
-                    const ciudad = addr.city || addr.town || addr.village || addr.municipality || addr.county || addr.state_district || "Desconocida";
-                    document.getElementById('ciudadInput').value = ciudad;
-                    document.getElementById('latTemp').value = lugar.lat;
-                    document.getElementById('lonTemp').value = lugar.lon;
-                    cerrarModal('selectionModal');
-                    guardarReserva(); 
-                };
-                lista.appendChild(li);
-            });
-            document.getElementById('selectionModal').style.display = 'block';
-        }
-        
-        window.mostrarModalSinResultados = function() {
-             const lista = document.getElementById('listaCoincidencias');
-             lista.innerHTML = "<li style='padding:15px; color:#666;'>No se encontraron coincidencias exactas.</li>";
-             document.getElementById('selectionModal').style.display = 'block';
-        }
-
-        window.habilitarManual = function() {
-            const inputC = document.getElementById('ciudadInput');
-            inputC.readOnly = false;
-            inputC.placeholder = "Escribe ciudad para buscar...";
-            inputC.focus();
-            cerrarModal('selectionModal');
-        }
-        
-        window.usarSinCiudad = function() {
-            document.getElementById('ciudadInput').value = "Sin Ciudad";
-            cerrarModal('selectionModal');
-            guardarReserva();
-        }
-
-        window.reintentarDireccion = function() {
-            cerrarModal('selectionModal');
-            document.getElementById('direccionInput').focus();
         }
 
         window.borrarReserva = async function() {
