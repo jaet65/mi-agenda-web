@@ -278,7 +278,6 @@
         .btn-map-toggle { background: #28a745; margin-right: 5px; } 
         .btn-edit { background: #ffc107; color: #333; padding: 12px; width: 100%; border-radius: 6px; margin-top: 10px; font-weight: bold; border: none; cursor: pointer; }
         
-        #logout-btn { display: none; }
         #admin-status { font-weight: bold; color: #28a745; display: none; margin-right: 10px; font-size: 0.8rem; }
 
         /* SPINNER DE CARGA */
@@ -364,7 +363,7 @@
                 <div class="dropdown-share">
                     <button class="btn-share">📤 Compartir ▼</button>
                     <div class="dropdown-content">
-                        <button onclick="compartirApp()">🔗 Copiar Vínculo</button>
+                        <button onclick="compartirApp()">🔗 Enviar Vínculo</button>
                         <button onclick="verQR()">📱 Ver Código QR</button>
                         <button onclick="exportarCalendario()">📅 Exportar Google Cal</button>
                     </div>
@@ -373,7 +372,7 @@
                 <button id="btn-go-map" class="btn-action btn-map-toggle" onclick="mostrarMapa()">🗺️ Mapa</button>
                 <span id="admin-status">🟢 Admin</span>
                 <button id="btnLogin" class="btn-action" onclick="iniciarSesion()">🔒</button>
-                <button id="btnLogout" class="btn-secondary" id="logout-btn" onclick="cerrarSesion()" style="display:none;">Salir</button>
+                <button id="btnLogout" class="btn-secondary" onclick="cerrarSesion()" style="display:none;">Salir</button>
             </div>
 
             <button class="hamburger-btn" onclick="toggleMenu()">☰</button>
@@ -381,7 +380,7 @@
 
         <div id="mobile-menu" class="mobile-menu">
             <div class="mobile-section-title">Compartir</div>
-            <button onclick="compartirApp(); toggleMenu()">🔗 Copiar Vínculo</button>
+            <button onclick="compartirApp(); toggleMenu()">🔗 Enviar Vínculo</button>
             <button onclick="verQR(); toggleMenu()">📱 Ver Código QR</button>
             <button id="mobile-btn-export" onclick="exportarCalendario(); toggleMenu()">📅 Exportar Calendario</button>
             
@@ -518,6 +517,13 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, where, writeBatch } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
+        window.toggleMenu = function() {
+            const menu = document.getElementById('mobile-menu');
+            if (menu) {
+                menu.classList.toggle('open');
+            }
+        };
+
         const firebaseConfig = {
           apiKey: "AIzaSyCN7AD2GO_Ks4tcMxLMkG6jODKUaTPwlIk",
           authDomain: "agendaservicios.firebaseapp.com",
@@ -601,7 +607,6 @@
                 dateClick: function(info) { 
                     if (!esAdmin) return;
                     
-                    // 1. BLOQUEAR DOMINGOS (Para celdas vacías)
                     const parts = info.dateStr.split('-');
                     const localDate = new Date(parts[0], parts[1]-1, parts[2]);
 
@@ -610,7 +615,6 @@
                         return;
                     }
 
-                    // 2. VALIDAR FECHA OCUPADA
                     const fechaClickeada = info.dateStr;
                     const ocupado = globalReservas.some(r => {
                         return fechaClickeada >= r.data.fechaInicio && fechaClickeada <= r.data.fechaFin;
@@ -623,16 +627,13 @@
                     }
                 },
                 eventClick: function(info) { 
-                    // 3. IGNORAR CLICS EN EL COLOR DE FONDO (Sábados/Domingos)
                     if (info.event.display === 'background') {
-                        return; // Simplemente no hacer nada, dejar pasar el clic si es necesario o ignorarlo
+                        return;
                     }
 
-                    // 4. BLOQUEAR DETALLES DE EVENTOS REALES EN DOMINGO (Si hubiera)
-                    // Usamos getDay() que devuelve 0 para Domingo
                     if (info.event.start.getDay() === 0) {
                         info.jsEvent.preventDefault();
-                        info.jsEvent.stopPropagation(); // Evitar doble burbuja
+                        info.jsEvent.stopPropagation(); 
                         alert("⛔ Servicio no disponible los domingos.");
                         return;
                     }
@@ -721,7 +722,7 @@
             }
         }
 
-        // --- AUTOCOMPLETE DE DIRECCIÓN ---
+        // --- AUTOCOMPLETE DE DIRECCIÓN (MEJORADO PARA DIRECCIONES COMPLEJAS) ---
         const inputDireccion = document.getElementById('direccionInput');
         const listaSugerencias = document.getElementById('listaSugerencias');
         let timeoutBuscador = null;
@@ -740,16 +741,16 @@
             timeoutBuscador = setTimeout(async () => {
                 try {
                     const queryEncoded = encodeURIComponent(texto);
-                    let respuesta = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${queryEncoded}&limit=8&accept-language=es&countrycodes=mx&addressdetails=1`);
+                    let url = `https://nominatim.openstreetmap.org/search?format=json&q=${queryEncoded}&limit=8&accept-language=es&countrycodes=mx&addressdetails=1`;
+                    let respuesta = await fetch(url);
                     let resultados = await respuesta.json();
 
+                    // Fallback para direcciones muy específicas que Nominatim no reconoce bien
                     if (resultados.length === 0) {
-                        const cpMatch = texto.match(/\b\d{5}\b/); 
-                        if (cpMatch) {
-                            const cp = cpMatch[0];
-                            respuesta = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${cp}&limit=5&accept-language=es&countrycodes=mx&addressdetails=1`);
-                            const resultadosCP = await respuesta.json();
-                            resultados = resultadosCP.map(r => ({...r, display_name: `📍 (Por CP) ${r.display_name}`}));
+                        const fallbackTexto = texto.replace(/Manzana|Mz|Lote|Lt/gi, "").trim();
+                        if (fallbackTexto !== texto) {
+                            respuesta = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(fallbackTexto)}&limit=5&accept-language=es&countrycodes=mx&addressdetails=1`);
+                            resultados = await respuesta.json();
                         }
                     }
 
@@ -761,7 +762,7 @@
                             item.innerHTML = `<strong>📍 ${lugar.name}</strong><br><small>${lugar.display_name}</small>`;
                             
                             item.onclick = function() {
-                                inputDireccion.value = lugar.display_name.replace("📍 (Por CP) ", "");
+                                inputDireccion.value = lugar.display_name;
                                 document.getElementById('latTemp').value = lugar.lat;
                                 document.getElementById('lonTemp').value = lugar.lon;
                                 
@@ -778,7 +779,6 @@
             }, 500); 
         });
 
-        // --- AUTOCOMPLETE CIUDAD (Solo México) ---
         const inputCiudad = document.getElementById('ciudadInput');
         const listaSugerenciasCiudad = document.getElementById('listaSugerenciasCiudad');
         let timeoutCiudad = null;
@@ -824,7 +824,7 @@
             if (e.target !== inputCiudad) listaSugerenciasCiudad.style.display = 'none'; 
         });
 
-        // --- GUARDAR RESERVA (CON FLUJO INTELIGENTE) ---
+        // --- GUARDAR RESERVA ---
         window.guardarReserva = async function() {
             const fechaInicioStr = document.getElementById('fechaInicio').value;
             const fechaFinStr = document.getElementById('fechaFin').value;
@@ -834,15 +834,12 @@
             let lat = document.getElementById('latTemp').value;
             let lon = document.getElementById('lonTemp').value;
 
-            // 1. Validar Obligatorios
             if(nombre === "" || fechaInicioStr === "") {
                 alert("⚠️ Faltan datos obligatorios: Cliente o Fechas."); return;
             }
 
-            // 2. Si falta Ciudad y hay Dirección, buscar coincidencias
             if (ciudad === "" && direccion.length > 2) {
                 const btn = document.querySelector('#reservaModal .btn-save');
-                const textoOriginal = btn.innerHTML;
                 btn.innerHTML = `<span class="loader"></span> Buscando...`;
                 btn.disabled = true;
                 
@@ -854,33 +851,19 @@
                     if (resultados.length > 0) {
                         mostrarSelectorUbicacion(resultados);
                     } else {
-                        // Fallback CP
-                        const cpMatch = direccion.match(/\b\d{5}\b/);
-                        if(cpMatch) {
-                            const respCP = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${cpMatch[0]}&limit=5&accept-language=es&countrycodes=mx&addressdetails=1`);
-                            const resultadosCP = await respCP.json();
-                            if(resultadosCP.length > 0) {
-                                mostrarSelectorUbicacion(resultadosCP.map(r => ({...r, display_name: "📍 (Zona CP) " + r.display_name})));
-                            } else {
-                                mostrarModalSinResultados();
-                            }
-                        } else {
-                            mostrarModalSinResultados();
-                        }
+                        mostrarModalSinResultados();
                     }
                 } catch(e) {
                     console.error(e);
                     alert("Error al buscar ubicación. Ingresa la ciudad manualmente.");
                     habilitarManual();
                 }
-                btn.innerHTML = textoOriginal;
+                btn.innerHTML = "💾 Guardar Reserva";
                 btn.disabled = false;
-                return; // Detener flujo
+                return; 
             }
 
-            // 3. Procesar Guardado
             let ciudadFinal = ciudad || "Sin Ciudad";
-            
             const rangos = calcularRangosSinDomingo(fechaInicioStr, fechaFinStr);
             if (rangos.length === 0) { alert("⚠️ No has seleccionado ningún día laborable."); return; }
             const grupoId = Date.now().toString(); 
@@ -1040,15 +1023,11 @@
             const gruposAgenda = [];
             
             listaOrdenada.forEach((reserva, index) => {
-                const ciudadActual = reserva.data.ciudad;
-                const clienteActual = reserva.data.cliente;
-                const direccionActual = reserva.data.direccion;
-                
                 if (index === 0) {
                     gruposAgenda.push({
-                        ciudad: ciudadActual,
-                        cliente: clienteActual,
-                        direccion: direccionActual,
+                        ciudad: reserva.data.ciudad,
+                        cliente: reserva.data.cliente,
+                        direccion: reserva.data.direccion,
                         inicio: reserva.data.fechaInicio,
                         fin: reserva.data.fechaFin,
                         reservaObj: reserva
@@ -1062,9 +1041,9 @@
                     ultimo.fin = reserva.data.fechaFin; 
                 } else {
                     gruposAgenda.push({
-                        ciudad: ciudadActual,
-                        cliente: clienteActual,
-                        direccion: direccionActual,
+                        ciudad: reserva.data.ciudad,
+                        cliente: reserva.data.cliente,
+                        direccion: reserva.data.direccion,
                         inicio: reserva.data.fechaInicio,
                         fin: reserva.data.fechaFin,
                         reservaObj: reserva
@@ -1114,11 +1093,9 @@
             if (diasHabiles.length === 0) return rangos;
             let rangoActual = { start: new Date(diasHabiles[0]), end: new Date(diasHabiles[0]) };
             for (let i = 1; i < diasHabiles.length; i++) {
-                let prev = diasHabiles[i-1];
-                let curr = diasHabiles[i];
-                let diff = (curr - prev) / (1000 * 60 * 60 * 24);
-                if (diff === 1) rangoActual.end = new Date(curr);
-                else { rangos.push(rangoActual); rangoActual = { start: new Date(curr), end: new Date(curr) }; }
+                let diff = (diasHabiles[i] - diasHabiles[i-1]) / (1000 * 60 * 60 * 24);
+                if (diff === 1) rangoActual.end = new Date(diasHabiles[i]);
+                else { rangos.push(rangoActual); rangoActual = { start: new Date(diasHabiles[i]), end: new Date(diasHabiles[i]) }; }
             }
             rangos.push(rangoActual);
             return rangos;
@@ -1127,11 +1104,8 @@
         function formatearFecha(fechaStr) {
             if(!fechaStr) return "";
             const partes = fechaStr.split('-');
-            const anio = partes[0];
-            const mesNum = parseInt(partes[1]) - 1; 
-            const dia = partes[2];
             const meses = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
-            return `${dia}/${meses[mesNum]}/${anio}`;
+            return `${partes[2]}/${meses[parseInt(partes[1]) - 1]}/${partes[0]}`;
         }
         
         async function cargarReservas() {
@@ -1146,10 +1120,8 @@
                 querySnapshot.forEach((documento) => {
                     const data = documento.data();
                     if (!data.fechaInicio) return; 
-                    let inicio = data.fechaInicio; 
-                    let fin = data.fechaFin;
-                    let startObj = new Date(inicio + 'T00:00:00');
-                    let endObj = new Date(fin + 'T00:00:00');
+                    let startObj = new Date(data.fechaInicio + 'T00:00:00');
+                    let endObj = new Date(data.fechaFin + 'T00:00:00');
 
                     globalReservas.push({
                         id: documento.id,
@@ -1160,21 +1132,18 @@
 
                     let fechaFinVisual = new Date(endObj);
                     fechaFinVisual.setDate(fechaFinVisual.getDate() + 1);
-                    let fechaFinFormateada = fechaFinVisual.toISOString().split('T')[0];
-                    let ciudadCorta = data.ciudad ? data.ciudad.split(",")[0] : "Sin ciudad"; 
-
                     calendar.addEvent({
                         id: documento.id,
-                        title: '📍 ' + ciudadCorta + ' - ' + data.cliente,
-                        start: inicio,
-                        end: fechaFinFormateada, 
+                        title: '📍 ' + (data.ciudad ? data.ciudad.split(",")[0] : "Sin ciudad") + ' - ' + data.cliente,
+                        start: data.fechaInicio,
+                        end: fechaFinVisual.toISOString().split('T')[0], 
                         allDay: true,
                         backgroundColor: '#FF5733',
                         borderColor: '#FF5733',
                         extendedProps: {
                             cliente: data.cliente,
                             direccion: data.direccion,
-                            fechaFinReal: fin,
+                            fechaFinReal: data.fechaFin,
                             ciudadCompleta: data.ciudad,
                             groupId: data.groupId 
                         }
@@ -1185,11 +1154,7 @@
         }
         
         function actualizarMapaYLista(centrarHoy = false) {
-            const listaDelAnio = globalReservas.filter(r => {
-                const yearInicio = r.start.getFullYear();
-                const yearFin = r.end.getFullYear();
-                return yearInicio === currentMapYear || yearFin === currentMapYear;
-            });
+            const listaDelAnio = globalReservas.filter(r => r.start.getFullYear() === currentMapYear || r.end.getFullYear() === currentMapYear);
 
             const statsByCity = {};
             listaDelAnio.forEach(r => {
@@ -1209,27 +1174,13 @@
             const hoy = new Date();
             hoy.setHours(0,0,0,0);
 
-            const pasadas = listaDelAnio.filter(r => r.end < hoy);
-            const futuras = listaDelAnio.filter(r => r.end >= hoy);
+            let listaVisualizar = [...listaDelAnio].sort((a, b) => a.start - b.start);
 
-            pasadas.sort((a, b) => b.end - a.end);
-            futuras.sort((a, b) => a.start - b.start);
-
-            let listaVisualizar = [...listaDelAnio];
-            listaVisualizar.sort((a, b) => a.start - b.start);
-
-            let reservaDestacada = listaVisualizar.find(r => r.start <= hoy && r.end >= hoy);
-            if (!reservaDestacada) { reservaDestacada = listaVisualizar.find(r => r.start > hoy); }
-            if (!reservaDestacada && listaVisualizar.length > 0) {
-                const soloPasadas = listaVisualizar.filter(r => r.end < hoy);
-                if (soloPasadas.length > 0) { reservaDestacada = soloPasadas[soloPasadas.length - 1]; }
-            }
+            let reservaDestacada = listaVisualizar.find(r => r.start <= hoy && r.end >= hoy) || listaVisualizar.find(r => r.start > hoy) || (listaVisualizar.length > 0 ? listaVisualizar[listaVisualizar.length - 1] : null);
 
             const rutasAgrupadas = [];
-            const obtenerCiudad = (r) => r.data.ciudad ? r.data.ciudad.split(",")[0].trim() : "Desconocida";
-
             listaVisualizar.forEach((reserva, index) => {
-                const ciudadActual = obtenerCiudad(reserva);
+                const ciudadActual = reserva.data.ciudad ? reserva.data.ciudad.split(",")[0].trim() : "Desconocida";
                 const reservaEsPasada = (reserva.end < hoy);
                 
                 if (index === 0) {
@@ -1250,9 +1201,7 @@
                 
                 if (ultimoGrupo.ciudad === ciudadActual && ultimoGrupo.esPasado === reservaEsPasada) {
                     ultimoGrupo.fin = reserva.data.fechaFin; 
-                    if (!ultimoGrupo.clientes.includes(reserva.data.cliente)) {
-                        ultimoGrupo.clientes.push(reserva.data.cliente); 
-                    }
+                    if (!ultimoGrupo.clientes.includes(reserva.data.cliente)) ultimoGrupo.clientes.push(reserva.data.cliente);
                     ultimoGrupo.reservasOriginales.push(reserva);
                 } else {
                     rutasAgrupadas.push({
@@ -1269,195 +1218,142 @@
             });
 
             const ulLista = document.getElementById('lista-rutas');
-            ulLista.innerHTML = ''; 
-
-            if (rutasAgrupadas.length === 0) {
-                ulLista.innerHTML = '<li style="padding:15px;color:#999;text-align:center;">Sin reservas este año.</li>';
-            }
+            ulLista.innerHTML = rutasAgrupadas.length === 0 ? '<li style="padding:15px;color:#999;text-align:center;">Sin reservas este año.</li>' : '';
 
             rutasAgrupadas.forEach(grupo => {
                 const li = document.createElement('li');
-                li.className = 'ruta-item';
-                if (grupo.esPasado) li.classList.add('pasada');
-                const contieneDestacada = grupo.reservasOriginales.includes(reservaDestacada);
-                if (contieneDestacada) li.classList.add('active');
-                const listaClientesHTML = grupo.clientes.map(c => `<span>• ${c}</span>`).join('');
-                
+                li.className = 'ruta-item' + (grupo.esPasado ? ' pasada' : '') + (grupo.reservasOriginales.includes(reservaDestacada) ? ' active' : '');
                 li.innerHTML = `
                     <div class="ruta-ciudad">${grupo.ciudad}</div>
                     <div class="ruta-fechas">📅 ${formatearFecha(grupo.inicio)} ➝ ${formatearFecha(grupo.fin)}</div>
-                    <div class="ruta-cliente">${listaClientesHTML}</div>
+                    <div class="ruta-cliente">${grupo.clientes.map(c => `<span>• ${c}</span>`).join('')}</div>
                 `;
                 li.onclick = () => { if (grupo.lat && grupo.lng) {
                     map.flyTo([grupo.lat, grupo.lng], 10);
                     setTimeout(() => {
-                        const markerEncontrado = markers.find(m => {
-                            const mLL = m.getLatLng();
-                            return Math.abs(mLL.lat - grupo.lat) < 0.0001 && Math.abs(mLL.lng - grupo.lng) < 0.0001;
-                        });
-                        if(markerEncontrado) markerEncontrado.openPopup();
+                        const marker = markers.find(m => Math.abs(m.getLatLng().lat - grupo.lat) < 0.0001);
+                        if(marker) marker.openPopup();
                     }, 300);
                 }};
                 ulLista.appendChild(li);
             });
 
-            let marcadorDestacadoRef = null;
-
             listaVisualizar.forEach(r => {
-                const d = r.data;
-                if (d.lat && d.lng) {
-                    let iconoUsar = blueIcon;
-                    let zIndex = 0;
-                    if (r === reservaDestacada) { iconoUsar = redIcon; zIndex = 1000; } 
-                    else if (r.end < hoy) { iconoUsar = greyIcon; }
-
-                    const marker = L.marker([d.lat, d.lng], { icon: iconoUsar, zIndexOffset: zIndex }).addTo(map);
-                    const ciudadCorta = d.ciudad ? d.ciudad.split(",")[0].trim() : "Sin ciudad";
-                    const stats = statsByCity[ciudadCorta] || { clients: new Set(), days: 0 };
-                    
-                    const popupContent = `
-                        <div style="text-align:center;">
-                            <h3 style="margin:0 0 5px 0; color:#333;">${ciudadCorta}</h3>
-                            <div style="font-size:0.9em; color:#666; margin-bottom:8px;">Resumen Anual (${currentMapYear})</div>
-                            <div style="text-align:left; font-size:0.95em;">
-                                👥 <b>Clientes únicos:</b> ${stats.clients.size}<br>
-                                ⏱️ <b>Días de servicio:</b> ${stats.days}
-                            </div>
-                        </div>
-                    `;
-                    marker.bindPopup(popupContent);
-                    if (r === reservaDestacada) marcadorDestacadoRef = marker;
+                if (r.data.lat && r.data.lng) {
+                    let icono = r === reservaDestacada ? redIcon : (r.end < hoy ? greyIcon : blueIcon);
+                    const marker = L.marker([r.data.lat, r.data.lng], { icon: icono, zIndexOffset: r === reservaDestacada ? 1000 : 0 }).addTo(map);
+                    const stats = statsByCity[r.data.ciudad ? r.data.ciudad.split(",")[0].trim() : "Desconocida"] || { clients: new Set(), days: 0 };
+                    marker.bindPopup(`<div style="text-align:center;"><h3 style="margin:0;">${r.data.ciudad.split(",")[0]}</h3>👥 <b>Clientes:</b> ${stats.clients.size}<br>⏱️ <b>Días:</b> ${stats.days}</div>`);
                     markers.push(marker);
                 }
             });
-
-            if (centrarHoy && marcadorDestacadoRef) {
-                const latLng = marcadorDestacadoRef.getLatLng();
-                map.flyTo(latLng, 10);
-                setTimeout(() => { marcadorDestacadoRef.openPopup(); }, 300);
-            }
         }
 
         window.borrarReserva = async function() {
             if(!eventoSeleccionadoID) return;
-            let mensaje = "¿Eliminar este segmento de reserva?";
-            let borrarTodoElGrupo = false;
-
-            if (grupoSeleccionadoID) {
-                if(confirm("Esta reserva es parte de un grupo dividido.\n\n¿Quieres borrar TODAS las partes?\n(Aceptar = Todo el grupo / Cancelar = Solo este día)")) {
-                    borrarTodoElGrupo = true;
-                }
-            } else { if(!confirm(mensaje)) return; }
-
+            let borrarTodoElGrupo = grupoSeleccionadoID ? confirm("¿Quieres borrar TODAS las partes de este grupo?") : confirm("¿Eliminar reserva?");
             try {
                 if (borrarTodoElGrupo && grupoSeleccionadoID) {
                     const q = query(collection(db, "reservas"), where("groupId", "==", grupoSeleccionadoID));
                     const querySnapshot = await getDocs(q);
                     querySnapshot.forEach((docSnap) => { deleteDoc(doc(db, "reservas", docSnap.id)); });
-                    alert("🗑️ Grupo eliminado.");
-                } else {
-                    await deleteDoc(doc(db, "reservas", eventoSeleccionadoID));
-                    alert("🗑️ Segmento eliminado.");
-                }
+                } else { await deleteDoc(doc(db, "reservas", eventoSeleccionadoID)); }
                 await cargarReservas(); 
                 cerrarModal('detalleModal');
-            } catch (e) { console.error(e); alert("Error borrando"); }
+            } catch (e) { console.error(e); }
         }
 
         window.exportarCalendario = async function() {
-            if(!confirm("¿Descargar archivo para Google Calendar con todas las reservas?")) return;
+            if(!confirm("¿Descargar archivo para Google Calendar?")) return;
             try {
-                const q = query(collection(db, "reservas"));
-                const querySnapshot = await getDocs(q);
-                let icsContent = "BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//Agenda TrackSIM//ES\nCALSCALE:GREGORIAN\nMETHOD:PUBLISH\n";
+                const querySnapshot = await getDocs(collection(db, "reservas"));
+                let ics = "BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//Agenda TrackSIM//ES\n";
                 querySnapshot.forEach((doc) => {
                     const data = doc.data();
-                    if (!data.fechaInicio || !data.fechaFin) return;
-                    const fechaInicio = data.fechaInicio.replace(/-/g, '');
-                    let finObj = new Date(data.fechaFin + 'T00:00:00');
-                    finObj.setDate(finObj.getDate() + 1); 
-                    const fechaFin = finObj.toISOString().split('T')[0].replace(/-/g, '');
-                    const titulo = `Servicio: ${data.cliente}`;
-                    const direccionTexto = data.direccion ? `\\nDirección: ${data.direccion}` : "";
-                    const descripcion = `Cliente: ${data.cliente}\\nCiudad: ${data.ciudad}${direccionTexto}`;
-                    const ubicacion = data.ciudad || "";
-                    const uid = doc.id; 
-                    icsContent += "BEGIN:VEVENT\n";
-                    icsContent += `UID:${uid}@tuagenda.com\n`;
-                    icsContent += `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, '').split('.')[0]}Z\n`;
-                    icsContent += `DTSTART;VALUE=DATE:${fechaInicio}\n`;
-                    icsContent += `DTEND;VALUE=DATE:${fechaFin}\n`;
-                    icsContent += `SUMMARY:${titulo}\n`;
-                    icsContent += `DESCRIPTION:${descripcion}\n`;
-                    icsContent += `LOCATION:${ubicacion}\n`;
-                    icsContent += "END:VEVENT\n";
+                    let finObj = new Date(data.fechaFin + 'T00:00:00'); finObj.setDate(finObj.getDate() + 1); 
+                    ics += `BEGIN:VEVENT\nUID:${doc.id}@tracksim.com\nDTSTART;VALUE=DATE:${data.fechaInicio.replace(/-/g, '')}\nDTEND;VALUE=DATE:${finObj.toISOString().split('T')[0].replace(/-/g, '')}\nSUMMARY:Servicio: ${data.cliente}\nLOCATION:${data.ciudad}\nEND:VEVENT\n`;
                 });
-                icsContent += "END:VCALENDAR";
-                const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
-                const link = document.createElement('a');
-                link.href = window.URL.createObjectURL(blob);
-                link.setAttribute('download', 'agenda_completa.ics');
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                alert("✅ Archivo descargado.\n\nSúbelo a Google Calendar (Configuración > Importar y exportar).");
-            } catch (e) { console.error(e); alert("Error al exportar datos."); }
+                ics += "END:VCALENDAR";
+                const blob = new Blob([ics], { type: 'text/calendar' });
+                const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = 'agenda.ics'; link.click();
+            } catch (e) { console.error(e); }
+        }
+
+        window.compartirApp = async function() {
+            const shareData = {
+                title: 'Agenda TrackSIM',
+                text: 'Consulta la gestión de itinerarios y servicios TrackSIM.',
+                url: window.location.href
+            };
+            try {
+                if (navigator.share) {
+                    await navigator.share(shareData);
+                } else {
+                    await navigator.clipboard.writeText(window.location.href);
+                    alert("🔗 Vínculo copiado al portapapeles.");
+                }
+            } catch (err) { console.log('Error al compartir:', err); }
+        }
+
+        window.verQR = function() {
+            const url = window.location.href;
+            const qrImg = document.getElementById('imagenQR');
+            qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(url)}`;
+            document.getElementById('qrModal').style.display = 'block';
         }
 
         window.abrirModalCrear = function(fecha) {
             document.getElementById('fechaInicio').value = fecha;
             document.getElementById('fechaFin').value = fecha;
             document.getElementById('ciudadInput').value = ""; 
-            // Resetear estado manual
             document.getElementById('ciudadInput').readOnly = true;
-            document.getElementById('ciudadInput').placeholder = "Se llenará al guardar...";
-            
             document.getElementById('nombreInput').value = "";
             document.getElementById('direccionInput').value = "";
             document.getElementById('latTemp').value = ""; 
             document.getElementById('lonTemp').value = "";
-            document.getElementById('listaSugerencias').style.display = 'none';
-            
             modoEdicion = false;
             idGrupoEdicion = null;
-            const btnGuardar = document.querySelector('#reservaModal .btn-save');
-            btnGuardar.textContent = "💾 Guardar Reserva";
-            btnGuardar.style.background = "#28a745";
-            btnGuardar.style.color = "white";
-            btnGuardar.disabled = false;
+            const btn = document.querySelector('#reservaModal .btn-save');
+            btn.textContent = "💾 Guardar Reserva";
+            btn.style.background = "#28a745";
+            document.getElementById('reservaModal').style.display = "block";
+        }
 
+        window.prepararEdicion = function() {
+            if (!eventoSeleccionadoID) return;
+            const evento = calendar.getEventById(eventoSeleccionadoID);
+            if (!evento) return;
+            document.getElementById('fechaInicio').value = evento.start.toISOString().split('T')[0];
+            document.getElementById('fechaFin').value = evento.extendedProps.fechaFinReal;
+            document.getElementById('nombreInput').value = evento.extendedProps.cliente;
+            document.getElementById('direccionInput').value = evento.extendedProps.direccion || "";
+            document.getElementById('ciudadInput').value = evento.extendedProps.ciudadCompleta || "";
+            modoEdicion = true;
+            idGrupoEdicion = evento.extendedProps.groupId;
+            const btnGuardar = document.querySelector('#reservaModal .btn-save');
+            btnGuardar.textContent = "📝 Actualizar Reserva";
+            btnGuardar.style.background = "#ffc107";
+            btnGuardar.style.color = "#333";
+            cerrarModal('detalleModal');
             document.getElementById('reservaModal').style.display = "block";
         }
 
         window.mostrarDetalles = function(evento) {
             eventoSeleccionadoID = evento.id; 
             grupoSeleccionadoID = evento.extendedProps.groupId || null;
-            const ciudadCompleta = evento.extendedProps.ciudadCompleta || evento.title;
-            document.getElementById('detCiudad').innerText = ciudadCompleta;
+            document.getElementById('detCiudad').innerText = evento.extendedProps.ciudadCompleta || evento.title;
             document.getElementById('detCliente').innerText = evento.extendedProps.cliente || "No especificado";
             document.getElementById('detDireccion').innerText = evento.extendedProps.direccion || "Sin dirección registrada";
-            
-            const inicio = evento.start.toISOString().split('T')[0];
-            const fin = evento.extendedProps.fechaFinReal;
-            document.getElementById('detFechas').innerText = `${inicio} al ${fin}`;
-            
-            const btnEliminar = document.getElementById('btnEliminar');
-            const btnEditar = document.getElementById('btnEditar');
-            if (esAdmin) {
-                btnEliminar.style.display = 'block';
-                btnEditar.style.display = 'block';
-            } else {
-                btnEliminar.style.display = 'none';
-                btnEditar.style.display = 'none';
-            }
+            document.getElementById('detFechas').innerText = `${evento.start.toISOString().split('T')[0]} al ${evento.extendedProps.fechaFinReal}`;
+            document.getElementById('btnEliminar').style.display = esAdmin ? 'block' : 'none';
+            document.getElementById('btnEditar').style.display = esAdmin ? 'block' : 'none';
             document.getElementById('detalleModal').style.display = "block";
         }
 
         window.cerrarModal = function(idModal) { document.getElementById(idModal).style.display = "none"; }
 
         window.iniciarSesion = function() {
-            const pass = prompt("Contraseña Admin:");
-            if (pass === CONTRASEÑA_ADMIN) {
+            if (prompt("Contraseña Admin:") === CONTRASEÑA_ADMIN) {
                 esAdmin = true;
                 document.getElementById('btnLogin').style.display = 'none';
                 document.getElementById('btnLogout').style.display = 'inline-block';
@@ -1479,6 +1375,13 @@
             document.getElementById('mobile-btn-logout').style.display = 'none';
             document.getElementById('mobile-admin-status').style.display = 'none';
             actualizarHeaderAdmin(); 
+        }
+
+        window.ajustarMapa = function() {
+            if (markers.length > 0) {
+                const group = new L.featureGroup(markers);
+                map.fitBounds(group.getBounds().pad(0.1));
+            }
         }
     </script>
 </body>
