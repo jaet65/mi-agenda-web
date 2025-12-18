@@ -57,7 +57,7 @@
             vertical-align: middle;
         }
         
-        /* BUSCADOR */
+        /* BUSCADOR GLOBAL */
         .search-container {
             position: relative;
             flex-grow: 1;
@@ -218,7 +218,7 @@
         }
         #map-view { width: 100%; height: 100%; display: none; flex-direction: row; }
         
-        /* NUEVA VISTA AGENDA PERSONALIZADA */
+        /* VISTA AGENDA CUSTOM */
         #agenda-view {
             width: 100%; height: 100%; background: #f0f2f5; display: none; overflow-y: auto; padding: 15px; box-sizing: border-box;
         }
@@ -233,7 +233,7 @@
             box-shadow: 0 2px 8px rgba(0,0,0,0.05);
             cursor: pointer;
             transition: transform 0.2s, box-shadow 0.2s;
-            border-left: 6px solid #007bff; /* Barra lateral más gruesa */
+            border-left: 6px solid #007bff;
             display: flex;
             flex-direction: column;
             gap: 5px;
@@ -241,7 +241,6 @@
         .agenda-card:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
         .agenda-card.pasada { border-left-color: #aaa; background: #fafafa; opacity: 0.8; }
         
-        /* Estilos reutilizados en Mapa y Agenda */
         .ruta-ciudad { font-weight: bold; font-size: 1.1rem; color: #2c3e50; }
         .ruta-fechas { font-size: 0.9rem; color: #007bff; font-weight: 600; margin-top: 5px; }
         .ruta-cliente { font-size: 0.95rem; color: #555; }
@@ -253,10 +252,10 @@
         }
         .ruta-item {
             padding: 15px; border-bottom: 1px solid #f0f0f0; cursor: pointer; transition: background 0.2s;
-            border-left: 4px solid transparent; /* Reserva espacio */
+            border-left: 4px solid transparent; 
         }
         .ruta-item:hover { background-color: #e3effd; }
-        .ruta-item.active { background-color: #e3effd; border-left: 6px solid #007bff; /* Barra más gruesa */ }
+        .ruta-item.active { background-color: #e3effd; border-left: 6px solid #007bff; }
         .ruta-item.pasada { background-color: #fafafa; }
         .ruta-item.pasada .ruta-ciudad { color: #999; }
 
@@ -282,6 +281,21 @@
         #logout-btn { display: none; }
         #admin-status { font-weight: bold; color: #28a745; display: none; margin-right: 10px; font-size: 0.8rem; }
 
+        /* SPINNER DE CARGA */
+        .loader {
+            border: 3px solid #f3f3f3;
+            border-radius: 50%;
+            border-top: 3px solid #3498db;
+            width: 14px;
+            height: 14px;
+            -webkit-animation: spin 1s linear infinite; 
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            vertical-align: middle;
+            margin-right: 8px;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
         /* Media Queries Móvil */
         @media (max-width: 768px) {
             .header h1 { font-size: 0; } 
@@ -303,11 +317,27 @@
         .form-group { margin-bottom: 15px; position: relative; } 
         label { display: block; margin-bottom: 5px; font-weight: 600; font-size: 0.9rem; }
         input { width: 100%; padding: 10px; box-sizing: border-box; border: 1px solid #ddd; border-radius: 6px; font-size: 1rem; }
+        input[readonly] { background-color: #e9ecef; color: #6c757d; cursor: not-allowed; } 
+        
         .btn-save { background: #28a745; color: white; border: none; padding: 12px; width: 100%; border-radius: 6px; margin-top: 5px; font-weight: bold;}
         .btn-delete { background: #dc3545; color: white; border: none; padding: 12px; width: 100%; border-radius: 6px; margin-top: 15px; font-weight: bold;}
-        .suggestions-list { position: absolute; background: white; border: 1px solid #ddd; border-top: none; width: 100%; max-height: 150px; overflow-y: auto; z-index: 1001; list-style: none; padding: 0; margin: 0; border-radius: 0 0 6px 6px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); display: none; }
+        
+        .suggestions-list { position: absolute; background: white; border: 1px solid #ddd; border-top: none; width: 100%; max-height: 150px; overflow-y: auto; z-index: 1001; list-style: none; padding: 0; margin: 0; border-radius: 0 0 6px 6px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); display: none; bottom: 100%; top: auto; border-radius: 6px 6px 0 0; border-top: 1px solid #ddd; border-bottom: none; }
         .suggestion-item { padding: 10px; cursor: pointer; border-bottom: 1px solid #eee; font-size: 0.9rem; }
         .suggestion-item:hover { background-color: #f0f2f5; }
+
+        /* Lista de Coincidencias en Modal */
+        .match-list { list-style: none; padding: 0; margin: 10px 0; max-height: 200px; overflow-y: auto; border: 1px solid #eee; border-radius: 6px; }
+        .match-item { padding: 10px; border-bottom: 1px solid #f0f0f0; cursor: pointer; }
+        .match-item:hover { background-color: #e3effd; }
+        .match-item strong { display: block; font-size: 0.95rem; color: #333; }
+        .match-item small { color: #666; font-size: 0.85rem; }
+
+        .modal-buttons-row { display: flex; flex-direction: column; gap: 8px; margin-top: 15px; }
+        .modal-buttons-row button { width: 100%; padding: 10px; border-radius: 5px; cursor: pointer; border: 1px solid #ccc; font-size: 0.9rem; }
+        .btn-omitir { background: #ffc107; color: #333; border: none; font-weight: 500; }
+        .btn-manual { background: #17a2b8; color: white; border: none; font-weight: 500; }
+        .btn-retry { background: #6c757d; color: white; border: none; }
 
         .fc-header-toolbar { font-size: 0.85em; }
         .fc-multimonth-header { background: #f8f9fa; padding: 5px 0; }
@@ -407,33 +437,49 @@
             <h2 style="margin-top:0;">Nueva Reserva</h2>
             
             <div class="form-group">
-                <label>Desde:</label>
+                <label>Desde: <span style="color:red">*</span></label>
                 <input type="date" id="fechaInicio">
             </div>
             <div class="form-group">
-                <label>Hasta:</label>
+                <label>Hasta: <span style="color:red">*</span></label>
                 <input type="date" id="fechaFin">
             </div>
             
-            <div class="form-group">
-                <label>Buscar Ciudad: <span style="color:red">*</span></label>
-                <input type="text" id="ciudadInput" placeholder="Escribe ciudad (ej. Monterrey)..." autocomplete="off">
-                <input type="hidden" id="latTemp">
-                <input type="hidden" id="lonTemp">
-                <ul id="listaSugerencias" class="suggestions-list"></ul>
-            </div>
-
             <div class="form-group">
                 <label>Cliente: <span style="color:red">*</span></label>
                 <input type="text" id="nombreInput" placeholder="Nombre completo">
             </div>
 
             <div class="form-group">
-                <label>Dirección Completa (Opcional):</label>
-                <input type="text" id="direccionInput" placeholder="Calle, número, colonia...">
+                <label>Dirección / Ubicación (Opcional):</label>
+                <input type="text" id="direccionInput" placeholder="Escribe dirección para buscar..." autocomplete="off">
+                <ul id="listaSugerencias" class="suggestions-list"></ul>
+            </div>
+
+            <div class="form-group">
+                <label>Ciudad (Opcional):</label>
+                <input type="text" id="ciudadInput" placeholder="Se llenará sola o escribe para buscar..." readonly>
+                <ul id="listaSugerenciasCiudad" class="suggestions-list" style="bottom:100%; top:auto; border-radius:6px 6px 0 0; border-bottom:none;"></ul>
+                <input type="hidden" id="latTemp">
+                <input type="hidden" id="lonTemp">
             </div>
 
             <button onclick="guardarReserva()" class="btn-save">💾 Guardar Reserva</button>
+        </div>
+    </div>
+
+    <div id="selectionModal" class="modal">
+        <div class="modal-content" style="text-align: center;">
+            <span class="close-x" onclick="cerrarModal('selectionModal')">×</span>
+            <h3 style="margin-top:0;">Selecciona una ubicación</h3>
+            <p style="font-size:0.9rem; color:#555; text-align:left;">Hemos encontrado estas coincidencias:</p>
+            <ul id="listaCoincidencias" class="match-list" style="text-align:left;"></ul>
+            
+            <div class="modal-buttons-row">
+                <button class="btn-omitir" onclick="usarSinCiudad()">🚫 Omitir (Sin Ciudad)</button>
+                <button class="btn-manual" onclick="habilitarManual()">✍️ Ingresar Manualmente</button>
+                <button class="btn-retry" onclick="reintentarDireccion()">↩ Reintentar Dirección</button>
+            </div>
         </div>
     </div>
 
@@ -555,7 +601,20 @@
                     dayGridMonth: { buttonText: 'Mes' },
                     multiMonthYear: { buttonText: 'Año', multiMonthMaxColumns: esMovil ? 1 : 4 }
                 },
-                dateClick: function(info) { if (esAdmin) abrirModalCrear(info.dateStr); },
+                dateClick: function(info) { 
+                    if (!esAdmin) return;
+                    
+                    const fechaClickeada = info.dateStr;
+                    const ocupado = globalReservas.some(r => {
+                        return fechaClickeada >= r.data.fechaInicio && fechaClickeada <= r.data.fechaFin;
+                    });
+
+                    if (ocupado) {
+                        alert("⚠️ Fecha no disponible. Ya existe una reserva.");
+                    } else {
+                        abrirModalCrear(info.dateStr); 
+                    }
+                },
                 eventClick: function(info) { mostrarDetalles(info.event); }
             });
             calendar.render();
@@ -568,7 +627,7 @@
             await cargarReservas(); 
         });
 
-        // --- BUSCADOR ---
+        // --- BUSCADOR GLOBAL ---
         const searchInput = document.getElementById('globalSearch');
         const resultsList = document.getElementById('globalSearchResults');
 
@@ -629,7 +688,6 @@
                     }, 500);
                 } else { alert("Esta reserva no tiene coordenadas."); }
             } else {
-                // Si estaba en la vista agenda custom, volver al calendario
                 if(document.getElementById('agenda-view').style.display === 'block') {
                     mostrarCalendario();
                 }
@@ -639,6 +697,109 @@
                 else calendar.select(reserva.start);
             }
         }
+
+        // --- AUTOCOMPLETE DE DIRECCIÓN ---
+        const inputDireccion = document.getElementById('direccionInput');
+        const listaSugerencias = document.getElementById('listaSugerencias');
+        let timeoutBuscador = null;
+
+        inputDireccion.addEventListener('input', function() {
+            const texto = this.value;
+            listaSugerencias.innerHTML = ''; 
+            listaSugerencias.style.display = 'none';
+            document.getElementById('latTemp').value = "";
+            document.getElementById('lonTemp').value = "";
+            
+            if(texto.length === 0) { document.getElementById('ciudadInput').value = ""; }
+            if (texto.length < 3) return; 
+
+            clearTimeout(timeoutBuscador);
+            timeoutBuscador = setTimeout(async () => {
+                try {
+                    const queryEncoded = encodeURIComponent(texto);
+                    let respuesta = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${queryEncoded}&limit=8&accept-language=es&countrycodes=mx&addressdetails=1`);
+                    let resultados = await respuesta.json();
+
+                    if (resultados.length === 0) {
+                        const cpMatch = texto.match(/\b\d{5}\b/); 
+                        if (cpMatch) {
+                            const cp = cpMatch[0];
+                            respuesta = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${cp}&limit=5&accept-language=es&countrycodes=mx&addressdetails=1`);
+                            const resultadosCP = await respuesta.json();
+                            resultados = resultadosCP.map(r => ({...r, display_name: `📍 (Por CP) ${r.display_name}`}));
+                        }
+                    }
+
+                    if (resultados.length > 0) {
+                        listaSugerencias.style.display = 'block';
+                        resultados.forEach(lugar => {
+                            const item = document.createElement('li');
+                            item.className = 'suggestion-item';
+                            item.innerHTML = `<strong>📍 ${lugar.name}</strong><br><small>${lugar.display_name}</small>`;
+                            
+                            item.onclick = function() {
+                                inputDireccion.value = lugar.display_name.replace("📍 (Por CP) ", "");
+                                document.getElementById('latTemp').value = lugar.lat;
+                                document.getElementById('lonTemp').value = lugar.lon;
+                                
+                                const addr = lugar.address;
+                                const ciudadExtraida = addr.city || addr.town || addr.village || addr.municipality || addr.county || addr.state || "";
+                                if(ciudadExtraida) document.getElementById('ciudadInput').value = ciudadExtraida;
+
+                                listaSugerencias.style.display = 'none'; 
+                            };
+                            listaSugerencias.appendChild(item);
+                        });
+                    }
+                } catch (e) { console.error(e); }
+            }, 500); 
+        });
+
+        // --- AUTOCOMPLETE CIUDAD (Solo México) ---
+        const inputCiudad = document.getElementById('ciudadInput');
+        const listaSugerenciasCiudad = document.getElementById('listaSugerenciasCiudad');
+        let timeoutCiudad = null;
+
+        inputCiudad.addEventListener('input', function() {
+            if(this.readOnly) return;
+            const texto = this.value;
+            listaSugerenciasCiudad.innerHTML = ''; 
+            listaSugerenciasCiudad.style.display = 'none';
+
+            if (texto.length < 3) return; 
+
+            clearTimeout(timeoutCiudad);
+            timeoutCiudad = setTimeout(async () => {
+                try {
+                    const respuesta = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(texto)}&limit=5&accept-language=es&countrycodes=mx&addressdetails=1`);
+                    const resultados = await respuesta.json();
+
+                    if (resultados.length > 0) {
+                        listaSugerenciasCiudad.style.display = 'block';
+                        resultados.forEach(lugar => {
+                            const item = document.createElement('li');
+                            item.className = 'suggestion-item';
+                            item.innerHTML = `<strong>🏙️ ${lugar.name}</strong><br><small>${lugar.address.state || ''}</small>`;
+                            
+                            item.onclick = function() {
+                                inputCiudad.value = lugar.name;
+                                if(!document.getElementById('latTemp').value) {
+                                    document.getElementById('latTemp').value = lugar.lat;
+                                    document.getElementById('lonTemp').value = lugar.lon;
+                                }
+                                listaSugerenciasCiudad.style.display = 'none'; 
+                            };
+                            listaSugerenciasCiudad.appendChild(item);
+                        });
+                    }
+                } catch (e) { console.error(e); }
+            }, 400); 
+        });
+
+        document.addEventListener('click', function(e) { 
+            if (e.target !== inputDireccion) listaSugerencias.style.display = 'none'; 
+            if (e.target !== inputCiudad) listaSugerenciasCiudad.style.display = 'none'; 
+        });
 
         // --- FUNCIONES COMPARTIR ---
         window.compartirApp = async function() {
@@ -666,6 +827,7 @@
             } else { map.setView([23.6345, -102.5528], 5); }
         }
 
+        // --- FUNCIONES DE ESTADISTICAS Y MAPA (RECUPERADAS) ---
         function calcularEstadisticas(reservasSnap) {
             statsPorAno = {}; 
             reservasSnap.forEach(doc => {
@@ -704,12 +866,11 @@
             actualizarMapaYLista(); 
         }
 
-        // --- SISTEMA DE VISTAS (MODIFICADO) ---
+        // --- SISTEMA DE VISTAS ---
         window.mostrarMapa = function() {
             document.getElementById('calendar-container').style.display = 'none';
             document.getElementById('agenda-view').style.display = 'none';
             document.getElementById('map-view').style.display = 'flex';
-            
             document.getElementById('btn-go-map').style.display = 'none'; 
             document.getElementById('mobile-btn-map').style.display = 'none';
             setTimeout(() => { map.invalidateSize(); }, 200);
@@ -719,7 +880,6 @@
             document.getElementById('map-view').style.display = 'none';
             document.getElementById('agenda-view').style.display = 'none';
             document.getElementById('calendar-container').style.display = 'block';
-            
             document.getElementById('btn-go-map').style.display = 'inline-block'; 
             document.getElementById('mobile-btn-map').style.display = 'block';
             calendar.updateSize(); 
@@ -729,13 +889,11 @@
             document.getElementById('calendar-container').style.display = 'none';
             document.getElementById('map-view').style.display = 'none';
             document.getElementById('agenda-view').style.display = 'block';
-            
             document.getElementById('btn-go-map').style.display = 'inline-block'; 
             renderizarAgendaCustom();
         }
 
         function renderizarAgendaCustom() {
-            // Lógica para agrupar reservas (similar a actualizarMapaYLista)
             let listaOrdenada = [...globalReservas];
             listaOrdenada.sort((a, b) => a.start - b.start);
 
@@ -750,7 +908,6 @@
             const hoy = new Date();
             hoy.setHours(0,0,0,0);
 
-            // Agrupar por Reserva (ID de grupo o continuidad)
             const gruposAgenda = [];
             
             listaOrdenada.forEach((reserva, index) => {
@@ -772,9 +929,8 @@
 
                 const ultimo = gruposAgenda[gruposAgenda.length - 1];
                 
-                // Si es el mismo grupo (mismo ID de grupo o misma info consecutiva)
                 if (ultimo.reservaObj.data.groupId === reserva.data.groupId) {
-                    ultimo.fin = reserva.data.fechaFin; // Extendemos la fecha fin
+                    ultimo.fin = reserva.data.fechaFin; 
                 } else {
                     gruposAgenda.push({
                         ciudad: ciudadActual,
@@ -800,11 +956,9 @@
                     <div class="ruta-fechas">📅 ${formatearFecha(grupo.inicio)} ➝ ${formatearFecha(grupo.fin)}</div>
                 `;
                 
-                // Al hacer clic, llevamos al calendario a esa fecha y mostramos detalle
                 card.onclick = () => {
                     mostrarCalendario();
                     calendar.gotoDate(grupo.inicio);
-                    // Buscar evento original para mostrar detalle
                     const evento = calendar.getEventById(grupo.reservaObj.id);
                     if(evento) mostrarDetalles(evento);
                 };
@@ -850,7 +1004,7 @@
             const meses = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
             return `${dia}/${meses[mesNum]}/${anio}`;
         }
-
+        
         async function cargarReservas() {
             try {
                 const q = query(collection(db, "reservas"));
@@ -900,7 +1054,7 @@
                 actualizarMapaYLista();
             } catch (error) { console.error(error); }
         }
-
+        
         function actualizarMapaYLista(centrarHoy = false) {
             const listaDelAnio = globalReservas.filter(r => {
                 const yearInicio = r.start.getFullYear();
@@ -1075,19 +1229,63 @@
             document.getElementById('reservaModal').style.display = 'block';
         }
 
+        // --- GUARDAR RESERVA (CON FLUJO INTELIGENTE) ---
         window.guardarReserva = async function() {
             const fechaInicioStr = document.getElementById('fechaInicio').value;
             const fechaFinStr = document.getElementById('fechaFin').value;
             const ciudad = document.getElementById('ciudadInput').value;
             const nombre = document.getElementById('nombreInput').value;
             const direccion = document.getElementById('direccionInput').value;
-            const lat = document.getElementById('latTemp').value;
-            const lon = document.getElementById('lonTemp').value;
+            let lat = document.getElementById('latTemp').value;
+            let lon = document.getElementById('lonTemp').value;
 
-            if(ciudad === "" || nombre === "" || fechaInicioStr === "") {
-                alert("⚠️ Llena todos los campos marcados con *"); return;
+            // 1. Validar Obligatorios (Solo Fechas y Cliente)
+            if(nombre === "" || fechaInicioStr === "") {
+                alert("⚠️ Faltan datos obligatorios: Cliente o Fechas."); return;
             }
 
+            // 2. Si falta Ciudad y hay Dirección, buscar coincidencias
+            if (ciudad === "" && direccion.length > 2) {
+                const btn = document.querySelector('#reservaModal .btn-save');
+                const textoOriginal = btn.innerHTML;
+                btn.innerHTML = `<span class="loader"></span> Buscando...`;
+                btn.disabled = true;
+                
+                try {
+                    const queryEncoded = encodeURIComponent(direccion);
+                    const resp = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${queryEncoded}&limit=5&accept-language=es&countrycodes=mx&addressdetails=1`);
+                    const resultados = await resp.json();
+                    
+                    if (resultados.length > 0) {
+                        mostrarSelectorUbicacion(resultados);
+                    } else {
+                        // Fallback CP
+                        const cpMatch = direccion.match(/\b\d{5}\b/);
+                        if(cpMatch) {
+                            const respCP = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${cpMatch[0]}&limit=5&accept-language=es&countrycodes=mx&addressdetails=1`);
+                            const resultadosCP = await respCP.json();
+                            if(resultadosCP.length > 0) {
+                                mostrarSelectorUbicacion(resultadosCP.map(r => ({...r, display_name: "📍 (Zona CP) " + r.display_name})));
+                            } else {
+                                mostrarModalSinResultados();
+                            }
+                        } else {
+                            mostrarModalSinResultados();
+                        }
+                    }
+                } catch(e) {
+                    console.error(e);
+                    alert("Error al buscar ubicación. Ingresa la ciudad manualmente.");
+                    habilitarManual();
+                }
+                btn.innerHTML = textoOriginal;
+                btn.disabled = false;
+                return; // Detener flujo
+            }
+
+            // 3. Procesar Guardado
+            let ciudadFinal = ciudad || "Sin Ciudad";
+            
             const rangos = calcularRangosSinDomingo(fechaInicioStr, fechaFinStr);
             if (rangos.length === 0) { alert("⚠️ No has seleccionado ningún día laborable."); return; }
             const grupoId = Date.now().toString(); 
@@ -1106,7 +1304,7 @@
                     await addDoc(collection(db, "reservas"), {
                         fechaInicio: fInicio,
                         fechaFin: fFin,
-                        ciudad: ciudad,
+                        ciudad: ciudadFinal,
                         cliente: nombre,
                         direccion: direccion,
                         lat: lat, lng: lon, groupId: grupoId, creado: new Date()
@@ -1118,10 +1316,57 @@
             } catch (e) { console.error(e); alert("Error al guardar"); }
         }
 
+        window.mostrarSelectorUbicacion = function(resultados) {
+            const lista = document.getElementById('listaCoincidencias');
+            lista.innerHTML = "";
+            resultados.forEach(lugar => {
+                const li = document.createElement('li');
+                li.className = 'match-item';
+                li.innerHTML = `<strong>${lugar.address.city || lugar.address.town || lugar.address.county || 'Ubicación'}</strong><small>${lugar.display_name}</small>`;
+                li.onclick = function() {
+                    const addr = lugar.address;
+                    const ciudad = addr.city || addr.town || addr.village || addr.municipality || addr.county || addr.state_district || "Desconocida";
+                    document.getElementById('ciudadInput').value = ciudad;
+                    document.getElementById('latTemp').value = lugar.lat;
+                    document.getElementById('lonTemp').value = lugar.lon;
+                    cerrarModal('selectionModal');
+                    guardarReserva(); 
+                };
+                lista.appendChild(li);
+            });
+            document.getElementById('selectionModal').style.display = 'block';
+        }
+        
+        window.mostrarModalSinResultados = function() {
+             const lista = document.getElementById('listaCoincidencias');
+             lista.innerHTML = "<li style='padding:15px; color:#666;'>No se encontraron coincidencias exactas.</li>";
+             document.getElementById('selectionModal').style.display = 'block';
+        }
+
+        window.habilitarManual = function() {
+            const inputC = document.getElementById('ciudadInput');
+            inputC.readOnly = false;
+            inputC.placeholder = "Escribe ciudad para buscar...";
+            inputC.focus();
+            cerrarModal('selectionModal');
+        }
+        
+        window.usarSinCiudad = function() {
+            document.getElementById('ciudadInput').value = "Sin Ciudad";
+            cerrarModal('selectionModal');
+            guardarReserva();
+        }
+
+        window.reintentarDireccion = function() {
+            cerrarModal('selectionModal');
+            document.getElementById('direccionInput').focus();
+        }
+
         window.borrarReserva = async function() {
             if(!eventoSeleccionadoID) return;
             let mensaje = "¿Eliminar este segmento de reserva?";
             let borrarTodoElGrupo = false;
+
             if (grupoSeleccionadoID) {
                 if(confirm("Esta reserva es parte de un grupo dividido.\n\n¿Quieres borrar TODAS las partes?\n(Aceptar = Todo el grupo / Cancelar = Solo este día)")) {
                     borrarTodoElGrupo = true;
@@ -1183,50 +1428,14 @@
             } catch (e) { console.error(e); alert("Error al exportar datos."); }
         }
 
-        const inputCiudad = document.getElementById('ciudadInput');
-        const listaSugerencias = document.getElementById('listaSugerencias');
-        let timeoutBuscador = null;
-
-        inputCiudad.addEventListener('input', function() {
-            const texto = this.value;
-            listaSugerencias.innerHTML = ''; 
-            listaSugerencias.style.display = 'none';
-            document.getElementById('latTemp').value = "";
-            document.getElementById('lonTemp').value = "";
-            if (texto.length < 3) return; 
-            clearTimeout(timeoutBuscador);
-            timeoutBuscador = setTimeout(async () => {
-                try {
-                    const respuesta = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${texto}&limit=8&accept-language=es&countrycodes=mx&addressdetails=1`);
-                    const resultados = await respuesta.json();
-                    if (resultados.length > 0) {
-                        const filtrados = resultados.filter(l => l.class === 'place' || l.class === 'boundary');
-                        if(filtrados.length > 0) {
-                            listaSugerencias.style.display = 'block';
-                            filtrados.forEach(lugar => {
-                                const item = document.createElement('li');
-                                item.className = 'suggestion-item';
-                                item.innerHTML = `<strong>🏙️ ${lugar.name}</strong><br><small>${lugar.display_name}</small>`;
-                                item.onclick = function() {
-                                    inputCiudad.value = lugar.name; 
-                                    document.getElementById('latTemp').value = lugar.lat;
-                                    document.getElementById('lonTemp').value = lugar.lon;
-                                    listaSugerencias.style.display = 'none'; 
-                                };
-                                listaSugerencias.appendChild(item);
-                            });
-                        }
-                    }
-                } catch (e) { console.error(e); }
-            }, 300); 
-        });
-
-        document.addEventListener('click', function(e) { if (e.target !== inputCiudad) listaSugerencias.style.display = 'none'; });
-
         window.abrirModalCrear = function(fecha) {
             document.getElementById('fechaInicio').value = fecha;
             document.getElementById('fechaFin').value = fecha;
             document.getElementById('ciudadInput').value = ""; 
+            // Resetear estado manual
+            document.getElementById('ciudadInput').readOnly = true;
+            document.getElementById('ciudadInput').placeholder = "Se llenará al guardar...";
+            
             document.getElementById('nombreInput').value = "";
             document.getElementById('direccionInput').value = "";
             document.getElementById('latTemp').value = ""; 
@@ -1239,6 +1448,7 @@
             btnGuardar.textContent = "💾 Guardar Reserva";
             btnGuardar.style.background = "#28a745";
             btnGuardar.style.color = "white";
+            btnGuardar.disabled = false;
 
             document.getElementById('reservaModal').style.display = "block";
         }
@@ -1250,6 +1460,7 @@
             document.getElementById('detCiudad').innerText = ciudadCompleta;
             document.getElementById('detCliente').innerText = evento.extendedProps.cliente || "No especificado";
             document.getElementById('detDireccion').innerText = evento.extendedProps.direccion || "Sin dirección registrada";
+            
             const inicio = evento.start.toISOString().split('T')[0];
             const fin = evento.extendedProps.fechaFinReal;
             document.getElementById('detFechas').innerText = `${inicio} al ${fin}`;
