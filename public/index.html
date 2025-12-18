@@ -111,6 +111,40 @@
         .header-controls { display: flex; align-items: center; gap: 10px; }
         .desktop-buttons { display: flex; align-items: center; gap: 10px; }
 
+        /* MENÚ DESPLEGABLE COMPARTIR (Escritorio) */
+        .dropdown-share {
+            position: relative;
+            display: inline-block;
+        }
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            right: 0;
+            background-color: white;
+            min-width: 180px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+            border-radius: 8px;
+            z-index: 1600;
+            overflow: hidden;
+            border: 1px solid #eee;
+        }
+        .dropdown-content button {
+            color: #333;
+            padding: 12px 16px;
+            text-decoration: none;
+            display: block;
+            background: none;
+            border: none;
+            width: 100%;
+            text-align: left;
+            cursor: pointer;
+            font-size: 0.9rem;
+            border-bottom: 1px solid #f9f9f9;
+        }
+        .dropdown-content button:last-child { border-bottom: none; }
+        .dropdown-content button:hover { background-color: #f1f1f1; }
+        .dropdown-share:hover .dropdown-content { display: block; }
+
         /* HAMBURGUESA */
         .hamburger-btn {
             display: none; 
@@ -128,7 +162,7 @@
             position: absolute;
             top: 100%;
             right: 0;
-            width: 200px;
+            width: 220px;
             background: white;
             box-shadow: 0 4px 10px rgba(0,0,0,0.15);
             border-radius: 0 0 0 8px;
@@ -139,16 +173,24 @@
         .mobile-menu.open { display: flex; }
         .mobile-menu button {
             width: 100%;
-            margin-bottom: 8px;
+            margin-bottom: 5px;
             text-align: left;
-            padding: 10px;
+            padding: 12px;
             background: #f8f9fa;
             border: 1px solid #eee;
-            border-radius: 5px;
+            border-radius: 6px;
             cursor: pointer;
             font-size: 0.95rem;
         }
         .mobile-menu button:hover { background: #e9ecef; }
+        
+        .mobile-section-title {
+            font-size: 0.75rem;
+            color: #999;
+            text-transform: uppercase;
+            margin: 10px 0 5px 5px;
+            font-weight: bold;
+        }
 
         #admin-stats {
             display: none; 
@@ -170,219 +212,104 @@
             width: 100%;
         }
 
-        /* VISTA CALENDARIO */
+        /* VISTAS */
         #calendar-container { 
-            width: 100%;
-            height: 100%;
-            background: white; 
-            padding: 10px; 
-            box-sizing: border-box;
-            overflow-y: auto;
-            display: block; 
+            width: 100%; height: 100%; background: white; padding: 10px; box-sizing: border-box; overflow-y: auto; display: block; 
         }
-
-        /* VISTA MAPA */
-        #map-view {
-            width: 100%;
-            height: 100%;
-            display: none; 
-            flex-direction: row; 
+        #map-view { width: 100%; height: 100%; display: none; flex-direction: row; }
+        
+        /* NUEVA VISTA AGENDA PERSONALIZADA */
+        #agenda-view {
+            width: 100%; height: 100%; background: #f0f2f5; display: none; overflow-y: auto; padding: 15px; box-sizing: border-box;
         }
-
-        #map-sidebar {
-            width: 300px;
+        .agenda-list {
+            max-width: 800px; margin: 0 auto; list-style: none; padding: 0;
+        }
+        .agenda-card {
             background: white;
-            border-right: 1px solid #ddd;
-            overflow-y: auto;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            border-left: 6px solid #007bff; /* Barra lateral más gruesa */
             display: flex;
             flex-direction: column;
-            flex-shrink: 0;
-            z-index: 10;
+            gap: 5px;
         }
+        .agenda-card:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        .agenda-card.pasada { border-left-color: #aaa; background: #fafafa; opacity: 0.8; }
+        
+        /* Estilos reutilizados en Mapa y Agenda */
+        .ruta-ciudad { font-weight: bold; font-size: 1.1rem; color: #2c3e50; }
+        .ruta-fechas { font-size: 0.9rem; color: #007bff; font-weight: 600; margin-top: 5px; }
+        .ruta-cliente { font-size: 0.95rem; color: #555; }
+        .ruta-cliente small { display: block; color: #777; font-size: 0.85rem; margin-top: 2px; }
 
-        .map-year-controls {
-            display: flex;
-            justify-content: center; 
-            gap: 10px;
-            align-items: center;
-            padding: 10px 15px;
-            background: #f8f9fa;
-            border-bottom: 1px solid #ddd;
+        /* Estilos Mapa Sidebar */
+        #map-sidebar {
+            width: 300px; background: white; border-right: 1px solid #ddd; overflow-y: auto; display: flex; flex-direction: column; flex-shrink: 0; z-index: 10;
         }
-        .map-year-btn {
-            background: white;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            cursor: pointer;
-            padding: 4px 10px;
-            font-weight: bold;
-            color: #555;
-            transition: all 0.2s;
-        }
-        .map-year-btn:hover { background: #e2e6ea; }
-        #map-year-display { font-weight: bold; font-size: 1.1rem; color: #2c3e50; min-width: 50px; text-align: center; }
-
-        #map-sidebar h3 {
-            padding: 10px 15px;
-            margin: 0;
-            background: #fff;
-            border-bottom: 1px solid #eee;
-            font-size: 0.9rem;
-            color: #7f8c8d;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        #lista-rutas {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-        }
-
         .ruta-item {
-            padding: 15px;
-            border-bottom: 1px solid #f0f0f0;
-            cursor: pointer;
-            transition: background 0.2s;
+            padding: 15px; border-bottom: 1px solid #f0f0f0; cursor: pointer; transition: background 0.2s;
+            border-left: 4px solid transparent; /* Reserva espacio */
         }
         .ruta-item:hover { background-color: #e3effd; }
-        .ruta-item.active { background-color: #e3effd; border-left: 4px solid #007bff; }
-        
-        .ruta-ciudad { font-weight: bold; font-size: 1rem; color: #333; }
-        .ruta-fechas { font-size: 0.85rem; color: #007bff; margin-top: 4px; font-weight: 500; }
-        .ruta-cliente { font-size: 0.8rem; color: #666; margin-top: 4px; line-height: 1.4; }
-        .ruta-cliente span { display: block; }
-
+        .ruta-item.active { background-color: #e3effd; border-left: 6px solid #007bff; /* Barra más gruesa */ }
         .ruta-item.pasada { background-color: #fafafa; }
         .ruta-item.pasada .ruta-ciudad { color: #999; }
-        .ruta-item.pasada .ruta-fechas { color: #aaa; }
-        .ruta-item.pasada .ruta-cliente { color: #ccc; }
-        .ruta-item.pasada:hover { background-color: #f0f0f0; }
 
-        #map-canvas {
-            flex-grow: 1;
-            position: relative;
-            background: #e5e5e5;
-            height: 100%; /* Asegurar altura completa */
-            width: 100%;
-        }
+        .map-year-controls { display: flex; justify-content: center; gap: 10px; align-items: center; padding: 10px 15px; background: #f8f9fa; border-bottom: 1px solid #ddd; }
+        .map-year-btn { background: white; border: 1px solid #ccc; border-radius: 4px; cursor: pointer; padding: 4px 10px; font-weight: bold; color: #555; }
+        #map-year-display { font-weight: bold; font-size: 1.1rem; color: #2c3e50; min-width: 50px; text-align: center; }
+        #map-sidebar h3 { padding: 10px 15px; margin: 0; background: #fff; border-bottom: 1px solid #eee; font-size: 0.9rem; color: #7f8c8d; text-transform: uppercase; letter-spacing: 1px; }
+        #lista-rutas { list-style: none; padding: 0; margin: 0; }
+
+        #map-canvas { flex-grow: 1; position: relative; background: #e5e5e5; height: 100%; width: 100%; }
 
         /* Botones Flotantes */
-        #btn-back-calendar {
-            position: absolute;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 1000;
-            background-color: white;
-            color: #333;
-            border: 1px solid #ccc;
-            padding: 8px 16px;
-            border-radius: 30px;
-            font-weight: bold;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
-            cursor: pointer;
-            font-size: 0.9rem;
-        }
-        #btn-back-calendar:hover { background-color: #f8f9fa; }
-
-        #btn-fit-map {
-            position: absolute;
-            top: 20px;
-            right: 20px; 
-            z-index: 1000;
-            background-color: white;
-            color: #333;
-            border: 1px solid #ccc;
-            padding: 8px 16px;
-            border-radius: 30px;
-            font-weight: bold;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
-            cursor: pointer;
-            font-size: 0.9rem;
-        }
-        #btn-fit-map:hover { background-color: #f8f9fa; }
+        #btn-back-calendar { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); z-index: 1000; background-color: white; color: #333; border: 1px solid #ccc; padding: 8px 16px; border-radius: 30px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.2); cursor: pointer; font-size: 0.9rem; }
+        #btn-fit-map { position: absolute; top: 20px; right: 20px; z-index: 1000; background-color: white; color: #333; border: 1px solid #ccc; padding: 8px 16px; border-radius: 30px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.2); cursor: pointer; font-size: 0.9rem; }
 
         /* Estilos Comunes */
         .btn-action { background: #007bff; color: white; padding: 6px 12px; border-radius: 5px; cursor: pointer; border: none; font-size: 0.9rem; }
         .btn-secondary { background: #6c757d; color: white; padding: 6px 12px; border-radius: 5px; cursor: pointer; border: none; font-size: 0.9rem; }
+        .btn-share { background: #f39c12; color: white; padding: 6px 12px; border-radius: 5px; cursor: pointer; border: none; font-size: 0.9rem; font-weight: 500; }
         .btn-map-toggle { background: #28a745; margin-right: 5px; } 
+        .btn-edit { background: #ffc107; color: #333; padding: 12px; width: 100%; border-radius: 6px; margin-top: 10px; font-weight: bold; border: none; cursor: pointer; }
+        
         #logout-btn { display: none; }
         #admin-status { font-weight: bold; color: #28a745; display: none; margin-right: 10px; font-size: 0.8rem; }
 
         /* Media Queries Móvil */
         @media (max-width: 768px) {
-            .header h1 { font-size: 0; } /* Ocultar texto título en móvil */
+            .header h1 { font-size: 0; } 
             .header h1 .header-gif { margin-right: 0; }
             .search-container { margin: 0 10px; }
-            
             .desktop-buttons { display: none; } 
             .hamburger-btn { display: block; }
-            
             #map-view { flex-direction: column-reverse; } 
             #map-sidebar { width: 100%; height: 30%; }
             #map-canvas { height: 70%; }
-
-            #btn-back-calendar {
-                top: 10px;
-                padding: 6px 12px;
-                font-size: 0.85rem;
-            }
-            #btn-fit-map {
-                top: auto; 
-                bottom: 20px; 
-                right: 15px;
-                padding: 10px;
-                border-radius: 50%; 
-                width: 45px;
-                height: 45px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-size: 1.2rem;
-                box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-            }
+            #btn-back-calendar { top: 10px; }
+            #btn-fit-map { top: auto; bottom: 20px; right: 15px; padding: 10px; border-radius: 50%; width: 45px; height: 45px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
         }
 
         /* Modales */
         .modal { display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); backdrop-filter: blur(2px); }
         .modal-content { background-color: white; margin: 5% auto; padding: 20px; width: 90%; max-width: 350px; border-radius: 12px; position: relative; max-height: 90vh; overflow-y: auto;}
         .close-x { float: right; font-size: 20px; cursor: pointer; }
-        
         .form-group { margin-bottom: 15px; position: relative; } 
         label { display: block; margin-bottom: 5px; font-weight: 600; font-size: 0.9rem; }
         input { width: 100%; padding: 10px; box-sizing: border-box; border: 1px solid #ddd; border-radius: 6px; font-size: 1rem; }
-        
         .btn-save { background: #28a745; color: white; border: none; padding: 12px; width: 100%; border-radius: 6px; margin-top: 5px; font-weight: bold;}
         .btn-delete { background: #dc3545; color: white; border: none; padding: 12px; width: 100%; border-radius: 6px; margin-top: 15px; font-weight: bold;}
-        
-        .suggestions-list {
-            position: absolute;
-            background: white;
-            border: 1px solid #ddd;
-            border-top: none;
-            width: 100%;
-            max-height: 150px;
-            overflow-y: auto;
-            z-index: 1001;
-            list-style: none;
-            padding: 0;
-            margin: 0;
-            border-radius: 0 0 6px 6px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            display: none; 
-        }
-        .suggestion-item {
-            padding: 10px;
-            cursor: pointer;
-            border-bottom: 1px solid #eee;
-            font-size: 0.9rem;
-        }
+        .suggestions-list { position: absolute; background: white; border: 1px solid #ddd; border-top: none; width: 100%; max-height: 150px; overflow-y: auto; z-index: 1001; list-style: none; padding: 0; margin: 0; border-radius: 0 0 6px 6px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); display: none; }
+        .suggestion-item { padding: 10px; cursor: pointer; border-bottom: 1px solid #eee; font-size: 0.9rem; }
         .suggestion-item:hover { background-color: #f0f2f5; }
 
         .fc-header-toolbar { font-size: 0.85em; }
-        .fc-list-event-graphic { display: none !important; }
-        .fc-list-event-time { display: none !important; }
         .fc-multimonth-header { background: #f8f9fa; padding: 5px 0; }
         .fc-multimonth-title { font-size: 1em; font-weight: bold; }
     </style>
@@ -404,9 +331,15 @@
             <span id="admin-stats"></span>
             
             <div class="desktop-buttons">
-                <button class="btn-secondary" onclick="compartirApp()">🔗</button>
-                <button class="btn-secondary" onclick="verQR()">📱</button>
-                <button id="btn-export" class="btn-action" style="background:#f39c12;" onclick="exportarCalendario()">📤</button>
+                <div class="dropdown-share">
+                    <button class="btn-share">📤 Compartir ▼</button>
+                    <div class="dropdown-content">
+                        <button onclick="compartirApp()">🔗 Copiar Vínculo</button>
+                        <button onclick="verQR()">📱 Ver Código QR</button>
+                        <button onclick="exportarCalendario()">📅 Exportar Google Cal</button>
+                    </div>
+                </div>
+
                 <button id="btn-go-map" class="btn-action btn-map-toggle" onclick="mostrarMapa()">🗺️ Mapa</button>
                 <span id="admin-status">🟢 Admin</span>
                 <button id="btnLogin" class="btn-action" onclick="iniciarSesion()">🔒</button>
@@ -417,12 +350,16 @@
         </div>
 
         <div id="mobile-menu" class="mobile-menu">
-            <button onclick="compartirApp(); toggleMenu()">🔗 Compartir App</button>
+            <div class="mobile-section-title">Compartir</div>
+            <button onclick="compartirApp(); toggleMenu()">🔗 Copiar Vínculo</button>
             <button onclick="verQR(); toggleMenu()">📱 Ver Código QR</button>
+            <button id="mobile-btn-export" onclick="exportarCalendario(); toggleMenu()">📅 Exportar Calendario</button>
+            
+            <div class="mobile-section-title">Navegación</div>
+            <button id="mobile-btn-map" onclick="mostrarMapa(); toggleMenu()">🗺️ Mapa Global</button>
+            
             <hr style="width:100%; border:0; border-top:1px solid #eee; margin:5px 0;">
             
-            <button id="mobile-btn-export" onclick="exportarCalendario(); toggleMenu()">📤 Exportar Calendario</button>
-            <button id="mobile-btn-map" onclick="mostrarMapa(); toggleMenu()">🗺️ Mapa Global</button>
             <span id="mobile-admin-status" style="display:none; padding:10px; font-weight:bold; color:#28a745;">🟢 Admin</span>
             <button id="mobile-btn-login" onclick="iniciarSesion(); toggleMenu()">🔒 Entrar</button>
             <button id="mobile-btn-logout" style="display:none;" onclick="cerrarSesion(); toggleMenu()">Salir</button>
@@ -430,9 +367,19 @@
     </div>
 
     <div id="main-container">
+        
         <div id="calendar-container">
             <div id='calendar'></div>
         </div>
+
+        <div id="agenda-view">
+            <div style="text-align:center; margin-bottom:20px;">
+                <h2 style="color:#2c3e50; margin-bottom:5px;">Agenda de Servicios</h2>
+                <button class="btn-secondary" onclick="mostrarCalendario()">⬅ Volver a Calendario</button>
+            </div>
+            <ul id="lista-agenda-custom" class="agenda-list"></ul>
+        </div>
+
         <div id="map-view" style="display:none;">
             <div id="map-sidebar">
                 <div class="map-year-controls">
@@ -447,7 +394,6 @@
                 <button id="btn-back-calendar" onclick="mostrarCalendario()">
                     📅 Volver al Calendario
                 </button>
-                
                 <button id="btn-fit-map" onclick="ajustarMapa()">
                     🌍
                 </button>
@@ -470,7 +416,7 @@
             </div>
             
             <div class="form-group">
-                <label>Buscar Ciudad:</label>
+                <label>Buscar Ciudad: <span style="color:red">*</span></label>
                 <input type="text" id="ciudadInput" placeholder="Escribe ciudad (ej. Monterrey)..." autocomplete="off">
                 <input type="hidden" id="latTemp">
                 <input type="hidden" id="lonTemp">
@@ -478,8 +424,13 @@
             </div>
 
             <div class="form-group">
-                <label>Cliente:</label>
+                <label>Cliente: <span style="color:red">*</span></label>
                 <input type="text" id="nombreInput" placeholder="Nombre completo">
+            </div>
+
+            <div class="form-group">
+                <label>Dirección Completa (Opcional):</label>
+                <input type="text" id="direccionInput" placeholder="Calle, número, colonia...">
             </div>
 
             <button onclick="guardarReserva()" class="btn-save">💾 Guardar Reserva</button>
@@ -501,7 +452,10 @@
             <h2 style="margin-top:0;">Detalles</h2>
             <p><strong>Cliente:</strong> <span id="detCliente"></span></p>
             <p><strong>Ciudad:</strong> <span id="detCiudad"></span></p>
+            <p><strong>Dirección:</strong> <span id="detDireccion"></span></p>
             <p><strong>Fechas:</strong> <span id="detFechas"></span></p>
+            
+            <button id="btnEditar" class="btn-edit" style="display:none;" onclick="prepararEdicion()">✏️ Editar</button>
             <button id="btnEliminar" class="btn-delete" style="display:none;" onclick="borrarReserva()">🗑️ Eliminar</button>
         </div>
     </div>
@@ -540,6 +494,9 @@
         let eventoSeleccionadoID = null;
         let grupoSeleccionadoID = null; 
         let statsPorAno = {}; 
+        
+        let modoEdicion = false;
+        let idGrupoEdicion = null;
         
         let globalReservas = []; 
         let currentMapYear = new Date().getFullYear(); 
@@ -582,24 +539,21 @@
                 initialView: 'multiMonthYear', 
                 locale: 'es',
                 customButtons: {
-                    btnHoy: {
-                        text: 'Hoy',
-                        click: function() {
-                            calendar.changeView('dayGridMonth');
-                            calendar.today();
-                        }
+                    btnHoy: { text: 'Hoy', click: function() { calendar.changeView('dayGridMonth'); calendar.today(); } },
+                    btnCustomAgenda: {
+                        text: 'Agenda',
+                        click: function() { mostrarVistaAgenda(); }
                     }
                 },
-                buttonText: { month: 'Mes', year:  'Año', list:  'Agenda' },
+                buttonText: { month: 'Mes', year:  'Año' },
                 headerToolbar: {
                     left: 'prev,next btnHoy', 
                     center: 'title',
-                    right: 'dayGridMonth,multiMonthYear,listYear' 
+                    right: 'dayGridMonth,multiMonthYear btnCustomAgenda' 
                 },
                 views: {
                     dayGridMonth: { buttonText: 'Mes' },
-                    multiMonthYear: { buttonText: 'Año', multiMonthMaxColumns: esMovil ? 1 : 4 },
-                    listYear: { buttonText: 'Agenda', noEventsText: 'No hay reservas' }
+                    multiMonthYear: { buttonText: 'Año', multiMonthMaxColumns: esMovil ? 1 : 4 }
                 },
                 dateClick: function(info) { if (esAdmin) abrirModalCrear(info.dateStr); },
                 eventClick: function(info) { mostrarDetalles(info.event); }
@@ -607,9 +561,7 @@
             calendar.render();
 
             map = L.map('map-canvas').setView([23.6345, -102.5528], 5);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '&copy; OpenStreetMap contributors'
-            }).addTo(map);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
 
             document.getElementById('map-year-display').textContent = currentMapYear;
 
@@ -623,23 +575,15 @@
         searchInput.addEventListener('input', function() {
             const texto = this.value.toLowerCase().trim();
             resultsList.innerHTML = '';
-            
-            if (texto.length < 2) {
-                resultsList.style.display = 'none';
-                return;
-            }
+            if (texto.length < 2) { resultsList.style.display = 'none'; return; }
 
             const encontrados = globalReservas.filter(r => {
                 const cliente = (r.data.cliente || "").toLowerCase();
                 const ciudad = (r.data.ciudad || "").toLowerCase();
                 return cliente.includes(texto) || ciudad.includes(texto);
-            }).slice(0, 8); 
+            }).sort((a, b) => a.start - b.start).slice(0, 8); 
 
-            if (encontrados.length === 0) {
-                resultsList.style.display = 'none';
-                return;
-            }
-
+            if (encontrados.length === 0) { resultsList.style.display = 'none'; return; }
             resultsList.style.display = 'block';
 
             encontrados.forEach(reserva => {
@@ -659,30 +603,36 @@
         });
 
         document.addEventListener('click', (e) => {
-            if (!searchInput.contains(e.target) && !resultsList.contains(e.target)) {
-                resultsList.style.display = 'none';
-            }
+            if (!searchInput.contains(e.target) && !resultsList.contains(e.target)) { resultsList.style.display = 'none'; }
         });
 
         window.seleccionarResultado = function(reserva) {
             resultsList.style.display = 'none';
             searchInput.value = ''; 
-
             const mapaVisible = document.getElementById('map-view').style.display !== 'none';
 
             if (mapaVisible) {
+                const yearReserva = reserva.start.getFullYear();
+                if (yearReserva !== currentMapYear) {
+                    currentMapYear = yearReserva;
+                    document.getElementById('map-year-display').textContent = currentMapYear;
+                    actualizarMapaYLista(); 
+                }
                 if (reserva.data.lat && reserva.data.lng) {
                     map.flyTo([reserva.data.lat, reserva.data.lng], 12);
                     setTimeout(() => {
                         const marker = markers.find(m => {
                             const mLL = m.getLatLng();
-                            return Math.abs(mLL.lat - reserva.data.lat) < 0.0001 && 
-                                   Math.abs(mLL.lng - reserva.data.lng) < 0.0001;
+                            return Math.abs(mLL.lat - reserva.data.lat) < 0.0001 && Math.abs(mLL.lng - reserva.data.lng) < 0.0001;
                         });
                         if (marker) marker.openPopup();
                     }, 500);
                 } else { alert("Esta reserva no tiene coordenadas."); }
             } else {
+                // Si estaba en la vista agenda custom, volver al calendario
+                if(document.getElementById('agenda-view').style.display === 'block') {
+                    mostrarCalendario();
+                }
                 calendar.gotoDate(reserva.start);
                 const eventoCal = calendar.getEventById(reserva.id);
                 if (eventoCal) mostrarDetalles(eventoCal);
@@ -693,14 +643,8 @@
         // --- FUNCIONES COMPARTIR ---
         window.compartirApp = async function() {
             const datos = { title: 'Agenda TrackSIM', text: 'Accede a la agenda:', url: window.location.href };
-            if (navigator.share) {
-                try { await navigator.share(datos); } catch (e) { console.log(e); }
-            } else {
-                try {
-                    await navigator.clipboard.writeText(window.location.href);
-                    alert("¡Enlace copiado!");
-                } catch (e) { prompt("Copia este enlace:", window.location.href); }
-            }
+            if (navigator.share) { try { await navigator.share(datos); } catch (e) {} } 
+            else { try { await navigator.clipboard.writeText(window.location.href); alert("¡Enlace copiado!"); } catch (e) { prompt("Copia:", window.location.href); } }
         }
 
         window.verQR = function() {
@@ -719,9 +663,7 @@
             if (markers.length > 0) {
                 const group = new L.featureGroup(markers);
                 map.fitBounds(group.getBounds(), { padding: [50, 50] });
-            } else {
-                map.setView([23.6345, -102.5528], 5); 
-            }
+            } else { map.setView([23.6345, -102.5528], 5); }
         }
 
         function calcularEstadisticas(reservasSnap) {
@@ -762,24 +704,113 @@
             actualizarMapaYLista(); 
         }
 
+        // --- SISTEMA DE VISTAS (MODIFICADO) ---
         window.mostrarMapa = function() {
             document.getElementById('calendar-container').style.display = 'none';
+            document.getElementById('agenda-view').style.display = 'none';
             document.getElementById('map-view').style.display = 'flex';
             
             document.getElementById('btn-go-map').style.display = 'none'; 
             document.getElementById('mobile-btn-map').style.display = 'none';
-            
             setTimeout(() => { map.invalidateSize(); }, 200);
         }
 
         window.mostrarCalendario = function() {
             document.getElementById('map-view').style.display = 'none';
+            document.getElementById('agenda-view').style.display = 'none';
             document.getElementById('calendar-container').style.display = 'block';
             
             document.getElementById('btn-go-map').style.display = 'inline-block'; 
             document.getElementById('mobile-btn-map').style.display = 'block';
-            
             calendar.updateSize(); 
+        }
+
+        window.mostrarVistaAgenda = function() {
+            document.getElementById('calendar-container').style.display = 'none';
+            document.getElementById('map-view').style.display = 'none';
+            document.getElementById('agenda-view').style.display = 'block';
+            
+            document.getElementById('btn-go-map').style.display = 'inline-block'; 
+            renderizarAgendaCustom();
+        }
+
+        function renderizarAgendaCustom() {
+            // Lógica para agrupar reservas (similar a actualizarMapaYLista)
+            let listaOrdenada = [...globalReservas];
+            listaOrdenada.sort((a, b) => a.start - b.start);
+
+            const agendaContainer = document.getElementById('lista-agenda-custom');
+            agendaContainer.innerHTML = '';
+
+            if (listaOrdenada.length === 0) {
+                agendaContainer.innerHTML = '<li style="text-align:center; padding:20px; color:#777;">No hay reservas registradas.</li>';
+                return;
+            }
+
+            const hoy = new Date();
+            hoy.setHours(0,0,0,0);
+
+            // Agrupar por Reserva (ID de grupo o continuidad)
+            const gruposAgenda = [];
+            
+            listaOrdenada.forEach((reserva, index) => {
+                const ciudadActual = reserva.data.ciudad;
+                const clienteActual = reserva.data.cliente;
+                const direccionActual = reserva.data.direccion;
+                
+                if (index === 0) {
+                    gruposAgenda.push({
+                        ciudad: ciudadActual,
+                        cliente: clienteActual,
+                        direccion: direccionActual,
+                        inicio: reserva.data.fechaInicio,
+                        fin: reserva.data.fechaFin,
+                        reservaObj: reserva
+                    });
+                    return;
+                }
+
+                const ultimo = gruposAgenda[gruposAgenda.length - 1];
+                
+                // Si es el mismo grupo (mismo ID de grupo o misma info consecutiva)
+                if (ultimo.reservaObj.data.groupId === reserva.data.groupId) {
+                    ultimo.fin = reserva.data.fechaFin; // Extendemos la fecha fin
+                } else {
+                    gruposAgenda.push({
+                        ciudad: ciudadActual,
+                        cliente: clienteActual,
+                        direccion: direccionActual,
+                        inicio: reserva.data.fechaInicio,
+                        fin: reserva.data.fechaFin,
+                        reservaObj: reserva
+                    });
+                }
+            });
+
+            gruposAgenda.forEach(grupo => {
+                const esPasado = new Date(grupo.fin + 'T00:00:00') < hoy;
+                const card = document.createElement('li');
+                card.className = 'agenda-card' + (esPasado ? ' pasada' : '');
+                
+                let direccionHtml = grupo.direccion ? `<small>📍 ${grupo.direccion}</small>` : '';
+
+                card.innerHTML = `
+                    <div class="ruta-ciudad">${grupo.ciudad}</div>
+                    <div class="ruta-cliente">👤 ${grupo.cliente} ${direccionHtml}</div>
+                    <div class="ruta-fechas">📅 ${formatearFecha(grupo.inicio)} ➝ ${formatearFecha(grupo.fin)}</div>
+                `;
+                
+                // Al hacer clic, llevamos al calendario a esa fecha y mostramos detalle
+                card.onclick = () => {
+                    mostrarCalendario();
+                    calendar.gotoDate(grupo.inicio);
+                    // Buscar evento original para mostrar detalle
+                    const evento = calendar.getEventById(grupo.reservaObj.id);
+                    if(evento) mostrarDetalles(evento);
+                };
+
+                agendaContainer.appendChild(card);
+            });
         }
 
         function configurarDiasEspeciales() {
@@ -824,20 +855,16 @@
             try {
                 const q = query(collection(db, "reservas"));
                 const querySnapshot = await getDocs(q);
-                
                 calcularEstadisticas(querySnapshot); 
                 calendar.removeAllEvents();
                 configurarDiasEspeciales(); 
-
                 globalReservas = []; 
 
                 querySnapshot.forEach((documento) => {
                     const data = documento.data();
                     if (!data.fechaInicio) return; 
-
                     let inicio = data.fechaInicio; 
                     let fin = data.fechaFin;
-                    
                     let startObj = new Date(inicio + 'T00:00:00');
                     let endObj = new Date(fin + 'T00:00:00');
 
@@ -863,15 +890,14 @@
                         borderColor: '#FF5733',
                         extendedProps: {
                             cliente: data.cliente,
+                            direccion: data.direccion,
                             fechaFinReal: fin,
                             ciudadCompleta: data.ciudad,
                             groupId: data.groupId 
                         }
                     });
                 });
-
                 actualizarMapaYLista();
-
             } catch (error) { console.error(error); }
         }
 
@@ -910,14 +936,10 @@
             listaVisualizar.sort((a, b) => a.start - b.start);
 
             let reservaDestacada = listaVisualizar.find(r => r.start <= hoy && r.end >= hoy);
-            if (!reservaDestacada) {
-                reservaDestacada = listaVisualizar.find(r => r.start > hoy);
-            }
+            if (!reservaDestacada) { reservaDestacada = listaVisualizar.find(r => r.start > hoy); }
             if (!reservaDestacada && listaVisualizar.length > 0) {
                 const soloPasadas = listaVisualizar.filter(r => r.end < hoy);
-                if (soloPasadas.length > 0) {
-                    reservaDestacada = soloPasadas[soloPasadas.length - 1];
-                }
+                if (soloPasadas.length > 0) { reservaDestacada = soloPasadas[soloPasadas.length - 1]; }
             }
 
             const rutasAgrupadas = [];
@@ -974,10 +996,8 @@
                 const li = document.createElement('li');
                 li.className = 'ruta-item';
                 if (grupo.esPasado) li.classList.add('pasada');
-
                 const contieneDestacada = grupo.reservasOriginales.includes(reservaDestacada);
                 if (contieneDestacada) li.classList.add('active');
-
                 const listaClientesHTML = grupo.clientes.map(c => `<span>• ${c}</span>`).join('');
                 
                 li.innerHTML = `
@@ -1005,19 +1025,10 @@
                 if (d.lat && d.lng) {
                     let iconoUsar = blueIcon;
                     let zIndex = 0;
+                    if (r === reservaDestacada) { iconoUsar = redIcon; zIndex = 1000; } 
+                    else if (r.end < hoy) { iconoUsar = greyIcon; }
 
-                    if (r === reservaDestacada) {
-                        iconoUsar = redIcon;
-                        zIndex = 1000;
-                    } else if (r.end < hoy) {
-                        iconoUsar = greyIcon; 
-                    }
-
-                    const marker = L.marker([d.lat, d.lng], {
-                        icon: iconoUsar,
-                        zIndexOffset: zIndex
-                    }).addTo(map);
-
+                    const marker = L.marker([d.lat, d.lng], { icon: iconoUsar, zIndexOffset: zIndex }).addTo(map);
                     const ciudadCorta = d.ciudad ? d.ciudad.split(",")[0].trim() : "Sin ciudad";
                     const stats = statsByCity[ciudadCorta] || { clients: new Set(), days: 0 };
                     
@@ -1031,7 +1042,6 @@
                             </div>
                         </div>
                     `;
-
                     marker.bindPopup(popupContent);
                     if (r === reservaDestacada) marcadorDestacadoRef = marker;
                     markers.push(marker);
@@ -1045,16 +1055,37 @@
             }
         }
 
+        window.prepararEdicion = function() {
+            const reserva = globalReservas.find(r => r.id === eventoSeleccionadoID);
+            if (!reserva) return;
+            document.getElementById('fechaInicio').value = reserva.data.fechaInicio;
+            document.getElementById('fechaFin').value = reserva.data.fechaFin;
+            document.getElementById('ciudadInput').value = reserva.data.ciudad;
+            document.getElementById('nombreInput').value = reserva.data.cliente;
+            document.getElementById('direccionInput').value = reserva.data.direccion || "";
+            document.getElementById('latTemp').value = reserva.data.lat;
+            document.getElementById('lonTemp').value = reserva.data.lng;
+            modoEdicion = true;
+            idGrupoEdicion = reserva.data.groupId;
+            const btnGuardar = document.querySelector('#reservaModal .btn-save');
+            btnGuardar.textContent = "🔄 Actualizar Reserva";
+            btnGuardar.style.background = "#ffc107";
+            btnGuardar.style.color = "#333";
+            cerrarModal('detalleModal');
+            document.getElementById('reservaModal').style.display = 'block';
+        }
+
         window.guardarReserva = async function() {
             const fechaInicioStr = document.getElementById('fechaInicio').value;
             const fechaFinStr = document.getElementById('fechaFin').value;
             const ciudad = document.getElementById('ciudadInput').value;
             const nombre = document.getElementById('nombreInput').value;
+            const direccion = document.getElementById('direccionInput').value;
             const lat = document.getElementById('latTemp').value;
             const lon = document.getElementById('lonTemp').value;
 
             if(ciudad === "" || nombre === "" || fechaInicioStr === "") {
-                alert("⚠️ Llena todos los campos"); return;
+                alert("⚠️ Llena todos los campos marcados con *"); return;
             }
 
             const rangos = calcularRangosSinDomingo(fechaInicioStr, fechaFinStr);
@@ -1062,6 +1093,13 @@
             const grupoId = Date.now().toString(); 
 
             try {
+                if (modoEdicion && idGrupoEdicion) {
+                    const q = query(collection(db, "reservas"), where("groupId", "==", idGrupoEdicion));
+                    const querySnapshot = await getDocs(q);
+                    const batch = writeBatch(db); 
+                    querySnapshot.forEach((doc) => { batch.delete(doc.ref); });
+                    await batch.commit();
+                }
                 for (let rango of rangos) {
                     let fInicio = rango.start.toISOString().split('T')[0];
                     let fFin = rango.end.toISOString().split('T')[0];
@@ -1070,10 +1108,10 @@
                         fechaFin: fFin,
                         ciudad: ciudad,
                         cliente: nombre,
+                        direccion: direccion,
                         lat: lat, lng: lon, groupId: grupoId, creado: new Date()
                     });
                 }
-                
                 await cargarReservas();
                 cerrarModal('reservaModal');
                 document.getElementById('successModal').style.display = "block";
@@ -1084,7 +1122,6 @@
             if(!eventoSeleccionadoID) return;
             let mensaje = "¿Eliminar este segmento de reserva?";
             let borrarTodoElGrupo = false;
-
             if (grupoSeleccionadoID) {
                 if(confirm("Esta reserva es parte de un grupo dividido.\n\n¿Quieres borrar TODAS las partes?\n(Aceptar = Todo el grupo / Cancelar = Solo este día)")) {
                     borrarTodoElGrupo = true;
@@ -1120,7 +1157,8 @@
                     finObj.setDate(finObj.getDate() + 1); 
                     const fechaFin = finObj.toISOString().split('T')[0].replace(/-/g, '');
                     const titulo = `Servicio: ${data.cliente}`;
-                    const descripcion = `Cliente: ${data.cliente}\\nCiudad: ${data.ciudad}`;
+                    const direccionTexto = data.direccion ? `\\nDirección: ${data.direccion}` : "";
+                    const descripcion = `Cliente: ${data.cliente}\\nCiudad: ${data.ciudad}${direccionTexto}`;
                     const ubicacion = data.ciudad || "";
                     const uid = doc.id; 
                     icsContent += "BEGIN:VEVENT\n";
@@ -1137,7 +1175,7 @@
                 const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
                 const link = document.createElement('a');
                 link.href = window.URL.createObjectURL(blob);
-                link.setAttribute('download', 'Agenda_TrackSIM.ics');
+                link.setAttribute('download', 'agenda_completa.ics');
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
@@ -1155,9 +1193,7 @@
             listaSugerencias.style.display = 'none';
             document.getElementById('latTemp').value = "";
             document.getElementById('lonTemp').value = "";
-
             if (texto.length < 3) return; 
-
             clearTimeout(timeoutBuscador);
             timeoutBuscador = setTimeout(async () => {
                 try {
@@ -1192,9 +1228,18 @@
             document.getElementById('fechaFin').value = fecha;
             document.getElementById('ciudadInput').value = ""; 
             document.getElementById('nombreInput').value = "";
+            document.getElementById('direccionInput').value = "";
             document.getElementById('latTemp').value = ""; 
             document.getElementById('lonTemp').value = "";
             document.getElementById('listaSugerencias').style.display = 'none';
+            
+            modoEdicion = false;
+            idGrupoEdicion = null;
+            const btnGuardar = document.querySelector('#reservaModal .btn-save');
+            btnGuardar.textContent = "💾 Guardar Reserva";
+            btnGuardar.style.background = "#28a745";
+            btnGuardar.style.color = "white";
+
             document.getElementById('reservaModal').style.display = "block";
         }
 
@@ -1204,11 +1249,20 @@
             const ciudadCompleta = evento.extendedProps.ciudadCompleta || evento.title;
             document.getElementById('detCiudad').innerText = ciudadCompleta;
             document.getElementById('detCliente').innerText = evento.extendedProps.cliente || "No especificado";
+            document.getElementById('detDireccion').innerText = evento.extendedProps.direccion || "Sin dirección registrada";
             const inicio = evento.start.toISOString().split('T')[0];
             const fin = evento.extendedProps.fechaFinReal;
             document.getElementById('detFechas').innerText = `${inicio} al ${fin}`;
+            
             const btnEliminar = document.getElementById('btnEliminar');
-            btnEliminar.style.display = esAdmin ? 'block' : 'none';
+            const btnEditar = document.getElementById('btnEditar');
+            if (esAdmin) {
+                btnEliminar.style.display = 'block';
+                btnEditar.style.display = 'block';
+            } else {
+                btnEliminar.style.display = 'none';
+                btnEditar.style.display = 'none';
+            }
             document.getElementById('detalleModal').style.display = "block";
         }
 
