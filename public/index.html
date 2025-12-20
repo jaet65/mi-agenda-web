@@ -1378,9 +1378,17 @@
         }
 
         window.ajustarMapa = function() {
-            if (markers.length > 0) {
-                const group = new L.featureGroup(markers);
-                map.fitBounds(group.getBounds().pad(0.1));
+            // Coordenadas originales utilizadas al cargar el mapa por primera vez
+            const latOriginal = 23.6345;
+            const lonOriginal = -102.5528;
+            const zoomOriginal = 5;
+
+            if (map) {
+                // Resetea la vista a la posición y zoom iniciales
+                map.flyTo([latOriginal, lonOriginal], zoomOriginal);
+                
+                // Opcional: Cerrar cualquier popup abierto al resetear
+                map.closePopup();
             }
         }
     </script>
