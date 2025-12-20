@@ -577,6 +577,7 @@
         
         let modoEdicion = false;
         let idGrupoEdicion = null;
+        let urlEdicion = null;
         
         let globalReservas = []; 
         let currentMapYear = new Date().getFullYear(); 
@@ -762,25 +763,31 @@
             const texto = this.value;
             listaSugerencias.innerHTML = ''; 
             listaSugerencias.style.display = 'none';
+            
+            // Limpiamos coordenadas para forzar nueva búsqueda al guardar
             document.getElementById('latTemp').value = "";
             document.getElementById('lonTemp').value = "";
             
-            if(texto.length === 0) { document.getElementById('ciudadInput').value = ""; }
             if (texto.length < 3) return; 
 
             clearTimeout(timeoutBuscador);
             timeoutBuscador = setTimeout(async () => {
                 try {
-                    const queryEncoded = encodeURIComponent(texto);
+                    // Intentamos una limpieza básica: quitamos caracteres especiales innecesarios
+                    const textoLimpio = texto.replace(/Ote\./gi, "Oriente").replace(/Pte\./gi, "Poniente");
+                    const queryEncoded = encodeURIComponent(textoLimpio);
+                    
+                    // Priorizamos resultados en México y con detalles de dirección
                     let url = `https://nominatim.openstreetmap.org/search?format=json&q=${queryEncoded}&limit=8&accept-language=es&countrycodes=mx&addressdetails=1`;
                     let respuesta = await fetch(url);
                     let resultados = await respuesta.json();
 
-                    // Fallback para direcciones muy específicas que Nominatim no reconoce bien
+                    // Si falla, intentamos buscar solo por los componentes principales (Calle y Ciudad)
                     if (resultados.length === 0) {
-                        const fallbackTexto = texto.replace(/Manzana|Mz|Lote|Lt/gi, "").trim();
-                        if (fallbackTexto !== texto) {
-                            respuesta = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(fallbackTexto)}&limit=5&accept-language=es&countrycodes=mx&addressdetails=1`);
+                        const partes = texto.split(',');
+                        if (partes.length > 1) {
+                            const simplificado = partes[0] + " " + partes[partes.length - 1];
+                            respuesta = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(simplificado)}&limit=5&accept-language=es&countrycodes=mx&addressdetails=1`);
                             resultados = await respuesta.json();
                         }
                     }
@@ -790,24 +797,36 @@
                         resultados.forEach(lugar => {
                             const item = document.createElement('li');
                             item.className = 'suggestion-item';
-                            item.innerHTML = `<strong>📍 ${lugar.name}</strong><br><small>${lugar.display_name}</small>`;
+                            
+                            // Extraemos la ciudad de forma más agresiva
+                            const addr = lugar.address;
+                            const ciudad = addr.city || addr.town || addr.village || addr.municipality || addr.county || addr.city_district || addr.state || "";
+                            
+                            item.innerHTML = `<strong>📍 ${lugar.name || ciudad}</strong><br><small>${lugar.display_name}</small>`;
                             
                             item.onclick = function() {
                                 inputDireccion.value = lugar.display_name;
                                 document.getElementById('latTemp').value = lugar.lat;
                                 document.getElementById('lonTemp').value = lugar.lon;
-                                
-                                const addr = lugar.address;
-                                const ciudadExtraida = addr.city || addr.town || addr.village || addr.municipality || addr.county || addr.state || "";
-                                if(ciudadExtraida) document.getElementById('ciudadInput').value = ciudadExtraida;
 
+                                const addr = lugar.address;
+                                const ciudadDetectada = addr.city || 
+                                                        addr.town || 
+                                                        addr.village || 
+                                                        addr.municipality || 
+                                                        addr.county || 
+                                                        addr.city_district || 
+                                                        addr.state_district || 
+                                                        "Desconocida";
+                                
+                                document.getElementById('ciudadInput').value = ciudadDetectada;
                                 listaSugerencias.style.display = 'none'; 
                             };
                             listaSugerencias.appendChild(item);
                         });
                     }
                 } catch (e) { console.error(e); }
-            }, 500); 
+            }, 600); 
         });
 
         const inputCiudad = document.getElementById('ciudadInput');
@@ -865,65 +884,114 @@
             let lat = document.getElementById('latTemp').value;
             let lon = document.getElementById('lonTemp').value;
 
-            if(nombre === "" || fechaInicioStr === "") {
-                alert("⚠️ Faltan datos obligatorios: Cliente o Fechas."); return;
+            // 1. Validación básica
+            if (nombre === "" || fechaInicioStr === "") {
+                alert("⚠️ Faltan datos obligatorios: Cliente o Fechas.");
+                return;
             }
 
-            if (ciudad === "" && direccion.length > 2) {
+            // 2. Lógica de búsqueda de Ciudad (si se editó la dirección o falta la ciudad)
+            // Agregamos lógica para direcciones complejas como Orizaba
+            if ((ciudad === "" || ciudad === "Desconocida" || lat === "" || lon === "") && direccion.length > 2) {
                 const btn = document.querySelector('#reservaModal .btn-save');
-                btn.innerHTML = `<span class="loader"></span> Buscando...`;
+                btn.innerHTML = `<span class="loader"></span> Buscando Ciudad...`;
                 btn.disabled = true;
                 
                 try {
-                    const queryEncoded = encodeURIComponent(direccion);
-                    const resp = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${queryEncoded}&limit=5&accept-language=es&countrycodes=mx&addressdetails=1`);
+                    // Limpieza de abreviaturas comunes y códigos postales para mejorar búsqueda
+                    const direccionLimpia = direccion.replace(/Ote\./gi, "Oriente")
+                                                     .replace(/Pte\./gi, "Poniente")
+                                                     .replace(/\b\d{5}\b/g, "").trim();
+
+                    const resp = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(direccionLimpia)}&limit=5&addressdetails=1&countrycodes=mx`);
                     const resultados = await resp.json();
                     
                     if (resultados.length > 0) {
                         mostrarSelectorUbicacion(resultados);
                     } else {
-                        mostrarModalSinResultados();
+                        // Último recurso: buscar solo el final de la cadena (que suele ser la ciudad)
+                        const partes = direccion.split(',');
+                        const ciudadProbable = partes[partes.length - 1].trim();
+                        const respFinal = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(ciudadProbable)}&limit=3&addressdetails=1&countrycodes=mx`);
+                        const resultadosFinal = await respFinal.json();
+                        
+                        if (resultadosFinal.length > 0) {
+                            mostrarSelectorUbicacion(resultadosFinal);
+                        } else {
+                            mostrarModalSinResultados();
+                        }
                     }
                 } catch(e) {
                     console.error(e);
                     alert("Error al buscar ubicación. Ingresa la ciudad manualmente.");
                     habilitarManual();
                 }
-                btn.innerHTML = "💾 Guardar Reserva";
+                btn.innerHTML = modoEdicion ? "📝 Actualizar Reserva" : "💾 Guardar Reserva";
                 btn.disabled = false;
-                return; 
+                return; // Detenemos para que el usuario elija en el modal de selección
             }
 
-            let ciudadFinal = ciudad || "Sin Ciudad";
+            // 3. Procesamiento de Nombre de Ciudad Final
+            let ciudadFinal = ciudad.trim();
+            if (ciudadFinal === "" || ciudadFinal === "Desconocida" || ciudadFinal === "Ubicación") {
+                const partes = direccion.split(',');
+                if (partes.length >= 2) {
+                    // Intenta extraer el nombre antes del estado o código postal
+                    ciudadFinal = partes[partes.length - 2].replace(/\d+/g, '').trim(); 
+                } else {
+                    ciudadFinal = "Sin Ciudad";
+                }
+            }
+
+            // 4. Calcular días (excluyendo domingos)
             const rangos = calcularRangosSinDomingo(fechaInicioStr, fechaFinStr);
-            if (rangos.length === 0) { alert("⚠️ No has seleccionado ningún día laborable."); return; }
-            const grupoId = Date.now().toString(); 
+            if (rangos.length === 0) {
+                alert("⚠️ No has seleccionado ningún día laborable (lunes a sábado).");
+                return;
+            }
+
+            // 5. Definir ID de grupo (Si es edición mantiene el mismo, si es nuevo genera uno)
+            const grupoId = modoEdicion ? idGrupoEdicion : Date.now().toString(); 
 
             try {
+                // Si es edición, primero borramos los documentos antiguos del grupo
                 if (modoEdicion && idGrupoEdicion) {
                     const q = query(collection(db, "reservas"), where("groupId", "==", idGrupoEdicion));
                     const querySnapshot = await getDocs(q);
                     const batch = writeBatch(db); 
-                    querySnapshot.forEach((doc) => { batch.delete(doc.ref); });
+                    querySnapshot.forEach((doc) => {
+                        batch.delete(doc.ref);
+                    });
                     await batch.commit();
                 }
-                for (let rango of rangos) {
-                    let fInicio = rango.start.toISOString().split('T')[0];
-                    let fFin = rango.end.toISOString().split('T')[0];
+
+                // Guardar los nuevos documentos (uno por cada rango de fechas sin domingos)
+                for (let r of rangos) {
+                    let fInicio = r.start.toISOString().split('T')[0];
+                    let fFin = r.end.toISOString().split('T')[0];
+                    
                     await addDoc(collection(db, "reservas"), {
                         fechaInicio: fInicio,
                         fechaFin: fFin,
                         ciudad: ciudadFinal,
                         cliente: nombre,
                         direccion: direccion,
-                        lat: lat, lng: lon, groupId: grupoId, creado: new Date()
+                        lat: lat, 
+                        lng: lon, 
+                        groupId: grupoId, 
+                        creado: new Date(),
+                        pdfUrl: urlEdicion // Mantiene el enlace de Drive existente al editar
                     });
                 }
+
                 await cargarReservas();
                 cerrarModal('reservaModal');
                 document.getElementById('successModal').style.display = "block";
-            } catch (e) { console.error(e); alert("Error al guardar"); }
-        }
+            } catch (e) {
+                console.error("Error al guardar:", e);
+                alert("Error al guardar la reserva en la base de datos.");
+            }
+        };
 
         window.mostrarSelectorUbicacion = function(resultados) {
             const lista = document.getElementById('listaCoincidencias');
@@ -931,10 +999,12 @@
             resultados.forEach(lugar => {
                 const li = document.createElement('li');
                 li.className = 'match-item';
-                li.innerHTML = `<strong>${lugar.address.city || lugar.address.town || lugar.address.county || 'Ubicación'}</strong><small>${lugar.display_name}</small>`;
+                const addr = lugar.address;
+                const ciudad = addr.city || addr.town || addr.village || addr.municipality || addr.county || "Ubicación";
+
+                li.innerHTML = `<strong>${ciudad}</strong><small>${lugar.display_name}</small>`;
+
                 li.onclick = function() {
-                    const addr = lugar.address;
-                    const ciudad = addr.city || addr.town || addr.village || addr.municipality || addr.county || addr.state_district || "Desconocida";
                     document.getElementById('ciudadInput').value = ciudad;
                     document.getElementById('latTemp').value = lugar.lat;
                     document.getElementById('lonTemp').value = lugar.lon;
@@ -1336,6 +1406,12 @@
         }
 
         window.abrirModalCrear = function(fecha) {
+            // Resetear variables
+            modoEdicion = false;
+            idGrupoEdicion = null;
+            urlEdicion = null; // <--- LIMPIAMOS LA VARIABLE AQUÍ
+
+            // Limpiar campos
             document.getElementById('fechaInicio').value = fecha;
             document.getElementById('fechaFin').value = fecha;
             document.getElementById('ciudadInput').value = ""; 
@@ -1344,11 +1420,13 @@
             document.getElementById('direccionInput').value = "";
             document.getElementById('latTemp').value = ""; 
             document.getElementById('lonTemp').value = "";
-            modoEdicion = false;
-            idGrupoEdicion = null;
+
+            // Resetear botón
             const btn = document.querySelector('#reservaModal .btn-save');
             btn.textContent = "💾 Guardar Reserva";
             btn.style.background = "#28a745";
+            btn.style.color = "white";
+
             document.getElementById('reservaModal').style.display = "block";
         }
 
@@ -1356,17 +1434,34 @@
             if (!eventoSeleccionadoID) return;
             const evento = calendar.getEventById(eventoSeleccionadoID);
             if (!evento) return;
+
+            // Guardar el estado actual
+            modoEdicion = true;
+            idGrupoEdicion = evento.extendedProps.groupId;
+            urlEdicion = evento.extendedProps.pdfUrl || null; // <--- CAPTURAMOS EL LINK AQUÍ
+
+            // Llenar el formulario
             document.getElementById('fechaInicio').value = evento.start.toISOString().split('T')[0];
             document.getElementById('fechaFin').value = evento.extendedProps.fechaFinReal;
             document.getElementById('nombreInput').value = evento.extendedProps.cliente;
             document.getElementById('direccionInput').value = evento.extendedProps.direccion || "";
             document.getElementById('ciudadInput').value = evento.extendedProps.ciudadCompleta || "";
-            modoEdicion = true;
-            idGrupoEdicion = evento.extendedProps.groupId;
+
+            const originalLat = evento.extendedProps.lat || "";
+            const originalLng = evento.extendedProps.lng || "";
+
+            const reservaOriginal = globalReservas.find(r => r.id === eventoSeleccionadoID);
+            if (reservaOriginal) {
+                document.getElementById('latTemp').value = reservaOriginal.data.lat || "";
+                document.getElementById('lonTemp').value = reservaOriginal.data.lng || "";
+            }
+
+            // Cambiar texto del botón
             const btnGuardar = document.querySelector('#reservaModal .btn-save');
             btnGuardar.textContent = "📝 Actualizar Reserva";
             btnGuardar.style.background = "#ffc107";
             btnGuardar.style.color = "#333";
+
             cerrarModal('detalleModal');
             document.getElementById('reservaModal').style.display = "block";
         }
