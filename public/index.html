@@ -499,8 +499,35 @@
             <p><strong>Dirección:</strong> <span id="detDireccion"></span></p>
             <p><strong>Fechas:</strong> <span id="detFechas"></span></p>
             
-            <button id="btnEditar" class="btn-edit" style="display:none;" onclick="prepararEdicion()">✏️ Editar</button>
-            <button id="btnEliminar" class="btn-delete" style="display:none;" onclick="borrarReserva()">🗑️ Eliminar</button>
+            <div id="seccionPDF" style="margin-top: 15px; padding: 10px; background: #f8f9fa; border-radius: 8px; display: none;">
+                <p style="margin:0 0 10px 0;"><strong>Documentación:</strong></p>
+                
+                <div id="pdfInfo" style="display: none; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+                    <a id="linkPDF" href="#" target="_blank" style="color: #007bff; text-decoration: none; font-weight: bold;">
+                        📄 Ver Documento en Drive
+                    </a>
+                </div>
+
+                <div id="adminPDFInput" style="display: none;">
+                    <div style="display: flex; gap: 5px;">
+                        <input type="text" id="driveUrlInput" placeholder="Pegar enlace de Google Drive" 
+                            style="flex-grow: 1; padding: 5px; font-size: 0.8rem; border: 1px solid #ccc; border-radius: 4px;">
+                        
+                        <button id="btnGuardarDrive" onclick="guardarEnlaceDrive()" style="padding: 5px 10px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;" title="Guardar">
+                            💾
+                        </button>
+                        
+                        <button id="btnEliminarDrive" onclick="eliminarEnlaceDrive()" style="display:none; padding: 5px 10px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;" title="Eliminar enlace">
+                            🗑️
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div style="display: flex; gap: 10px; margin-top: 15px;">
+                <button id="btnEditar" class="btn-edit" style="display:none; margin-top:0;" onclick="prepararEdicion()">✏️</button>
+                <button id="btnEliminar" class="btn-delete" style="display:none; margin-top:0;" onclick="borrarReserva()">🗑️</button>
+            </div>
         </div>
     </div>
 
@@ -516,8 +543,10 @@
     </div>
 
     <script type="module">
+
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, where, writeBatch } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         window.toggleMenu = function() {
             const menu = document.getElementById('mobile-menu');
@@ -1134,6 +1163,7 @@
 
                     let fechaFinVisual = new Date(endObj);
                     fechaFinVisual.setDate(fechaFinVisual.getDate() + 1);
+                    
                     calendar.addEvent({
                         id: documento.id,
                         title: '📍 ' + (data.ciudad ? data.ciudad.split(",")[0] : "Sin ciudad") + ' - ' + data.cliente,
@@ -1147,7 +1177,8 @@
                             direccion: data.direccion,
                             fechaFinReal: data.fechaFin,
                             ciudadCompleta: data.ciudad,
-                            groupId: data.groupId 
+                            groupId: data.groupId,
+                            pdfUrl: data.pdfUrl // <--- ¡ESTO ES LO QUE FALTABA!
                         }
                     });
                 });
@@ -1340,18 +1371,121 @@
             document.getElementById('reservaModal').style.display = "block";
         }
 
+        // 1. Nueva función para eliminar el enlace
+        window.eliminarEnlaceDrive = async function() {
+            if (!confirm("¿Estás seguro de que deseas eliminar este enlace?")) return;
+            if (!eventoSeleccionadoID) return;
+
+            try {
+                const docRef = doc(db, "reservas", eventoSeleccionadoID);
+                // Actualizamos el campo a null para borrarlo
+                await updateDoc(docRef, { pdfUrl: null });
+                
+                alert("🗑️ Enlace eliminado.");
+                await cargarReservas(); 
+                cerrarModal('detalleModal');
+            } catch (error) {
+                console.error("Error al eliminar enlace:", error);
+                alert("Error al eliminar.");
+            }
+        };
+
+        // 2. Función actualizada para habilitar edición
+        window.habilitarEdicionDrive = function() {
+            const input = document.getElementById('driveUrlInput');
+            const btnGuardar = document.getElementById('btnGuardarDrive');
+            const btnEliminar = document.getElementById('btnEliminarDrive');
+            
+            // Habilitar escritura
+            input.readOnly = false;
+            input.style.backgroundColor = "#ffffff";
+            input.focus();
+            
+            // Cambiar icono a guardar
+            btnGuardar.textContent = "💾";
+            btnGuardar.style.background = "#28a745"; 
+            btnGuardar.onclick = function() { window.guardarEnlaceDrive(); };
+
+            // Mantener visible el botón de eliminar
+            btnEliminar.style.display = "block";
+        };
+        // 3. Función actualizada mostrarDetalles (Controla qué botones se ven)
         window.mostrarDetalles = function(evento) {
             eventoSeleccionadoID = evento.id; 
             grupoSeleccionadoID = evento.extendedProps.groupId || null;
-            document.getElementById('detCiudad').innerText = evento.extendedProps.ciudadCompleta || evento.title;
+            
+            // Referencias
+            const seccionPDF = document.getElementById('seccionPDF');
+            const pdfInfo = document.getElementById('pdfInfo');
+            const linkPDF = document.getElementById('linkPDF');
+            const adminPDFInput = document.getElementById('adminPDFInput');
+            const driveUrlInput = document.getElementById('driveUrlInput');
+            const btnGuardarDrive = document.getElementById('btnGuardarDrive');
+            const btnEliminarDrive = document.getElementById('btnEliminarDrive');
+            const btnEliminar = document.getElementById('btnEliminar');
+            const btnEditar = document.getElementById('btnEditar');
+
+            // Llenar datos básicos
             document.getElementById('detCliente').innerText = evento.extendedProps.cliente || "No especificado";
+            document.getElementById('detCiudad').innerText = evento.extendedProps.ciudadCompleta || evento.title;
             document.getElementById('detDireccion').innerText = evento.extendedProps.direccion || "Sin dirección registrada";
             document.getElementById('detFechas').innerText = `${evento.start.toISOString().split('T')[0]} al ${evento.extendedProps.fechaFinReal}`;
-            document.getElementById('btnEliminar').style.display = esAdmin ? 'block' : 'none';
-            document.getElementById('btnEditar').style.display = esAdmin ? 'block' : 'none';
-            document.getElementById('detalleModal').style.display = "block";
-        }
+            
+            const urlExistente = evento.extendedProps.pdfUrl;
 
+            // --- LÓGICA DE VISUALIZACIÓN ---
+            if (esAdmin) {
+                // SI ES ADMIN: MUESTRA TODO
+                seccionPDF.style.display = 'block';
+                adminPDFInput.style.display = 'block';
+                btnEliminar.style.display = 'block';
+                btnEditar.style.display = 'block';
+
+                if (urlExistente) {
+                    // MODO: Ver/Editar (Ya existe enlace)
+                    pdfInfo.style.display = 'flex';
+                    linkPDF.href = urlExistente;
+
+                    driveUrlInput.value = urlExistente;
+                    driveUrlInput.readOnly = true;
+                    driveUrlInput.style.backgroundColor = "#e9ecef"; // Gris
+                    
+                    // Botón en modo "Editar"
+                    btnGuardarDrive.textContent = "✏️";
+                    btnGuardarDrive.style.background = "#ffc107";
+                    btnGuardarDrive.style.color = "#333";
+                    btnGuardarDrive.onclick = function() { window.habilitarEdicionDrive(); };
+                    
+                    // Mostrar botón eliminar
+                    btnEliminarDrive.style.display = "block";
+                } else {
+                    // MODO: Crear (No hay enlace)
+                    pdfInfo.style.display = 'none';
+
+                    driveUrlInput.value = "";
+                    driveUrlInput.readOnly = false;
+                    driveUrlInput.style.backgroundColor = "#ffffff";
+                    driveUrlInput.placeholder = "Pegar enlace de Google Drive";
+                    
+                    // Botón en modo "Guardar"
+                    btnGuardarDrive.textContent = "💾";
+                    btnGuardarDrive.style.background = "#28a745";
+                    btnGuardarDrive.style.color = "white";
+                    btnGuardarDrive.onclick = function() { window.guardarEnlaceDrive(); };
+                    
+                    // Ocultar botón eliminar
+                    btnEliminarDrive.style.display = "none";
+                }
+
+            } else {
+                // SI NO ES ADMIN: OCULTA TODO
+                seccionPDF.style.display = 'none'; // <--- Oculta toda la caja gris
+                btnEliminar.style.display = 'none';
+                btnEditar.style.display = 'none';
+            }
+            
+            document.getElementById('detalleModal').style.display = "block";
+        }        
         window.cerrarModal = function(idModal) { document.getElementById(idModal).style.display = "none"; }
 
         window.iniciarSesion = function() {
@@ -1393,6 +1527,24 @@
                 map.closePopup();
             }
         }
+
+        window.guardarEnlaceDrive = async function() {
+            const url = document.getElementById('driveUrlInput').value;
+            if (!url) return alert("Por favor, pega un enlace válido.");
+            if (!eventoSeleccionadoID) return;
+
+            try {
+                const docRef = doc(db, "reservas", eventoSeleccionadoID);
+                await updateDoc(docRef, { pdfUrl: url });
+                alert("✅ Enlace de Drive guardado.");
+                await cargarReservas(); // Refresca el calendario
+                cerrarModal('detalleModal');
+            } catch (error) {
+                console.error("Error al guardar link:", error);
+                alert("Error al guardar en base de datos.");
+            }
+        };
+
     </script>
 
     <footer style="flex-shrink: 0; background: #fff; padding: 5px; text-align: center; font-size: 0.75rem; color: #888; border-top: 1px solid #ddd;">
