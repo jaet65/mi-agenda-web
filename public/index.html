@@ -616,6 +616,36 @@
             const esMovil = window.innerWidth < 768; 
 
             calendar = new FullCalendar.Calendar(calendarEl, {
+
+                eventContent: function(arg) {
+                    let container = document.createElement('div');
+                    container.style.display = 'flex';
+                    container.style.justifyContent = 'space-between';
+                    container.style.alignItems = 'center';
+                    container.style.width = '100%';
+                    container.style.padding = '0 2px';                    
+                    
+                    // Contenedor del título
+                    let titleEl = document.createElement('div');
+                    titleEl.innerHTML = arg.event.title;
+                    titleEl.style.overflow = 'hidden';
+                    titleEl.style.textOverflow = 'ellipsis';
+                    titleEl.style.whiteSpace = 'nowrap';
+                    container.appendChild(titleEl);
+
+                    // Si tiene documentación, añadir distintivo discreto
+                    if (arg.event.extendedProps.pdfUrl) {
+                        let iconEl = document.createElement('span');
+                        iconEl.innerHTML = ' 📎'; // Icono discreto
+                        iconEl.style.fontSize = '1.5em';
+                        iconEl.style.marginLeft = '4px';
+                        iconEl.style.color='white';
+                        container.appendChild(iconEl);
+                    }
+
+                    return { domNodes: [container] };
+                },
+
                 height: '100%',
                 initialView: 'multiMonthYear', 
                 locale: 'es',
@@ -1159,10 +1189,20 @@
                 
                 let direccionHtml = grupo.direccion ? `<small>📍 ${grupo.direccion}</small>` : '';
 
+                const tieneDoc = grupo.reservaObj.data.pdfUrl;
+                const enlaceDocHtml = (esAdmin && tieneDoc) 
+                    ? `<div style="margin-top:6px; border-top:1px solid #eee; padding-top:4px;">
+                         <a href="${tieneDoc}" target="_blank" style="color:#007bff; text-decoration:none; font-size:0.85rem; font-weight:bold;">
+                           📄 Ver Documentación (Drive)
+                         </a>
+                       </div>` 
+                    : '';
+
                 card.innerHTML = `
                     <div class="ruta-ciudad">${grupo.ciudad}</div>
                     <div class="ruta-cliente">👤 ${grupo.cliente} ${direccionHtml}</div>
                     <div class="ruta-fechas">📅 ${formatearFecha(grupo.inicio)} ➝ ${formatearFecha(grupo.fin)}</div>
+                    ${enlaceDocHtml}
                 `;
                 
                 card.onclick = () => {
