@@ -1482,7 +1482,7 @@
                 // Convertir prioridad numérica a clase CSS
                 let estadoTexto = getNombreEstado(grupo.prioridadGrupo);
                 let claseEstado = '';
-                
+
                 if (estadoTexto === 'pasado') claseEstado = ' pasada';
                 else if (estadoTexto === 'activo') claseEstado = ' activa';
                 else if (estadoTexto === 'destacado') claseEstado = ' destacada';
@@ -1826,6 +1826,31 @@
             document.getElementById('detalleModal').style.display = "block";
         }        
         window.cerrarModal = function(idModal) { document.getElementById(idModal).style.display = "none"; }
+
+        // --- FUNCIÓN RECUPERADA: BORRAR RESERVA ---
+        window.borrarReserva = async function() {
+            if (!eventoSeleccionadoID) return;
+
+            // Confirmación de seguridad
+            const confirmar = confirm("¿Estás seguro de que deseas eliminar esta reserva de forma permanente?");
+            if (!confirmar) return;
+
+            try {
+                // 1. Eliminar el documento de Firebase usando el ID seleccionado
+                await deleteDoc(doc(db, "reservas", eventoSeleccionadoID));
+
+                // 2. Cerrar el modal
+                cerrarModal('detalleModal');
+
+                // 3. Recargar los datos para actualizar calendario y mapa
+                await cargarReservas();
+
+                alert("🗑️ Reserva eliminada correctamente.");
+            } catch (error) {
+                console.error("Error al borrar:", error);
+                alert("Hubo un error al intentar borrar la reserva.");
+            }
+        };
 
         window.iniciarSesion = function() {
             if (prompt("Contraseña Admin:") === CONTRASEÑA_ADMIN) {
