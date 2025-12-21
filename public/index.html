@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
     <title>Agenda TrackSIM</title>
     
     <link rel="manifest" href="manifest.json">
@@ -246,32 +247,74 @@
         .ruta-cliente { font-size: 0.95rem; color: #555; }
         .ruta-cliente small { display: block; color: #777; font-size: 0.85rem; margin-top: 2px; }
 
-        /* Estilos Mapa Sidebar */
+        /* --- ESTILOS MAPA Y LISTA LATERAL (ITINERARIO) --- */
         #map-sidebar {
-            width: 300px; background: white; border-right: 1px solid #ddd; overflow-y: auto; display: flex; flex-direction: column; flex-shrink: 0; z-index: 10;
+            width: 300px; 
+            background: white; 
+            border-right: 1px solid #ddd; 
+            display: flex; 
+            flex-direction: column; /* Apila elementos verticalmente */
+            flex-shrink: 0; 
+            z-index: 10;
+            height: 100%; /* Ocupa toda la altura disponible */
+            overflow: hidden; /* Evita que la barra entera haga scroll */
         }
+
+        /* ESTILOS DE ESTADO EN LISTA (JERARQUÍA DE COLORES) */
+        
+        /* 1. Base (Futuro General - Azul) */
         .ruta-item {
-            padding: 15px; border-bottom: 1px solid #f0f0f0; cursor: pointer; transition: background 0.2s;
-            border-left: 4px solid transparent; 
+            padding: 15px; 
+            border-bottom: 1px solid #f0f0f0; 
+            cursor: pointer; 
+            transition: all 0.2s;
+            border-left: 5px solid #007bff; /* Azul por defecto */
         }
         .ruta-item:hover { background-color: #e3effd; }
-        .ruta-item.active { background-color: #e3effd; border-left: 6px solid #007bff; }
-        .ruta-item.pasada { background-color: #fafafa; }
-        .ruta-item.pasada .ruta-ciudad { color: #999; }
+
+        /* 2. Pasado (Gris) */
+        .ruta-item.pasada {
+            background-color: #fafafa;
+            border-left-color: #7f8c8d !important;
+            opacity: 0.7;
+        }
+
+        /* 3. Activo HOY (Rojo - Máxima Prioridad) */
+        .ruta-item.activa {
+            background-color: #ffeaea; /* Rojo muy suave */
+            border-left-color: #dc3545 !important;
+            box-shadow: 0 0 8px rgba(220, 53, 69, 0.2);
+        }
+        .ruta-item.activa .ruta-ciudad { color: #dc3545; }
+
+        /* 4. Destacado/Próximo (Dorado) */
+        .ruta-item.destacada {
+            background-color: #fff9db; /* Amarillo suave */
+            border-left-color: #f1c40f !important;
+            box-shadow: 0 0 8px rgba(241, 196, 15, 0.3);
+        }
+        /* ---------------------------------------------------- */
 
         .map-year-controls { display: flex; justify-content: center; gap: 10px; align-items: center; padding: 10px 15px; background: #f8f9fa; border-bottom: 1px solid #ddd; }
         .map-year-btn { background: white; border: 1px solid #ccc; border-radius: 4px; cursor: pointer; padding: 4px 10px; font-weight: bold; color: #555; }
         #map-year-display { font-weight: bold; font-size: 1.1rem; color: #2c3e50; min-width: 50px; text-align: center; }
         #map-sidebar h3 { padding: 10px 15px; margin: 0; background: #fff; border-bottom: 1px solid #eee; font-size: 0.9rem; color: #7f8c8d; text-transform: uppercase; letter-spacing: 1px; }
-        #lista-rutas { list-style: none; padding: 0; margin: 0; }
+        #lista-rutas {
+            list-style: none; 
+            padding: 0; 
+            margin: 0; 
+            flex-grow: 1; /* Ocupa todo el espacio sobrante */
+            overflow-y: auto; /* Scroll interno solo para la lista */
+            scroll-behavior: smooth;
+        }
 
         #map-canvas { flex-grow: 1; position: relative; background: #e5e5e5; height: 100%; width: 100%; }
 
-        /* Botones Flotantes */
+        /* Botones Flotantes Mapa */
         #btn-back-calendar { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); z-index: 1000; background-color: white; color: #333; border: 1px solid #ccc; padding: 8px 16px; border-radius: 30px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.2); cursor: pointer; font-size: 0.9rem; }
         #btn-fit-map { position: absolute; top: 20px; right: 20px; z-index: 1000; background-color: white; color: #333; border: 1px solid #ccc; padding: 8px 16px; border-radius: 30px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.2); cursor: pointer; font-size: 0.9rem; }
 
-        /* Estilos Comunes */
+        /* Estilos Comunes Botones */
         .btn-action { background: #007bff; color: white; padding: 6px 12px; border-radius: 5px; cursor: pointer; border: none; font-size: 0.9rem; }
         .btn-secondary { background: #6c757d; color: white; padding: 6px 12px; border-radius: 5px; cursor: pointer; border: none; font-size: 0.9rem; }
         .btn-share { background: #f39c12; color: white; padding: 6px 12px; border-radius: 5px; cursor: pointer; border: none; font-size: 0.9rem; font-weight: 500; }
@@ -303,8 +346,8 @@
             .desktop-buttons { display: none; } 
             .hamburger-btn { display: block; }
             #map-view { flex-direction: column-reverse; } 
-            #map-sidebar { width: 100%; height: 30%; }
-            #map-canvas { height: 70%; }
+            #map-sidebar { width: 100%; height: 35%; }
+            #map-canvas { height: 65%; }
             #btn-back-calendar { top: 10px; }
             #btn-fit-map { top: auto; bottom: 20px; right: 15px; padding: 10px; border-radius: 50%; width: 45px; height: 45px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
         }
@@ -341,7 +384,41 @@
         .fc-header-toolbar { font-size: 0.85em; }
         .fc-multimonth-header { background: #f8f9fa; padding: 5px 0; }
         .fc-multimonth-title { font-size: 1em; font-weight: bold; }
+
+        /* --- ESTILOS DE LEYENDA --- */
+        .legend-container {
+            padding: 6px 5px;           /* Reduje el padding vertical */
+            background: white;
+            border-bottom: 1px solid #eee;
+            font-size: 0.7rem;          /* Letra más pequeña (aprox 11px) */
+            display: flex;
+            flex-direction: row;        /* Fuerza la dirección horizontal */
+            justify-content: center;    /* Centra los elementos */
+            gap: 15px;                  /* Espacio entre cada categoría */
+            align-items: center;
+            color: #666;
+            flex-shrink: 0;             /* Evita que desaparezca al hacer scroll */
+        }
+
+        .legend-item { 
+            display: flex; 
+            align-items: center; 
+            gap: 4px; 
+            white-space: nowrap;        /* Asegura que el texto no salte de línea */
+        }
+
+        .dot { 
+            width: 6px;                 /* Punto más pequeño (antes 8px) */
+            height: 6px; 
+            border-radius: 50%; 
+            display: inline-block; 
+        }
+        .dot.grey { background: #7f8c8d; }   /* Pasado */
+        .dot.blue { background: #007bff; }   /* Futuro */
+        .dot.gold { background: #f1c40f; }   /* Siguiente */
+        .dot.red { background: #dc3545; }    /* Hoy */
     </style>
+
 </head>
 <body>
 
@@ -387,7 +464,7 @@
             <button id="mobile-btn-export" onclick="exportarCalendario(); toggleMenu()">📅 Exportar Calendario</button>
             
             <div class="mobile-section-title">Navegación</div>
-            <button id="mobile-btn-map" onclick="mostrarMapa(); toggleMenu()">🗺️ Mapa Global</button>
+            <button id="mobile-btn-map" onclick="mostrarMapa(); toggleMenu()">🗺️ Mapa</button>
             
             <hr style="width:100%; border:0; border-top:1px solid #eee; margin:5px 0;">
             
@@ -410,12 +487,21 @@
         </div>
         <div id="map-view" style="display:none;">
             <div id="map-sidebar">
+                <h3>📍 Itinerario</h3>
+                
                 <div class="map-year-controls">
                     <button class="map-year-btn" onclick="cambiarAnoMapa(-1)">&lt;</button>
                     <span id="map-year-display"></span>
                     <button class="map-year-btn" onclick="cambiarAnoMapa(1)">&gt;</button>
                 </div>
-                <h3>📍 Itinerario</h3>
+                
+                <div class="legend-container">
+                    <span class="legend-item"><span class="dot grey"></span> Pasado</span>
+                    <span class="legend-item"><span class="dot red"></span> Hoy</span>
+                    <span class="legend-item"><span class="dot gold"></span> Siguiente</span>
+                    <span class="legend-item"><span class="dot blue"></span> Futuro</span>
+                </div>
+
                 <ul id="lista-rutas"></ul>
             </div>
             <div id="map-canvas">
@@ -543,6 +629,7 @@
     </div>
 
     <script type="module">
+        const API_KEY_HERE = 'vtP_Ocp9-jUl3SG6HpMHLSaRQoumNPiDV7SyOYmNkZA'; // Reemplaza con tu llave de HERE
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, where, writeBatch } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
@@ -583,6 +670,16 @@
         let currentMapYear = new Date().getFullYear(); 
 
         const CONTRASEÑA_ADMIN = "servicio2024"; 
+
+        // Icono para la reserva más próxima (Gold)
+        const goldIcon = new L.Icon({
+            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-gold.png',
+            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41]
+        });
 
         const blueIcon = new L.Icon({
             iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
@@ -637,7 +734,7 @@
                     if (arg.event.extendedProps.pdfUrl) {
                         let iconEl = document.createElement('span');
                         iconEl.innerHTML = ' 📎'; // Icono discreto
-                        iconEl.style.fontSize = '1.5em';
+                        iconEl.style.fontSize = '1.0em';
                         iconEl.style.marginLeft = '4px';
                         iconEl.style.color='white';
                         container.appendChild(iconEl);
@@ -706,7 +803,13 @@
             calendar.render();
 
             map = L.map('map-canvas').setView([23.6345, -102.5528], 5);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
+
+            const HERE_STYLE = 'explore.day'; 
+
+            L.tileLayer(`https://maps.hereapi.com/v3/base/mc/{z}/{x}/{y}/png8?style=${HERE_STYLE}&apiKey=${API_KEY_HERE}`, {
+                attribution: '&copy; 2024 HERE',
+                maxZoom: 20
+            }).addTo(map);
 
             document.getElementById('map-year-display').textContent = currentMapYear;
 
@@ -791,71 +894,55 @@
 
         inputDireccion.addEventListener('input', function() {
             const texto = this.value;
-            listaSugerencias.innerHTML = ''; 
-            listaSugerencias.style.display = 'none';
             
-            // Limpiamos coordenadas para forzar nueva búsqueda al guardar
             document.getElementById('latTemp').value = "";
             document.getElementById('lonTemp').value = "";
+            
+            listaSugerencias.innerHTML = ''; 
+            listaSugerencias.style.display = 'none';
             
             if (texto.length < 3) return; 
 
             clearTimeout(timeoutBuscador);
             timeoutBuscador = setTimeout(async () => {
                 try {
-                    // Intentamos una limpieza básica: quitamos caracteres especiales innecesarios
-                    const textoLimpio = texto.replace(/Ote\./gi, "Oriente").replace(/Pte\./gi, "Poniente");
-                    const queryEncoded = encodeURIComponent(textoLimpio);
+                    // Detectar si el usuario escribió un CP (5 dígitos)
+                    const matchCP = texto.match(/\b\d{5}\b/);
+                    const cpEncontrado = matchCP ? matchCP[0] : null;
                     
-                    // Priorizamos resultados en México y con detalles de dirección
-                    let url = `https://nominatim.openstreetmap.org/search?format=json&q=${queryEncoded}&limit=8&accept-language=es&countrycodes=mx&addressdetails=1`;
-                    let respuesta = await fetch(url);
-                    let resultados = await respuesta.json();
-
-                    // Si falla, intentamos buscar solo por los componentes principales (Calle y Ciudad)
-                    if (resultados.length === 0) {
-                        const partes = texto.split(',');
-                        if (partes.length > 1) {
-                            const simplificado = partes[0] + " " + partes[partes.length - 1];
-                            respuesta = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(simplificado)}&limit=5&accept-language=es&countrycodes=mx&addressdetails=1`);
-                            resultados = await respuesta.json();
-                        }
+                    // URL base con búsqueda libre
+                    let url = `https://geocode.search.hereapi.com/v1/geocode?q=${encodeURIComponent(texto)}&apiKey=${API_KEY_HERE}&lang=es&limit=8`;
+                    
+                    // Si hay CP, usamos el parámetro qq (Qualified Query) para filtrar por código postal
+                    if (cpEncontrado) {
+                        url += `&qq=postalCode=${cpEncontrado}`;
                     }
 
-                    if (resultados.length > 0) {
-                        listaSugerencias.style.display = 'block';
-                        resultados.forEach(lugar => {
-                            const item = document.createElement('li');
-                            item.className = 'suggestion-item';
-                            
-                            // Extraemos la ciudad de forma más agresiva
-                            const addr = lugar.address;
-                            const ciudad = addr.city || addr.town || addr.village || addr.municipality || addr.county || addr.city_district || addr.state || "";
-                            
-                            item.innerHTML = `<strong>📍 ${lugar.name || ciudad}</strong><br><small>${lugar.display_name}</small>`;
-                            
-                            item.onclick = function() {
-                                inputDireccion.value = lugar.display_name;
-                                document.getElementById('latTemp').value = lugar.lat;
-                                document.getElementById('lonTemp').value = lugar.lon;
+                    const respuesta = await fetch(url);
+                    const data = await respuesta.json();
 
-                                const addr = lugar.address;
-                                const ciudadDetectada = addr.city || 
-                                                        addr.town || 
-                                                        addr.village || 
-                                                        addr.municipality || 
-                                                        addr.county || 
-                                                        addr.city_district || 
-                                                        addr.state_district || 
-                                                        "Desconocida";
-                                
-                                document.getElementById('ciudadInput').value = ciudadDetectada;
+                    if (data.items && data.items.length > 0) {
+                        listaSugerencias.style.display = 'block';
+                        data.items.forEach(item => {
+                            const li = document.createElement('li');
+                            li.className = 'suggestion-item';
+                            
+                            // Extraer ciudad/localidad de la jerarquía de HERE
+                            const ciudad = item.address.city || item.address.locality || item.address.district || "";
+                            
+                            li.innerHTML = `<strong>📍 ${item.title}</strong><br><small>${item.address.label}</small>`;
+                            
+                            li.onclick = function() {
+                                inputDireccion.value = item.address.label;
+                                document.getElementById('latTemp').value = item.position.lat;
+                                document.getElementById('lonTemp').value = item.position.lng;
+                                document.getElementById('ciudadInput').value = ciudad;
                                 listaSugerencias.style.display = 'none'; 
                             };
-                            listaSugerencias.appendChild(item);
+                            listaSugerencias.appendChild(li);
                         });
                     }
-                } catch (e) { console.error(e); }
+                } catch (e) { console.error("Error en HERE Maps:", e); }
             }, 600); 
         });
 
@@ -865,7 +952,9 @@
 
         inputCiudad.addEventListener('input', function() {
             if(this.readOnly) return;
-            const texto = this.value;
+            const texto = this.value.trim();
+            const API_KEY_HERE = 'vtP_Ocp9-jUl3SG6HpMHLSaRQoumNPiDV7SyOYmNkZA';
+            
             listaSugerenciasCiudad.innerHTML = ''; 
             listaSugerenciasCiudad.style.display = 'none';
 
@@ -874,31 +963,45 @@
             clearTimeout(timeoutCiudad);
             timeoutCiudad = setTimeout(async () => {
                 try {
-                    const respuesta = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(texto)}&limit=5&accept-language=es&countrycodes=mx&addressdetails=1`);
-                    const resultados = await respuesta.json();
+                    const matchCP = texto.match(/\b\d{5}\b/);
+                    let url = `https://geocode.search.hereapi.com/v1/geocode?apiKey=${API_KEY_HERE}&lang=es&limit=5`;
+                    
+                    if (matchCP) {
+                        // Si el texto es un CP, busca la ciudad vinculada a él
+                        url += `&qq=postalCode=${matchCP[0]}`;
+                    } else {
+                        // Si es texto normal, busca por nombre de ciudad
+                        url += `&q=${encodeURIComponent(texto)}&types=city`;
+                    }
 
-                    if (resultados.length > 0) {
+                    const respuesta = await fetch(url);
+                    const data = await respuesta.json();
+
+                    if (data.items && data.items.length > 0) {
                         listaSugerenciasCiudad.style.display = 'block';
-                        resultados.forEach(lugar => {
-                            const item = document.createElement('li');
-                            item.className = 'suggestion-item';
-                            item.innerHTML = `<strong>🏙️ ${lugar.name}</strong><br><small>${lugar.address.state || ''}</small>`;
+                        data.items.forEach(item => {
+                            const li = document.createElement('li');
+                            li.className = 'suggestion-item';
                             
-                            item.onclick = function() {
-                                inputCiudad.value = lugar.name;
+                            const nombreCiudad = item.address.city || item.address.locality || item.title;
+                            const estado = item.address.state || "";
+
+                            li.innerHTML = `<strong>🏙️ ${nombreCiudad}</strong><br><small>${estado}, CP: ${item.address.postalCode || ''}</small>`;
+                            
+                            li.onclick = function() {
+                                inputCiudad.value = nombreCiudad;
                                 if(!document.getElementById('latTemp').value) {
-                                    document.getElementById('latTemp').value = lugar.lat;
-                                    document.getElementById('lonTemp').value = lugar.lon;
+                                    document.getElementById('latTemp').value = item.position.lat;
+                                    document.getElementById('lonTemp').value = item.position.lng;
                                 }
                                 listaSugerenciasCiudad.style.display = 'none'; 
                             };
-                            listaSugerenciasCiudad.appendChild(item);
+                            listaSugerenciasCiudad.appendChild(li);
                         });
                     }
-                } catch (e) { console.error(e); }
+                } catch (e) { console.error("Error ciudad CP:", e); }
             }, 400); 
         });
-
         document.addEventListener('click', function(e) { 
             if (e.target !== inputDireccion) listaSugerencias.style.display = 'none'; 
             if (e.target !== inputCiudad) listaSugerenciasCiudad.style.display = 'none'; 
@@ -914,88 +1017,73 @@
             let lat = document.getElementById('latTemp').value;
             let lon = document.getElementById('lonTemp').value;
 
-            // 1. Validación básica
             if (nombre === "" || fechaInicioStr === "") {
                 alert("⚠️ Faltan datos obligatorios: Cliente o Fechas.");
                 return;
             }
 
-            // 2. Lógica de búsqueda de Ciudad (si se editó la dirección o falta la ciudad)
-            // Agregamos lógica para direcciones complejas como Orizaba
+            // Búsqueda en HERE Maps si no hay coordenadas
             if ((ciudad === "" || ciudad === "Desconocida" || lat === "" || lon === "") && direccion.length > 2) {
                 const btn = document.querySelector('#reservaModal .btn-save');
-                btn.innerHTML = `<span class="loader"></span> Buscando Ciudad...`;
+                btn.innerHTML = `<span class="loader"></span> Buscando en HERE Maps...`;
                 btn.disabled = true;
                 
                 try {
-                    // Limpieza de abreviaturas comunes y códigos postales para mejorar búsqueda
-                    const direccionLimpia = direccion.replace(/Ote\./gi, "Oriente")
-                                                     .replace(/Pte\./gi, "Poniente")
-                                                     .replace(/\b\d{5}\b/g, "").trim();
-
-                    const resp = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(direccionLimpia)}&limit=5&addressdetails=1&countrycodes=mx`);
-                    const resultados = await resp.json();
+                    const matchCP = direccion.match(/\b\d{5}\b/);
+                    const cpEncontrado = matchCP ? matchCP[0] : null;
                     
-                    if (resultados.length > 0) {
-                        mostrarSelectorUbicacion(resultados);
+                    let url = `https://geocode.search.hereapi.com/v1/geocode?q=${encodeURIComponent(direccion)}&apiKey=${API_KEY_HERE}&lang=es&limit=5`;
+                    
+                    if (cpEncontrado) {
+                        url += `&qq=postalCode=${cpEncontrado}`; // Uso de Qualified Query para CP
+                    }
+
+                    const resp = await fetch(url);
+                    const data = await resp.json();
+                    
+                    if (data.items && data.items.length > 0) {
+                        mostrarSelectorUbicacion(data.items);
                     } else {
-                        // Último recurso: buscar solo el final de la cadena (que suele ser la ciudad)
-                        const partes = direccion.split(',');
-                        const ciudadProbable = partes[partes.length - 1].trim();
-                        const respFinal = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(ciudadProbable)}&limit=3&addressdetails=1&countrycodes=mx`);
-                        const resultadosFinal = await respFinal.json();
-                        
-                        if (resultadosFinal.length > 0) {
-                            mostrarSelectorUbicacion(resultadosFinal);
-                        } else {
-                            mostrarModalSinResultados();
-                        }
+                        mostrarModalSinResultados();
                     }
                 } catch(e) {
                     console.error(e);
-                    alert("Error al buscar ubicación. Ingresa la ciudad manualmente.");
+                    alert("Error de conexión con HERE Maps.");
                     habilitarManual();
                 }
                 btn.innerHTML = modoEdicion ? "📝 Actualizar Reserva" : "💾 Guardar Reserva";
                 btn.disabled = false;
-                return; // Detenemos para que el usuario elija en el modal de selección
+                return; 
             }
 
-            // 3. Procesamiento de Nombre de Ciudad Final
+            // Procesamiento de Ciudad Final para evitar "Desconocida"
             let ciudadFinal = ciudad.trim();
             if (ciudadFinal === "" || ciudadFinal === "Desconocida" || ciudadFinal === "Ubicación") {
                 const partes = direccion.split(',');
                 if (partes.length >= 2) {
-                    // Intenta extraer el nombre antes del estado o código postal
                     ciudadFinal = partes[partes.length - 2].replace(/\d+/g, '').trim(); 
                 } else {
                     ciudadFinal = "Sin Ciudad";
                 }
             }
 
-            // 4. Calcular días (excluyendo domingos)
             const rangos = calcularRangosSinDomingo(fechaInicioStr, fechaFinStr);
             if (rangos.length === 0) {
-                alert("⚠️ No has seleccionado ningún día laborable (lunes a sábado).");
+                alert("⚠️ No has seleccionado ningún día laborable.");
                 return;
             }
 
-            // 5. Definir ID de grupo (Si es edición mantiene el mismo, si es nuevo genera uno)
             const grupoId = modoEdicion ? idGrupoEdicion : Date.now().toString(); 
 
             try {
-                // Si es edición, primero borramos los documentos antiguos del grupo
                 if (modoEdicion && idGrupoEdicion) {
                     const q = query(collection(db, "reservas"), where("groupId", "==", idGrupoEdicion));
                     const querySnapshot = await getDocs(q);
                     const batch = writeBatch(db); 
-                    querySnapshot.forEach((doc) => {
-                        batch.delete(doc.ref);
-                    });
+                    querySnapshot.forEach((doc) => { batch.delete(doc.ref); });
                     await batch.commit();
                 }
 
-                // Guardar los nuevos documentos (uno por cada rango de fechas sin domingos)
                 for (let r of rangos) {
                     let fInicio = r.start.toISOString().split('T')[0];
                     let fFin = r.end.toISOString().split('T')[0];
@@ -1010,7 +1098,7 @@
                         lng: lon, 
                         groupId: grupoId, 
                         creado: new Date(),
-                        pdfUrl: urlEdicion // Mantiene el enlace de Drive existente al editar
+                        pdfUrl: urlEdicion // Conserva el link de Drive
                     });
                 }
 
@@ -1018,26 +1106,28 @@
                 cerrarModal('reservaModal');
                 document.getElementById('successModal').style.display = "block";
             } catch (e) {
-                console.error("Error al guardar:", e);
-                alert("Error al guardar la reserva en la base de datos.");
+                console.error(e);
+                alert("Error al guardar.");
             }
         };
 
-        window.mostrarSelectorUbicacion = function(resultados) {
+        window.mostrarSelectorUbicacion = function(items) {
             const lista = document.getElementById('listaCoincidencias');
             lista.innerHTML = "";
-            resultados.forEach(lugar => {
+            
+            items.forEach(item => {
                 const li = document.createElement('li');
                 li.className = 'match-item';
-                const addr = lugar.address;
-                const ciudad = addr.city || addr.town || addr.village || addr.municipality || addr.county || "Ubicación";
+                
+                // Mapeo jerárquico de HERE Maps
+                const ciudad = item.address.city || item.address.locality || item.address.district || "Ubicación";
 
-                li.innerHTML = `<strong>${ciudad}</strong><small>${lugar.display_name}</small>`;
-
+                li.innerHTML = `<strong>${ciudad}</strong><small>${item.address.label}</small>`;
+                
                 li.onclick = function() {
                     document.getElementById('ciudadInput').value = ciudad;
-                    document.getElementById('latTemp').value = lugar.lat;
-                    document.getElementById('lonTemp').value = lugar.lon;
+                    document.getElementById('latTemp').value = item.position.lat;
+                    document.getElementById('lonTemp').value = item.position.lng;
                     cerrarModal('selectionModal');
                     guardarReserva(); 
                 };
@@ -1298,129 +1388,243 @@
         
         function actualizarMapaYLista(centrarHoy = false) {
             const listaDelAnio = globalReservas.filter(r => r.start.getFullYear() === currentMapYear || r.end.getFullYear() === currentMapYear);
-
-            const statsByCity = {};
-            listaDelAnio.forEach(r => {
-                const ciudad = r.data.ciudad ? r.data.ciudad.split(",")[0].trim() : "Desconocida";
-                if (!statsByCity[ciudad]) statsByCity[ciudad] = { clients: new Set(), days: 0 };
-                if (r.data.cliente) statsByCity[ciudad].clients.add(r.data.cliente);
-                let current = new Date(r.start);
-                while (current <= r.end) {
-                    if (current.getDay() !== 0) statsByCity[ciudad].days++;
-                    current.setDate(current.getDate() + 1);
-                }
-            });
-
-            markers.forEach(marker => map.removeLayer(marker));
-            markers = [];
-
             const hoy = new Date();
             hoy.setHours(0,0,0,0);
 
+            // 1. Ordenar por fecha
             let listaVisualizar = [...listaDelAnio].sort((a, b) => a.start - b.start);
+            const reservaProxima = listaVisualizar.find(r => r.start > hoy);
 
-            let reservaDestacada = listaVisualizar.find(r => r.start <= hoy && r.end >= hoy) || listaVisualizar.find(r => r.start > hoy) || (listaVisualizar.length > 0 ? listaVisualizar[listaVisualizar.length - 1] : null);
+            // Función auxiliar para determinar prioridad de estado (Color)
+            // 3: Activo (Rojo), 2: Destacado (Dorado), 1: Futuro (Azul), 0: Pasado (Gris)
+            const getPrioridad = (r) => {
+                if (r.start <= hoy && r.end >= hoy) return 3;
+                if (r === reservaProxima) return 2;
+                if (r.end < hoy) return 0;
+                return 1;
+            };
 
+            const getNombreEstado = (prioridad) => {
+                switch(prioridad) {
+                    case 3: return 'activo';
+                    case 2: return 'destacado';
+                    case 0: return 'pasado';
+                    default: return 'futuro';
+                }
+            };
+
+            // --- A. CONSTRUCCIÓN DE LA LISTA LATERAL (Agrupación Inteligente) ---
             const rutasAgrupadas = [];
+            
             listaVisualizar.forEach((reserva, index) => {
                 const ciudadActual = reserva.data.ciudad ? reserva.data.ciudad.split(",")[0].trim() : "Desconocida";
-                const reservaEsPasada = (reserva.end < hoy);
-                
+                const prioridadActual = getPrioridad(reserva);
+
                 if (index === 0) {
                     rutasAgrupadas.push({
                         ciudad: ciudadActual,
                         inicio: reserva.data.fechaInicio,
                         fin: reserva.data.fechaFin,
                         clientes: [reserva.data.cliente],
-                        reservasOriginales: [reserva], 
                         lat: reserva.data.lat, 
                         lng: reserva.data.lng,
-                        esPasado: reservaEsPasada
+                        prioridadGrupo: prioridadActual // Guardamos la prioridad numérica
                     });
                     return;
                 }
 
                 const ultimoGrupo = rutasAgrupadas[rutasAgrupadas.length - 1];
                 
-                if (ultimoGrupo.ciudad === ciudadActual && ultimoGrupo.esPasado === reservaEsPasada) {
-                    ultimoGrupo.fin = reserva.data.fechaFin; 
-                    if (!ultimoGrupo.clientes.includes(reserva.data.cliente)) ultimoGrupo.clientes.push(reserva.data.cliente);
-                    ultimoGrupo.reservasOriginales.push(reserva);
+                // CÁLCULO DE DÍAS: Diferencia entre Fin del anterior e Inicio del actual
+                const finAnterior = new Date(ultimoGrupo.fin + 'T00:00:00');
+                const inicioActual = new Date(reserva.data.fechaInicio + 'T00:00:00');
+                const diferenciaTiempo = inicioActual - finAnterior;
+                const diasDiferencia = Math.ceil(diferenciaTiempo / (1000 * 60 * 60 * 24));
+
+                // REGLA DE AGRUPACIÓN:
+                // 1. Misma ciudad
+                // 2. Consecutivos (<= 2 días de diferencia para tolerar fines de semana o saltos de 1 día)
+                if (ultimoGrupo.ciudad === ciudadActual && diasDiferencia <= 3) {
+                    
+                    // FUSIONAMOS
+                    ultimoGrupo.fin = reserva.data.fechaFin; // Extendemos fecha fin
+                    
+                    // Si el nuevo tiene mayor prioridad (ej. es HOY), actualizamos el color del grupo
+                    if (prioridadActual > ultimoGrupo.prioridadGrupo) {
+                        ultimoGrupo.prioridadGrupo = prioridadActual;
+                    }
+
+                    // Agregamos cliente si no existe
+                    if (!ultimoGrupo.clientes.includes(reserva.data.cliente)) {
+                        ultimoGrupo.clientes.push(reserva.data.cliente);
+                    }
                 } else {
+                    // NUEVO GRUPO
                     rutasAgrupadas.push({
                         ciudad: ciudadActual,
                         inicio: reserva.data.fechaInicio,
                         fin: reserva.data.fechaFin,
                         clientes: [reserva.data.cliente],
-                        reservasOriginales: [reserva],
                         lat: reserva.data.lat,
                         lng: reserva.data.lng,
-                        esPasado: reservaEsPasada
+                        prioridadGrupo: prioridadActual
                     });
                 }
             });
 
+            // RENDERIZADO DE LISTA
             const ulLista = document.getElementById('lista-rutas');
             ulLista.innerHTML = rutasAgrupadas.length === 0 ? '<li style="padding:15px;color:#999;text-align:center;">Sin reservas este año.</li>' : '';
 
             rutasAgrupadas.forEach(grupo => {
                 const li = document.createElement('li');
-                li.className = 'ruta-item' + (grupo.esPasado ? ' pasada' : '') + (grupo.reservasOriginales.includes(reservaDestacada) ? ' active' : '');
+                
+                // Convertir prioridad numérica a clase CSS
+                let estadoTexto = getNombreEstado(grupo.prioridadGrupo);
+                let claseEstado = '';
+                
+                if (estadoTexto === 'pasado') claseEstado = ' pasada';
+                else if (estadoTexto === 'activo') claseEstado = ' activa';
+                else if (estadoTexto === 'destacado') claseEstado = ' destacada';
+                
+                li.className = 'ruta-item' + claseEstado;
+                
+                const clientesHTML = grupo.clientes.map(c => `<div style="padding-left:10px; margin-bottom:2px;">• ${c}</div>`).join('');
+
                 li.innerHTML = `
                     <div class="ruta-ciudad">${grupo.ciudad}</div>
                     <div class="ruta-fechas">📅 ${formatearFecha(grupo.inicio)} ➝ ${formatearFecha(grupo.fin)}</div>
-                    <div class="ruta-cliente">${grupo.clientes.map(c => `<span>• ${c}</span>`).join('')}</div>
+                    <div class="ruta-cliente" style="margin-top:8px; border-top:1px dashed #dedede; padding-top:4px;">
+                        ${clientesHTML}
+                    </div>
                 `;
-                li.onclick = () => { if (grupo.lat && grupo.lng) {
-                    map.flyTo([grupo.lat, grupo.lng], 10);
+                
+                li.onclick = () => { 
+                    if (grupo.lat && grupo.lng) {
+                        map.flyTo([grupo.lat, grupo.lng], 13);
+                        setTimeout(() => {
+                            const marker = markers.find(m => {
+                                const latLng = m.getLatLng();
+                                return Math.abs(latLng.lat - grupo.lat) < 0.00001 && Math.abs(latLng.lng - grupo.lng) < 0.00001;
+                            });
+                            if (marker) marker.openPopup();
+                        }, 500);
+                    }
+                };
+                
+                if(estadoTexto === 'destacado' || estadoTexto === 'activo') {
+                    // block: 'center' asegura que el elemento quede a la mitad de la lista visible
                     setTimeout(() => {
-                        const marker = markers.find(m => Math.abs(m.getLatLng().lat - grupo.lat) < 0.0001);
-                        if(marker) marker.openPopup();
-                    }, 300);
-                }};
+                        li.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }, 600); // Pequeño delay para dar tiempo al renderizado
+                }
+
                 ulLista.appendChild(li);
             });
 
+            // --- B. CONSTRUCCIÓN DEL MAPA (Igual lógica de prioridad visual) ---
+            markers.forEach(marker => map.removeLayer(marker));
+            markers = [];
+            const ciudadesMap = {};
+
             listaVisualizar.forEach(r => {
-                if (r.data.lat && r.data.lng) {
-                    let icono = r === reservaDestacada ? redIcon : (r.end < hoy ? greyIcon : blueIcon);
-                    const marker = L.marker([r.data.lat, r.data.lng], { icon: icono, zIndexOffset: r === reservaDestacada ? 1000 : 0 }).addTo(map);
-                    const stats = statsByCity[r.data.ciudad ? r.data.ciudad.split(",")[0].trim() : "Desconocida"] || { clients: new Set(), days: 0 };
-                    marker.bindPopup(`<div style="text-align:center;"><h3 style="margin:0;">${r.data.ciudad.split(",")[0]}</h3>👥 <b>Clientes:</b> ${stats.clients.size}<br>⏱️ <b>Días:</b> ${stats.days}</div>`);
-                    markers.push(marker);
+                if (!r.data.lat || !r.data.lng) return;
+                const nombreCiudad = r.data.ciudad ? r.data.ciudad.split(",")[0].trim() : "Ubicación";
+
+                if (!ciudadesMap[nombreCiudad]) {
+                    ciudadesMap[nombreCiudad] = {
+                        lat: r.data.lat, lng: r.data.lng, clientes: new Set(), diasTotales: 0, prioridadVisual: 0 
+                    };
                 }
+                ciudadesMap[nombreCiudad].clientes.add(r.data.cliente);
+                
+                let current = new Date(r.start);
+                while (current <= r.end) {
+                    if (current.getDay() !== 0) ciudadesMap[nombreCiudad].diasTotales++;
+                    current.setDate(current.getDate() + 1);
+                }
+
+                // Usamos la misma lógica de prioridad para el pin
+                let p = getPrioridad(r);
+                if (p > ciudadesMap[nombreCiudad].prioridadVisual) {
+                    ciudadesMap[nombreCiudad].prioridadVisual = p;
+                }
+            });
+
+            Object.keys(ciudadesMap).forEach(ciudadKey => {
+                const datos = ciudadesMap[ciudadKey];
+                let icono = blueIcon; 
+                let zIndex = 500;
+
+                if (datos.prioridadVisual === 0) { icono = greyIcon; zIndex = 100; }
+                else if (datos.prioridadVisual === 2) { icono = goldIcon; zIndex = 900; }
+                else if (datos.prioridadVisual === 3) { icono = redIcon; zIndex = 1000; }
+
+                const marker = L.marker([datos.lat, datos.lng], { icon: icono, zIndexOffset: zIndex }).addTo(map);
+
+                const listaClientesVertical = Array.from(datos.clientes).map(c => `<div style="margin-bottom:3px;">• ${c}</div>`).join('');
+
+                marker.bindPopup(`
+                    <div style="text-align:center; min-width:160px;">
+                        <h3 style="margin:0; color:#2c3e50; font-size:1.1rem;">${ciudadKey}</h3>
+                        <hr style="border:0; border-top:1px solid #eee; margin:8px 0;">
+                        <div style="text-align:left; font-size:0.9rem; line-height:1.4;">
+                            <strong style="color:#333;">👥 Clientes:</strong>
+                            <div style="margin-top:5px; margin-left:5px; max-height:100px; overflow-y:auto; color:#555;">${listaClientesVertical}</div>
+                            <br>
+                            <div style="border-top:1px dashed #ccc; padding-top:5px;">
+                                ⏱️ <b>Días ocupados:</b> ${datos.diasTotales}
+                            </div>
+                        </div>
+                    </div>
+                `);
+                markers.push(marker);
             });
         }
 
-        window.borrarReserva = async function() {
-            if(!eventoSeleccionadoID) return;
-            let borrarTodoElGrupo = grupoSeleccionadoID ? confirm("¿Quieres borrar TODAS las partes de este grupo?") : confirm("¿Eliminar reserva?");
-            try {
-                if (borrarTodoElGrupo && grupoSeleccionadoID) {
-                    const q = query(collection(db, "reservas"), where("groupId", "==", grupoSeleccionadoID));
-                    const querySnapshot = await getDocs(q);
-                    querySnapshot.forEach((docSnap) => { deleteDoc(doc(db, "reservas", docSnap.id)); });
-                } else { await deleteDoc(doc(db, "reservas", eventoSeleccionadoID)); }
-                await cargarReservas(); 
-                cerrarModal('detalleModal');
-            } catch (e) { console.error(e); }
-        }
+        // --- FUNCIÓN RECUPERADA: EXPORTAR CALENDARIO ---
+        window.exportarCalendario = function() {
+            if (globalReservas.length === 0) {
+                alert("⚠️ No hay eventos para exportar.");
+                return;
+            }
 
-        window.exportarCalendario = async function() {
-            if(!confirm("¿Descargar archivo para Google Calendar?")) return;
-            try {
-                const querySnapshot = await getDocs(collection(db, "reservas"));
-                let ics = "BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//Agenda TrackSIM//ES\n";
-                querySnapshot.forEach((doc) => {
-                    const data = doc.data();
-                    let finObj = new Date(data.fechaFin + 'T00:00:00'); finObj.setDate(finObj.getDate() + 1); 
-                    ics += `BEGIN:VEVENT\nUID:${doc.id}@tracksim.com\nDTSTART;VALUE=DATE:${data.fechaInicio.replace(/-/g, '')}\nDTEND;VALUE=DATE:${finObj.toISOString().split('T')[0].replace(/-/g, '')}\nSUMMARY:Servicio: ${data.cliente}\nLOCATION:${data.ciudad}\nEND:VEVENT\n`;
-                });
-                ics += "END:VCALENDAR";
-                const blob = new Blob([ics], { type: 'text/calendar' });
-                const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = 'agenda.ics'; link.click();
-            } catch (e) { console.error(e); }
-        }
+            let icsContent = "BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//TrackSIM//Agenda//ES\nCALSCALE:GREGORIAN\nMETHOD:PUBLISH\n";
+
+            globalReservas.forEach(reserva => {
+                // Formatear fechas YYYYMMDD (Quitar guiones)
+                const start = reserva.data.fechaInicio.replace(/-/g, '');
+                
+                // iCal requiere que la fecha final sea exclusiva (día siguiente), así que sumamos 1 día
+                let endDateObj = new Date(reserva.data.fechaFin + 'T00:00:00');
+                endDateObj.setDate(endDateObj.getDate() + 1);
+                const end = endDateObj.toISOString().split('T')[0].replace(/-/g, '');
+
+                const ciudad = reserva.data.ciudad || "Sin ciudad";
+                const cliente = reserva.data.cliente || "Cliente";
+                const direccion = reserva.data.direccion || "";
+
+                icsContent += "BEGIN:VEVENT\n";
+                icsContent += `DTSTART;VALUE=DATE:${start}\n`;
+                icsContent += `DTEND;VALUE=DATE:${end}\n`;
+                icsContent += `SUMMARY:${ciudad} - ${cliente}\n`;
+                icsContent += `DESCRIPTION:Cliente: ${cliente}\\nDirección: ${direccion}\\nGestionado desde Agenda TrackSIM.\n`;
+                icsContent += `LOCATION:${ciudad}, ${direccion}\n`;
+                icsContent += "STATUS:CONFIRMED\n";
+                icsContent += "END:VEVENT\n";
+            });
+
+            icsContent += "END:VCALENDAR";
+
+            // Crear enlace de descarga virtual
+            const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `agenda_tracksim_${new Date().toISOString().split('T')[0]}.ics`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        };
 
         window.compartirApp = async function() {
             const shareData = {
@@ -1655,10 +1859,9 @@
             const zoomOriginal = 5;
 
             if (map) {
-                // Resetea la vista a la posición y zoom iniciales
-                map.flyTo([latOriginal, lonOriginal], zoomOriginal);
-                
-                // Opcional: Cerrar cualquier popup abierto al resetear
+                map.flyTo([latOriginal, lonOriginal], zoomOriginal, {
+                    duration: 1.5
+                });
                 map.closePopup();
             }
         }
