@@ -1827,28 +1827,51 @@
         }        
         window.cerrarModal = function(idModal) { document.getElementById(idModal).style.display = "none"; }
 
-        // --- FUNCIÓN RECUPERADA: BORRAR RESERVA ---
-        window.borrarReserva = async function() {
+window.borrarReserva = async function() {
             if (!eventoSeleccionadoID) return;
 
-            // Confirmación de seguridad
-            const confirmar = confirm("¿Estás seguro de que deseas eliminar esta reserva de forma permanente?");
-            if (!confirmar) return;
+            // 1. Buscamos la reserva en nuestros datos locales para obtener su Group ID
+            const reservaActual = globalReservas.find(r => r.id === eventoSeleccionadoID);
+            const groupId = reservaActual ? reservaActual.data.groupId : null;
+
+            let mensajeConfirmacion = "⚠️ ¿Estás seguro de eliminar esta reserva? ⚠️";
+            
+            // Si detectamos que es parte de un grupo, avisamos al usuario
+            if (groupId) {
+                mensajeConfirmacion = "⚠️ ¿Deseas eliminar la reservación completa?";
+            }
+
+            if (!confirm(mensajeConfirmacion)) return;
 
             try {
-                // 1. Eliminar el documento de Firebase usando el ID seleccionado
-                await deleteDoc(doc(db, "reservas", eventoSeleccionadoID));
+                if (groupId) {
+                    // OPCIÓN A: Borrar todo el grupo (Todas las semanas vinculadas)
+                    
+                    // 1. Buscamos todas las reservas con ese groupId
+                    const q = query(collection(db, "reservas"), where("groupId", "==", groupId));
+                    const querySnapshot = await getDocs(q);
+                    
+                    // 2. Preparamos un "batch" para borrar todas de golpe
+                    const batch = writeBatch(db);
+                    querySnapshot.forEach((doc) => {
+                        batch.delete(doc.ref);
+                    });
+                    
+                    // 3. Ejecutamos el borrado masivo
+                    await batch.commit();
+                    
+                } else {
+                    // OPCIÓN B: Borrado simple (Por si es una reserva antigua sin groupId)
+                    await deleteDoc(doc(db, "reservas", eventoSeleccionadoID));
+                }
 
-                // 2. Cerrar el modal
                 cerrarModal('detalleModal');
+                await cargarReservas(); // Recargar calendario y mapa
+                alert("🗑️ Reservación eliminada correctamente.");
 
-                // 3. Recargar los datos para actualizar calendario y mapa
-                await cargarReservas();
-
-                alert("🗑️ Reserva eliminada correctamente.");
             } catch (error) {
                 console.error("Error al borrar:", error);
-                alert("Hubo un error al intentar borrar la reserva.");
+                alert("Hubo un error al intentar borrar.");
             }
         };
 
@@ -1862,7 +1885,6 @@
                 document.getElementById('mobile-btn-logout').style.display = 'block';
                 document.getElementById('mobile-admin-status').style.display = 'block';
                 actualizarHeaderAdmin(); 
-                alert("✅ Admin Activo");
             } else { alert("❌ Incorrecto"); }
         }
 
