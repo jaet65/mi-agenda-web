@@ -452,7 +452,7 @@
             
             <div class="desktop-buttons">
                 <div class="dropdown-share">
-                    <button class="btn-share">📤 Compartir ▼</button>
+                    <button class="btn-share">📤 Share</button>
                     <div class="dropdown-content">
                         <button onclick="compartirApp()">🔗 Enviar Vínculo</button>
                         <button onclick="verQR()">📱 Ver Código QR</button>
@@ -541,6 +541,43 @@
                     🌍
                 </button>
             </div>
+        </div>
+    </div>
+
+    <div id="statsModal" class="modal">
+        <div class="modal-content">
+            <span class="close-x" onclick="cerrarModal('statsModal')">×</span>
+            <h3 style="margin-top:0; text-align:center; color:#2c3e50;">📊 Reporte de Semanas</h3>
+            <p style="text-align:center; font-size:0.9rem; color:#666; margin-bottom:15px;">
+                Desglose histórico de reservación:
+            </p>
+            
+            <ul id="listaStats" class="match-list"></ul>
+
+            <button onclick="cerrarModal('statsModal')" class="btn-secondary" style="margin-top:15px; width:100%;">
+                Cerrar
+            </button>
+        </div>
+    </div>
+
+    <div id="loginModal" class="modal">
+        <div class="modal-content" style="max-width: 300px;">
+            <span class="close-x" onclick="cerrarModal('loginModal')">×</span>
+            <h2 style="margin-top:0; text-align:center;">Administración</h2>
+            
+            <form onsubmit="validarLogin(event)">
+                
+                <input type="text" name="username" value="Admin" autocomplete="username" style="display:none;">
+
+                <div class="form-group">
+                    <label>Contraseña:</label>
+                    <input type="password" id="inputPasswordAdmin" placeholder="Ingresa contraseña" autocomplete="current-password" required>
+                </div>
+
+                <button type="submit" class="btn-action" style="width:100%; margin-top:10px; font-weight:bold;">
+                    🔓 Entrar
+                </button>
+            </form>
         </div>
     </div>
 
@@ -1213,25 +1250,41 @@
             const statsDiv = document.getElementById('admin-stats');
             
             if (esAdmin) {
-                const years = Object.keys(statsPorAno).sort();
+                const years = Object.keys(statsPorAno).sort(); // Ordenar años (ascendente)
                 
                 if (years.length === 0) {
                     statsDiv.textContent = "0 Semanas";
-                    statsDiv.onclick = null; // Sin evento si no hay datos
+                    statsDiv.onclick = null; 
                 } else {
-                    // 1. Tomamos solo el último año para mostrar
+                    // 1. Mostrar resumen corto en el encabezado (Último año)
                     const ultimoAno = years[years.length - 1];
                     const semanasUltimo = statsPorAno[ultimoAno].toFixed(1);
                     
-                    // Texto corto (Ej: "📊 2025: 12.4 Sem ℹ️")
                     statsDiv.innerHTML = `📊 ${ultimoAno}: ${semanasUltimo} Sem <span style="font-size:0.8em">ℹ️</span>`;
                     
-                    // 2. Preparamos el texto completo para el alert/modal
-                    const textoCompleto = years.map(y => `${y}: ${statsPorAno[y].toFixed(1)} Semanas`).join('\n');
-                    
-                    // 3. Evento Click
+                    // 2. Evento Click: Abrir Modal
                     statsDiv.onclick = function() {
-                        alert("📊 Estadísticas por Año:\n\n" + textoCompleto);
+                        const listaUl = document.getElementById('listaStats');
+                        listaUl.innerHTML = ''; // Limpiar lista anterior
+                        
+                        // Recorremos los años (invertimos para ver el más reciente arriba)
+                        years.slice().reverse().forEach(y => {
+                            const li = document.createElement('li');
+                            li.className = 'match-item'; // Reusamos estilo de lista existente
+                            li.style.display = 'flex';
+                            li.style.justifyContent = 'space-between';
+                            li.style.cursor = 'default'; // No es clicable
+                            
+                            // Contenido de la fila
+                            li.innerHTML = `
+                                <strong style="color:#2c3e50;">Año ${y}</strong>
+                                <span style="color:#007bff; font-weight:bold;">${statsPorAno[y].toFixed(1)} Semanas</span>
+                            `;
+                            listaUl.appendChild(li);
+                        });
+                        
+                        // Mostrar el modal
+                        document.getElementById('statsModal').style.display = 'block';
                     };
                 }
                 statsDiv.style.display = 'inline-block';
@@ -1976,15 +2029,30 @@
             }
         };
 
+        // 1. Modificar iniciarSesion para abrir el modal en lugar del prompt
         window.iniciarSesion = function() {
-            if (prompt("Contraseña Admin:") === CONTRASEÑA_ADMIN) {
+            // Abrimos el modal
+            document.getElementById('loginModal').style.display = 'block';
+            
+            // Ponemos el foco en el input para escribir rápido
+            setTimeout(() => {
+                document.getElementById('inputPasswordAdmin').focus();
+            }, 100);
+        }
+
+        // 2. Nueva función para procesar el formulario
+        window.validarLogin = function(event) {
+            event.preventDefault(); // Evita que la página se recargue
+
+            const passIngresada = document.getElementById('inputPasswordAdmin').value;
+
+            if (passIngresada === CONTRASEÑA_ADMIN) {
                 esAdmin = true;
                 
-                // Botones de sesión
+                // --- Lógica de visualización de botones (Tu código original) ---
                 document.getElementById('btnLogin').style.display = 'none';
                 document.getElementById('btnLogout').style.display = 'inline-block';
                 
-                // Indicadores de estado
                 const adminStatus = document.getElementById('admin-status');
                 if(adminStatus) adminStatus.style.display = 'inline';
                 
@@ -1997,15 +2065,19 @@
                 const mobileStatus = document.getElementById('mobile-admin-status');
                 if(mobileStatus) mobileStatus.style.display = 'block';
 
-                // Mostrar botón importar (con verificación de seguridad)
                 const btnImport = document.getElementById('btnImport');
-                if (btnImport) {
-                    btnImport.style.display = 'inline-block';
-                }
+                if (btnImport) btnImport.style.display = 'inline-block';
 
                 actualizarHeaderAdmin(); 
-            } else { 
-                alert("❌ Incorrecto"); 
+                // -------------------------------------------------------------
+
+                // Cerrar modal y limpiar campo
+                document.getElementById('inputPasswordAdmin').value = '';
+                cerrarModal('loginModal');
+
+            } else {
+                alert("❌ Contraseña Incorrecta");
+                document.getElementById('inputPasswordAdmin').select(); // Seleccionar texto para reintentar
             }
         }
 
