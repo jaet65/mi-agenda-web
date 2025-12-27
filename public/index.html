@@ -1896,7 +1896,7 @@
             eventoSeleccionadoID = evento.id; 
             grupoSeleccionadoID = evento.extendedProps.groupId || null;
             
-            // Referencias
+            // Referencias DOM
             const seccionPDF = document.getElementById('seccionPDF');
             const pdfInfo = document.getElementById('pdfInfo');
             const linkPDF = document.getElementById('linkPDF');
@@ -1907,78 +1907,89 @@
             const btnEliminar = document.getElementById('btnEliminar');
             const btnEditar = document.getElementById('btnEditar');
 
-            // Llenar datos básicos
+            // --- INICIO CAMBIOS: Dirección con Enlace a Maps ---
+            
+            // Llenar datos básicos (Cliente y Ciudad igual que antes)
             document.getElementById('detCliente').innerText = evento.extendedProps.cliente || "No especificado";
             document.getElementById('detCiudad').innerText = evento.extendedProps.ciudadCompleta || evento.title;
-            document.getElementById('detDireccion').innerText = evento.extendedProps.direccion || "Sin dirección registrada";
+            
+            // Lógica inteligente para la dirección
+            const direccionTexto = evento.extendedProps.direccion;
+            const ciudadTexto = evento.extendedProps.ciudadCompleta || "";
+            const spanDireccion = document.getElementById('detDireccion');
+
+            if (direccionTexto) {
+                // Creamos una búsqueda combinada: "Calle 123, Ciudad" para mayor precisión
+                const queryMaps = encodeURIComponent(direccionTexto + ", " + ciudadTexto);
+                const urlMaps = `https://www.google.com/maps/search/?api=1&query=${queryMaps}`;
+
+                // Insertamos el enlace HTML
+                spanDireccion.innerHTML = `
+                    <a href="${urlMaps}" target="_blank" style="color:#007bff; text-decoration:none; font-weight:bold;">
+                        📍 ${direccionTexto} ↗️
+                    </a>`;
+            } else {
+                spanDireccion.innerText = "Sin dirección registrada";
+            }
+
+            // Fechas
             document.getElementById('detFechas').innerText = `${evento.start.toISOString().split('T')[0]} al ${evento.extendedProps.fechaFinReal}`;
+
+            // --- FIN CAMBIOS ---
             
             const urlExistente = evento.extendedProps.pdfUrl;
 
-            // --- LÓGICA DE VISUALIZACIÓN ---
+            // ... (El resto de la función 'mostrarDetalles' sigue igual con la lógica de Admin/PDF) ...
+            
+            // --- PEGA AQUÍ EL RESTO DE TU LÓGICA DE ADMIN SI LA BORRASTE, O MANTÉN LO QUE YA TENÍAS ---
             if (esAdmin) {
-                // SI ES ADMIN: MUESTRA TODO
                 seccionPDF.style.display = 'block';
                 adminPDFInput.style.display = 'block';
                 btnEliminar.style.display = 'block';
                 btnEditar.style.display = 'block';
 
                 if (urlExistente) {
-                    // MODO: Ver/Editar (Ya existe enlace)
                     pdfInfo.style.display = 'flex';
                     linkPDF.href = urlExistente;
-
                     driveUrlInput.value = urlExistente;
                     driveUrlInput.readOnly = true;
-                    driveUrlInput.style.backgroundColor = "#e9ecef"; // Gris
-                    
-                    // Botón en modo "Editar"
+                    driveUrlInput.style.backgroundColor = "#e9ecef"; 
                     btnGuardarDrive.textContent = "✏️";
                     btnGuardarDrive.style.background = "#ffc107";
                     btnGuardarDrive.style.color = "#333";
                     btnGuardarDrive.onclick = function() { window.habilitarEdicionDrive(); };
-                    
-                    // Mostrar botón eliminar
                     btnEliminarDrive.style.display = "block";
                 } else {
-                    // MODO: Crear (No hay enlace)
                     pdfInfo.style.display = 'none';
-
                     driveUrlInput.value = "";
                     driveUrlInput.readOnly = false;
                     driveUrlInput.style.backgroundColor = "#ffffff";
                     driveUrlInput.placeholder = "Pegar enlace de Google Drive";
-                    
-                    // Botón en modo "Guardar"
                     btnGuardarDrive.textContent = "💾";
                     btnGuardarDrive.style.background = "#28a745";
                     btnGuardarDrive.style.color = "white";
                     btnGuardarDrive.onclick = function() { window.guardarEnlaceDrive(); };
-                    
-                    // Ocultar botón eliminar
                     btnEliminarDrive.style.display = "none";
                 }
-
             } else {
-                // SI NO ES ADMIN: OCULTA TODO
                 if (urlExistente) {
-                    // MODO: Ver/Editar (Ya existe enlace)
                     pdfInfo.style.display = 'flex';
                     linkPDF.href = urlExistente;
-
                     driveUrlInput.value = urlExistente;
                     driveUrlInput.readOnly = true;
-                    driveUrlInput.style.backgroundColor = "#e9ecef"; // Gris
-
+                    driveUrlInput.style.backgroundColor = "#e9ecef"; 
                     seccionPDF.style.display = 'block';
                     adminPDFInput.style.display = 'none';
                     btnEliminar.style.display = 'none';
                     btnEditar.style.display = 'none';
+                } else {
+                    seccionPDF.style.display = 'none'; // Ocultar si no hay PDF y no es admin
                 }
             }
             
             document.getElementById('detalleModal').style.display = "block";
-        }        
+        }
+                
         window.cerrarModal = function(idModal) { document.getElementById(idModal).style.display = "none"; }
 
         window.borrarReserva = async function() {
@@ -2173,6 +2184,10 @@
             const archivo = input.files[0];
             if (!archivo) return;
 
+            const btnImport = document.getElementById('btnImport');
+            const textoOriginal = btnImport.innerHTML;
+            btnImport.disabled = true;
+
             const reader = new FileReader();
             
             reader.onload = async function(e) {
@@ -2180,80 +2195,107 @@
                 const lineas = contenido.split('\n');
                 
                 if (lineas.length < 2) {
-                    alert("El archivo parece estar vacío o no tiene formato correcto.");
+                    alert("El archivo vacío o sin formato.");
+                    btnImport.disabled = false;
+                    return;
+                }
+
+                if(!confirm(`Procesando ${lineas.length - 1} líneas. Se validarán las ciudades estrictamente. ¿Continuar?`)) {
+                    input.value = ''; 
+                    btnImport.disabled = false;
                     return;
                 }
 
                 let contExito = 0;
                 let contError = 0;
+                let contSinUbicacion = 0;
 
-                if(!confirm(`Se detectaron ${lineas.length - 1} líneas. ¿Deseas importarlas?`)) {
-                    input.value = ''; 
-                    return;
-                }
-
-                // Función auxiliar para convertir DD/MM/AAAA a AAAA-MM-DD
                 const formatearFecha = (fechaStr) => {
                     if (!fechaStr) return null;
                     fechaStr = fechaStr.trim();
-                    
-                    // Caso 1: Ya viene bien (2024-01-01)
-                    if (/^\d{4}-\d{2}-\d{2}$/.test(fechaStr)) {
-                        return fechaStr;
-                    }
-                    
-                    // Caso 2: Viene con diagonales (01/01/2024 o 1/1/2024)
+                    if (/^\d{4}-\d{2}-\d{2}$/.test(fechaStr)) return fechaStr;
                     if (fechaStr.includes('/')) {
                         const partes = fechaStr.split('/');
-                        if (partes.length === 3) {
-                            // Asumimos formato Día/Mes/Año
-                            const dia = partes[0].padStart(2, '0');
-                            const mes = partes[1].padStart(2, '0');
-                            const anio = partes[2];
-                            
-                            // Retornamos formato Año-Mes-Día
-                            return `${anio}-${mes}-${dia}`;
-                        }
+                        if (partes.length === 3) return `${partes[2]}-${partes[1].padStart(2, '0')}-${partes[0].padStart(2, '0')}`;
                     }
-                    return null; // Formato no reconocido
+                    return null;
                 };
+
+                // --- CAMBIO CLAVE AQUÍ: Recibimos dirección Y ciudad por separado ---
+                const obtenerCoordenadas = async (direccion, ciudad) => {
+                    if (!direccion || direccion.length < 2) return { lat: "", lng: "" };
+                    
+                    try {
+                        // 1. 'q' busca la calle y número
+                        let url = `https://geocode.search.hereapi.com/v1/geocode?q=${encodeURIComponent(direccion)}&apiKey=${API_KEY_HERE}&lang=es&limit=1`;
+                        
+                        // 2. 'qq' (Qualified Query) FUERZA que sea en esa ciudad
+                        if (ciudad && ciudad.length > 2 && ciudad !== "Sin Ciudad") {
+                            // Añadimos country=MEX para evitar ciudades homónimas en otros países
+                            url += `&qq=city=${encodeURIComponent(ciudad)};country=MEX`;
+                        }
+
+                        const res = await fetch(url);
+                        const data = await res.json();
+                        
+                        if (data.items && data.items.length > 0) {
+                            return { lat: data.items[0].position.lat, lng: data.items[0].position.lng };
+                        }
+                    } catch (error) {
+                        console.error("Error geocodificando:", error);
+                    }
+                    return { lat: "", lng: "" };
+                };
+
+                const esperar = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
                 for (let i = 1; i < lineas.length; i++) {
                     const linea = lineas[i].trim();
                     if (linea === "") continue;
 
-                    const partes = linea.split(',');
+                    btnImport.innerHTML = `⏳ ${i}/${lineas.length - 1}`;
+
+                    // Asumimos formato CSV sin comas internas en los campos
+                    const partes = linea.split(','); 
                     
                     if (partes.length >= 3) {
-                        // 1. Convertimos las fechas
                         const fInicio = formatearFecha(partes[0]);
                         const fFin = formatearFecha(partes[1]);
+                        const cliente = partes[2].trim();
+                        const ciudad = partes[3] ? partes[3].trim() : "Sin Ciudad";
+                        const direccion = partes[4] ? partes[4].trim() : "";
 
-                        // 2. Validamos si la conversión fue exitosa
                         if (!fInicio || !fFin) {
-                            console.error(`⚠️ Error en línea ${i}: Formato de fecha inválido (${partes[0]} - ${partes[1]})`);
                             contError++;
                             continue; 
                         }
+
+                        // --- CAMBIO CLAVE AQUÍ: Pasamos los dos parámetros separados ---
+                        const coords = await obtenerCoordenadas(direccion, ciudad);
+                        
+                        await esperar(200);
 
                         try {
                             const groupId = Date.now().toString() + "_" + i;
 
                             await addDoc(collection(db, "reservas"), {
-                                fechaInicio: fInicio, // Usamos la fecha ya convertida
-                                fechaFin: fFin,       // Usamos la fecha ya convertida
-                                cliente: partes[2].trim(),
-                                ciudad: partes[3] ? partes[3].trim() : "Sin Ciudad",
-                                direccion: partes[4] ? partes[4].trim() : "",
-                                lat: "", 
-                                lng: "",
+                                fechaInicio: fInicio,
+                                fechaFin: fFin,
+                                cliente: cliente,
+                                ciudad: ciudad,
+                                direccion: direccion,
+                                lat: coords.lat, 
+                                lng: coords.lng, 
                                 groupId: groupId,
                                 creado: new Date(),
                                 pdfUrl: null
                             });
+
+                            if(coords.lat === "") contSinUbicacion++;
                             contExito++;
+
                         } catch (err) {
-                            console.error("Error guardando línea " + i, err);
+                            console.error("Error Firebase", err);
                             contError++;
                         }
                     } else {
@@ -2261,8 +2303,15 @@
                     }
                 }
 
-                alert(`Proceso finalizado.\n✅ Importados: ${contExito}\n❌ Errores: ${contError}`);
+                btnImport.innerHTML = textoOriginal;
+                btnImport.disabled = false;
                 input.value = ''; 
+
+                let mensaje = `Proceso finalizado.\n✅ Importados: ${contExito}`;
+                if (contSinUbicacion > 0) mensaje += `\n⚠️ Sin mapa (dirección ambigua): ${contSinUbicacion}`;
+                if (contError > 0) mensaje += `\n❌ Errores: ${contError}`;
+                
+                alert(mensaje);
                 await cargarReservas(); 
             };
 
