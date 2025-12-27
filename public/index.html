@@ -590,7 +590,7 @@
                 
                 <div id="pdfInfo" style="display: none; align-items: center; justify-content: space-between; margin-bottom: 10px;">
                     <a id="linkPDF" href="#" target="_blank" style="color: #007bff; text-decoration: none; font-weight: bold;">
-                        📄 Ver Documento en Drive
+                        📄 Abrir en Drive
                     </a>
                 </div>
 
@@ -1280,7 +1280,7 @@
                 let direccionHtml = grupo.direccion ? `<small>📍 ${grupo.direccion}</small>` : '';
 
                 const tieneDoc = grupo.reservaObj.data.pdfUrl;
-                const enlaceDocHtml = (esAdmin && tieneDoc) 
+                const enlaceDocHtml = (tieneDoc) 
                     ? `<div style="margin-top:6px; border-top:1px solid #eee; padding-top:4px;">
                          <a href="${tieneDoc}" target="_blank" style="color:#007bff; text-decoration:none; font-size:0.85rem; font-weight:bold;">
                            📄 Ver Documentación (Drive)
@@ -1818,9 +1818,20 @@
 
             } else {
                 // SI NO ES ADMIN: OCULTA TODO
-                seccionPDF.style.display = 'none'; // <--- Oculta toda la caja gris
-                btnEliminar.style.display = 'none';
-                btnEditar.style.display = 'none';
+                if (urlExistente) {
+                    // MODO: Ver/Editar (Ya existe enlace)
+                    pdfInfo.style.display = 'flex';
+                    linkPDF.href = urlExistente;
+
+                    driveUrlInput.value = urlExistente;
+                    driveUrlInput.readOnly = true;
+                    driveUrlInput.style.backgroundColor = "#e9ecef"; // Gris
+
+                    seccionPDF.style.display = 'block';
+                    adminPDFInput.style.display = 'none';
+                    btnEliminar.style.display = 'none';
+                    btnEditar.style.display = 'none';
+                }
             }
             
             document.getElementById('detalleModal').style.display = "block";
@@ -1929,6 +1940,29 @@ window.borrarReserva = async function() {
                 alert("Error al guardar en base de datos.");
             }
         };
+        // ---------------------------------------------------------
+        // CIERRE DE MODALES: Tecla ESC y Clic fuera del contenido
+        // ---------------------------------------------------------
+
+        // 1. Cerrar con tecla Escape
+        document.addEventListener('keydown', function(event) {
+            if (event.key === "Escape") {
+                const modales = document.querySelectorAll('.modal');
+                modales.forEach(modal => {
+                    modal.style.display = "none";
+                });
+            }
+        });
+
+        // 2. Cerrar al hacer clic en el fondo oscuro (.modal)
+        // Se usa 'window' para capturar clics globales
+        window.addEventListener('click', function(event) {
+            // Verificamos si el elemento clickeado tiene la clase 'modal'
+            // (Esto significa que clickeó el fondo, no el 'modal-content')
+            if (event.target.classList.contains('modal')) {
+                event.target.style.display = "none";
+            }
+        });
 
     </script>
 
