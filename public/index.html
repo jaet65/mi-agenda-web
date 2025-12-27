@@ -203,6 +203,10 @@
             border: 1px solid #ddd;
             margin-right: 10px;
             font-weight: 600;
+            cursor: pointer; /* <--- AGREGAR ESTO */
+        }
+        #admin-stats:hover {
+            background-color: #e2e6ea; /* Un pequeño efecto hover */
         }
 
         /* 3. CONTENEDOR PRINCIPAL */
@@ -1207,15 +1211,33 @@
 
         function actualizarHeaderAdmin() {
             const statsDiv = document.getElementById('admin-stats');
+            
             if (esAdmin) {
                 const years = Object.keys(statsPorAno).sort();
-                if (years.length === 0) statsDiv.textContent = "0 Semanas";
-                else {
-                    const text = years.map(y => `${y}: ${statsPorAno[y].toFixed(1)} Sem`).join(' | ');
-                    statsDiv.textContent = "📊 " + text;
+                
+                if (years.length === 0) {
+                    statsDiv.textContent = "0 Semanas";
+                    statsDiv.onclick = null; // Sin evento si no hay datos
+                } else {
+                    // 1. Tomamos solo el último año para mostrar
+                    const ultimoAno = years[years.length - 1];
+                    const semanasUltimo = statsPorAno[ultimoAno].toFixed(1);
+                    
+                    // Texto corto (Ej: "📊 2025: 12.4 Sem ℹ️")
+                    statsDiv.innerHTML = `📊 ${ultimoAno}: ${semanasUltimo} Sem <span style="font-size:0.8em">ℹ️</span>`;
+                    
+                    // 2. Preparamos el texto completo para el alert/modal
+                    const textoCompleto = years.map(y => `${y}: ${statsPorAno[y].toFixed(1)} Semanas`).join('\n');
+                    
+                    // 3. Evento Click
+                    statsDiv.onclick = function() {
+                        alert("📊 Estadísticas por Año:\n\n" + textoCompleto);
+                    };
                 }
                 statsDiv.style.display = 'inline-block';
-            } else { statsDiv.style.display = 'none'; }
+            } else { 
+                statsDiv.style.display = 'none'; 
+            }
         }
 
         window.cambiarAnoMapa = function(delta) {
