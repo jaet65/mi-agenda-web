@@ -321,7 +321,15 @@
         .btn-map-toggle { background: #28a745; margin-right: 5px; } 
         .btn-edit { background: #ffc107; color: #333; padding: 12px; width: 100%; border-radius: 6px; margin-top: 10px; font-weight: bold; border: none; cursor: pointer; }
         
-        #admin-status { font-weight: bold; color: #28a745; display: none; margin-right: 10px; font-size: 0.8rem; }
+        #admin-status { 
+            font-weight: bold; 
+            color: #28a745; 
+            display: none; 
+            margin-left: 10px;
+            margin-right: 5px; 
+            font-size: 0.8rem;
+            white-space: nowrap;
+        }
 
         /* SPINNER DE CARGA */
         .loader {
@@ -429,7 +437,7 @@
                 <span style="white-space: nowrap;">Agenda TrackSIM</span>
             </a>
         </h1>
-        
+        <span id="admin-status">🟢 Admin</span>
         <div class="search-container">
             <input type="text" id="globalSearch" placeholder="🔍 Buscar..." autocomplete="off">
             <ul id="globalSearchResults"></ul>
@@ -449,9 +457,10 @@
                 </div>
 
                 <button id="btn-go-map" class="btn-action btn-map-toggle" onclick="mostrarMapa()">🗺️ Mapa</button>
-                <span id="admin-status">🟢 Admin</span>
-                <button id="btnLogin" class="btn-action" onclick="iniciarSesion()">🔒</button>
-                <button id="btnLogout" class="btn-secondary" onclick="cerrarSesion()" style="display:none;">Salir</button>
+                <button id="btnImport" class="btn-share" onclick="abrirSelectorCSV()" style="display:none; background-color: #6f42c1; margin-right: 5px;">📂 Importar</button>
+                    <input type="file" id="inputCSV" accept=".csv" style="display:none" onchange="procesarArchivoCSV(this)">
+                <button id="btnLogin" class="btn-action" onclick="iniciarSesion()">🔐</button>
+                <button id="btnLogout" class="btn-action" onclick="cerrarSesion()" style="display:none;">🔓</button>
             </div>
 
             <button class="hamburger-btn" onclick="toggleMenu()">☰</button>
@@ -468,9 +477,8 @@
             
             <hr style="width:100%; border:0; border-top:1px solid #eee; margin:5px 0;">
             
-            <span id="mobile-admin-status" style="display:none; padding:10px; font-weight:bold; color:#28a745;">🟢 Admin</span>
-            <button id="mobile-btn-login" onclick="iniciarSesion(); toggleMenu()">🔒 Entrar</button>
-            <button id="mobile-btn-logout" style="display:none;" onclick="cerrarSesion(); toggleMenu()">Salir</button>
+            <button id="mobile-btn-login" onclick="iniciarSesion(); toggleMenu()">🔐 Entrar</button>
+            <button id="mobile-btn-logout" style="display:none;" onclick="cerrarSesion(); toggleMenu()">🔓 Salir</button>
         </div>
     </div>
 
@@ -478,13 +486,30 @@
         <div id="calendar-container">
             <div id='calendar'></div>
         </div>
+        
         <div id="agenda-view">
-            <div style="text-align:center; margin-bottom:20px;">
-                <h2 style="color:#2c3e50; margin-bottom:5px;">Agenda de Servicios</h2>
-                <button class="btn-secondary" onclick="mostrarCalendario()">⬅ Volver a Calendario</button>
+            <div style="text-align:center; padding-top: 20px; padding-bottom: 0;">
+                <h2 style="color:#2c3e50; margin: 0;">Agenda de Servicios</h2>
             </div>
+
+            <div style="
+                position: sticky; 
+                top: 0; 
+                z-index: 1000; 
+                background-color: transparent; /* Fondo invisible */
+                padding: 15px 0; 
+                text-align: center;
+                pointer-events: none; /* Permite hacer clic a través del espacio vacío */
+            ">
+                <button class="btn-secondary" onclick="mostrarCalendario()" 
+                        style="box-shadow: 0 4px 15px rgba(0,0,0,0.3); pointer-events: auto;border-radius: 30px;background-color: white; color: #333;">
+                    📅 Volver al Calendario
+                </button>
+            </div>
+
             <ul id="lista-agenda-custom" class="agenda-list"></ul>
         </div>
+
         <div id="map-view" style="display:none;">
             <div id="map-sidebar">
                 <h3>📍 Itinerario</h3>
@@ -1243,6 +1268,7 @@
 
             const gruposAgenda = [];
             
+            // 1. Agrupación de reservas (Lógica existente)
             listaOrdenada.forEach((reserva, index) => {
                 if (index === 0) {
                     gruposAgenda.push({
@@ -1272,11 +1298,29 @@
                 }
             });
 
+            // Variable para marcar solo el primer evento futuro encontrado
+            let proximoEncontrado = false;
+
+            // 2. Renderizado de tarjetas
             gruposAgenda.forEach(grupo => {
-                const esPasado = new Date(grupo.fin + 'T00:00:00') < hoy;
+                // Convertir fecha fin a objeto Date para comparar
+                // (Sumamos 1 día a la fecha fin para que el evento de "hoy" no cuente como pasado hasta mañana)
+                const fechaFinObj = new Date(grupo.fin + 'T00:00:00');
+                fechaFinObj.setDate(fechaFinObj.getDate() + 1); 
+
+                const esPasado = fechaFinObj < hoy;
+                
                 const card = document.createElement('li');
                 card.className = 'agenda-card' + (esPasado ? ' pasada' : '');
                 
+                // NUEVO: Detectar el elemento objetivo para el Scroll
+                // Si NO es pasado y aun no hemos encontrado el "próximo", este es el ganador.
+                if (!esPasado && !proximoEncontrado) {
+                    card.id = "scroll-objetivo"; // Le ponemos una marca
+                    card.style.borderLeftColor = "#f1c40f"; // Opcional: Color dorado para resaltar
+                    proximoEncontrado = true; // Ya no marcamos más
+                }
+
                 let direccionHtml = grupo.direccion ? `<small>📍 ${grupo.direccion}</small>` : '';
 
                 const tieneDoc = grupo.reservaObj.data.pdfUrl;
@@ -1304,6 +1348,17 @@
 
                 agendaContainer.appendChild(card);
             });
+
+            // NUEVO: Ejecutar el scroll automático
+            setTimeout(() => {
+                const objetivo = document.getElementById('scroll-objetivo');
+                if (objetivo) {
+                    objetivo.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                } else {
+                    // Si todo es pasado, opcionalmente podrías hacer scroll al final
+                    // agendaContainer.scrollTop = agendaContainer.scrollHeight;
+                }
+            }, 300); // Pequeño delay para asegurar que el DOM se pintó
         }
 
         function configurarDiasEspeciales() {
@@ -1350,10 +1405,21 @@
 
                 querySnapshot.forEach((documento) => {
                     const data = documento.data();
-                    if (!data.fechaInicio) return; 
+
+                    // 1. VALIDACIÓN: Si faltan fechas, saltamos
+                    if (!data.fechaInicio || !data.fechaFin) return; 
+
+                    // 2. CONVERSIÓN: Creamos los objetos de fecha
                     let startObj = new Date(data.fechaInicio + 'T00:00:00');
                     let endObj = new Date(data.fechaFin + 'T00:00:00');
 
+                    // 3. SEGURIDAD: Si las fechas son inválidas (NaN), saltamos
+                    if (isNaN(startObj.getTime()) || isNaN(endObj.getTime())) {
+                        console.warn("⚠️ Fecha corrupta encontrada y omitida:", data);
+                        return; 
+                    }
+
+                    // Si pasa las validaciones, agregamos a la lista global
                     globalReservas.push({
                         id: documento.id,
                         data: data,
@@ -1361,9 +1427,11 @@
                         end: endObj
                     });
 
+                    // Cálculo visual para FullCalendar (fecha fin + 1 día)
                     let fechaFinVisual = new Date(endObj);
                     fechaFinVisual.setDate(fechaFinVisual.getDate() + 1);
                     
+                    // Agregamos al calendario
                     calendar.addEvent({
                         id: documento.id,
                         title: '📍 ' + (data.ciudad ? data.ciudad.split(",")[0] : "Sin ciudad") + ' - ' + data.cliente,
@@ -1378,7 +1446,7 @@
                             fechaFinReal: data.fechaFin,
                             ciudadCompleta: data.ciudad,
                             groupId: data.groupId,
-                            pdfUrl: data.pdfUrl // <--- ¡ESTO ES LO QUE FALTABA!
+                            pdfUrl: data.pdfUrl 
                         }
                     });
                 });
@@ -1838,7 +1906,7 @@
         }        
         window.cerrarModal = function(idModal) { document.getElementById(idModal).style.display = "none"; }
 
-window.borrarReserva = async function() {
+        window.borrarReserva = async function() {
             if (!eventoSeleccionadoID) return;
 
             // 1. Buscamos la reserva en nuestros datos locales para obtener su Group ID
@@ -1889,24 +1957,62 @@ window.borrarReserva = async function() {
         window.iniciarSesion = function() {
             if (prompt("Contraseña Admin:") === CONTRASEÑA_ADMIN) {
                 esAdmin = true;
+                
+                // Botones de sesión
                 document.getElementById('btnLogin').style.display = 'none';
                 document.getElementById('btnLogout').style.display = 'inline-block';
-                document.getElementById('admin-status').style.display = 'inline';
-                document.getElementById('mobile-btn-login').style.display = 'none';
-                document.getElementById('mobile-btn-logout').style.display = 'block';
-                document.getElementById('mobile-admin-status').style.display = 'block';
+                
+                // Indicadores de estado
+                const adminStatus = document.getElementById('admin-status');
+                if(adminStatus) adminStatus.style.display = 'inline';
+                
+                const mobileLogin = document.getElementById('mobile-btn-login');
+                if(mobileLogin) mobileLogin.style.display = 'none';
+                
+                const mobileLogout = document.getElementById('mobile-btn-logout');
+                if(mobileLogout) mobileLogout.style.display = 'block';
+                
+                const mobileStatus = document.getElementById('mobile-admin-status');
+                if(mobileStatus) mobileStatus.style.display = 'block';
+
+                // Mostrar botón importar (con verificación de seguridad)
+                const btnImport = document.getElementById('btnImport');
+                if (btnImport) {
+                    btnImport.style.display = 'inline-block';
+                }
+
                 actualizarHeaderAdmin(); 
-            } else { alert("❌ Incorrecto"); }
+            } else { 
+                alert("❌ Incorrecto"); 
+            }
         }
 
         window.cerrarSesion = function() {
             esAdmin = false;
+            
+            // Botones de sesión
             document.getElementById('btnLogin').style.display = 'inline-block';
             document.getElementById('btnLogout').style.display = 'none';
-            document.getElementById('admin-status').style.display = 'none';
-            document.getElementById('mobile-btn-login').style.display = 'block';
-            document.getElementById('mobile-btn-logout').style.display = 'none';
-            document.getElementById('mobile-admin-status').style.display = 'none';
+            
+            // Indicadores de estado
+            const adminStatus = document.getElementById('admin-status');
+            if(adminStatus) adminStatus.style.display = 'none';
+
+            const mobileLogin = document.getElementById('mobile-btn-login');
+            if(mobileLogin) mobileLogin.style.display = 'block';
+            
+            const mobileLogout = document.getElementById('mobile-btn-logout');
+            if(mobileLogout) mobileLogout.style.display = 'none';
+            
+            const mobileStatus = document.getElementById('mobile-admin-status');
+            if(mobileStatus) mobileStatus.style.display = 'none';
+
+            // Ocultar botón importar (con verificación de seguridad)
+            const btnImport = document.getElementById('btnImport');
+            if (btnImport) {
+                btnImport.style.display = 'none';
+            }
+
             actualizarHeaderAdmin(); 
         }
 
@@ -1963,6 +2069,111 @@ window.borrarReserva = async function() {
                 event.target.style.display = "none";
             }
         });
+
+        // --- FUNCIONES DE IMPORTACIÓN CSV ---
+        window.abrirSelectorCSV = function() {
+            document.getElementById('inputCSV').click();
+        }
+
+        window.procesarArchivoCSV = function(input) {
+            const archivo = input.files[0];
+            if (!archivo) return;
+
+            const reader = new FileReader();
+            
+            reader.onload = async function(e) {
+                const contenido = e.target.result;
+                const lineas = contenido.split('\n');
+                
+                if (lineas.length < 2) {
+                    alert("El archivo parece estar vacío o no tiene formato correcto.");
+                    return;
+                }
+
+                let contExito = 0;
+                let contError = 0;
+
+                if(!confirm(`Se detectaron ${lineas.length - 1} líneas. ¿Deseas importarlas?`)) {
+                    input.value = ''; 
+                    return;
+                }
+
+                // Función auxiliar para convertir DD/MM/AAAA a AAAA-MM-DD
+                const formatearFecha = (fechaStr) => {
+                    if (!fechaStr) return null;
+                    fechaStr = fechaStr.trim();
+                    
+                    // Caso 1: Ya viene bien (2024-01-01)
+                    if (/^\d{4}-\d{2}-\d{2}$/.test(fechaStr)) {
+                        return fechaStr;
+                    }
+                    
+                    // Caso 2: Viene con diagonales (01/01/2024 o 1/1/2024)
+                    if (fechaStr.includes('/')) {
+                        const partes = fechaStr.split('/');
+                        if (partes.length === 3) {
+                            // Asumimos formato Día/Mes/Año
+                            const dia = partes[0].padStart(2, '0');
+                            const mes = partes[1].padStart(2, '0');
+                            const anio = partes[2];
+                            
+                            // Retornamos formato Año-Mes-Día
+                            return `${anio}-${mes}-${dia}`;
+                        }
+                    }
+                    return null; // Formato no reconocido
+                };
+
+                for (let i = 1; i < lineas.length; i++) {
+                    const linea = lineas[i].trim();
+                    if (linea === "") continue;
+
+                    const partes = linea.split(',');
+                    
+                    if (partes.length >= 3) {
+                        // 1. Convertimos las fechas
+                        const fInicio = formatearFecha(partes[0]);
+                        const fFin = formatearFecha(partes[1]);
+
+                        // 2. Validamos si la conversión fue exitosa
+                        if (!fInicio || !fFin) {
+                            console.error(`⚠️ Error en línea ${i}: Formato de fecha inválido (${partes[0]} - ${partes[1]})`);
+                            contError++;
+                            continue; 
+                        }
+
+                        try {
+                            const groupId = Date.now().toString() + "_" + i;
+
+                            await addDoc(collection(db, "reservas"), {
+                                fechaInicio: fInicio, // Usamos la fecha ya convertida
+                                fechaFin: fFin,       // Usamos la fecha ya convertida
+                                cliente: partes[2].trim(),
+                                ciudad: partes[3] ? partes[3].trim() : "Sin Ciudad",
+                                direccion: partes[4] ? partes[4].trim() : "",
+                                lat: "", 
+                                lng: "",
+                                groupId: groupId,
+                                creado: new Date(),
+                                pdfUrl: null
+                            });
+                            contExito++;
+                        } catch (err) {
+                            console.error("Error guardando línea " + i, err);
+                            contError++;
+                        }
+                    } else {
+                        contError++;
+                    }
+                }
+
+                alert(`Proceso finalizado.\n✅ Importados: ${contExito}\n❌ Errores: ${contError}`);
+                input.value = ''; 
+                await cargarReservas(); 
+            };
+
+            reader.readAsText(archivo);
+        }
 
     </script>
 
