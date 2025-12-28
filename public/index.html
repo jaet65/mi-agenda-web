@@ -431,8 +431,14 @@
         .dot.red { background: #dc3545; }    /* Hoy */
     </style>
 
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+
 </head>
 <body>
+    <div id="loading-overlay" style="position:fixed; top:0; left:0; width:100%; height:100%; background:white; z-index:9999; display:flex; justify-content:center; align-items:center; flex-direction:column;">
+    <div class="loader" style="width: 50px; height: 50px; border-width: 5px;"></div>
+    <p style="margin-top:15px; color:#555; font-weight:bold;">Cargando Agenda...</p>
+    </div>
 
     <div class="header">
         <h1>
@@ -462,7 +468,7 @@
 
                 <button id="btn-go-map" class="btn-action btn-map-toggle" onclick="mostrarMapa()">🗺️ Mapa</button>
                 <button id="btnImport" class="btn-share" onclick="abrirSelectorCSV()" style="display:none; background-color: #6f42c1; margin-right: 5px;">📂 Importar</button>
-                    <input type="file" id="inputCSV" accept=".csv" style="display:none" onchange="procesarArchivoCSV(this)">
+                    <input type="file" id="fileInput" accept=".xlsx, .xls" style="display: none;" onchange="procesarArchivoExcel(this)">
                 <button id="btnLogin" class="btn-action" onclick="iniciarSesion()">🔐</button>
                 <button id="btnLogout" class="btn-action" onclick="cerrarSesion()" style="display:none;">🔓</button>
             </div>
@@ -698,9 +704,8 @@
         const API_KEY_HERE = 'vtP_Ocp9-jUl3SG6HpMHLSaRQoumNPiDV7SyOYmNkZA'; // Reemplaza con tu llave de HERE
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, where, writeBatch } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-        import { updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-
+        import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, where, writeBatch, updateDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        
         window.toggleMenu = function() {
             const menu = document.getElementById('mobile-menu');
             if (menu) {
@@ -1075,23 +1080,31 @@
 
         // --- GUARDAR RESERVA ---
         window.guardarReserva = async function() {
+            // 1. Obtener valores del formulario
             const fechaInicioStr = document.getElementById('fechaInicio').value;
             const fechaFinStr = document.getElementById('fechaFin').value;
             const ciudad = document.getElementById('ciudadInput').value;
             const nombre = document.getElementById('nombreInput').value;
             const direccion = document.getElementById('direccionInput').value;
+            
+            // Coordenadas (pueden venir de un Plus Code previo o estar vacías)
             let lat = document.getElementById('latTemp').value;
             let lon = document.getElementById('lonTemp').value;
 
+            // 2. Validaciones básicas
             if (nombre === "" || fechaInicioStr === "") {
                 alert("⚠️ Faltan datos obligatorios: Cliente o Fechas.");
                 return;
             }
 
-            // Búsqueda en HERE Maps si no hay coordenadas
-            if ((ciudad === "" || ciudad === "Desconocida" || lat === "" || lon === "") && direccion.length > 2) {
+            // 3. LÓGICA DE BÚSQUEDA DE MAPA
+            // Solo buscamos si NO tenemos coordenadas fijadas Y hay texto en la dirección
+            if ((lat === "" || lon === "") && direccion.length > 2) {
                 const btn = document.querySelector('#reservaModal .btn-save');
-                btn.innerHTML = `<span class="loader"></span> Buscando en HERE Maps...`;
+                const textoOriginal = btn.innerHTML; // Guardamos el texto actual del botón
+                
+                // Feedback visual de carga
+                btn.innerHTML = `<span class="loader"></span> Buscando en Mapa...`;
                 btn.disabled = true;
                 
                 try {
@@ -1101,28 +1114,42 @@
                     let url = `https://geocode.search.hereapi.com/v1/geocode?q=${encodeURIComponent(direccion)}&apiKey=${API_KEY_HERE}&lang=es&limit=5`;
                     
                     if (cpEncontrado) {
-                        url += `&qq=postalCode=${cpEncontrado}`; // Uso de Qualified Query para CP
+                        url += `&qq=postalCode=${cpEncontrado}`; 
                     }
 
                     const resp = await fetch(url);
                     const data = await resp.json();
                     
+                    // Restauramos el botón antes de decidir qué hacer
+                    btn.innerHTML = textoOriginal;
+                    btn.disabled = false;
+                    
                     if (data.items && data.items.length > 0) {
+                        // CASO A: Encontramos ubicación
+                        // Llamamos al selector, el cual llenará lat/lon y CERRARÁ el proceso.
+                        // Esto permite al usuario editar el texto de la dirección antes de volver a dar clic en guardar.
                         mostrarSelectorUbicacion(data.items);
+                        return; // <--- IMPORTANTE: DETENEMOS AQUÍ
                     } else {
+                        // CASO B: No encontramos nada, mostramos opciones manuales
                         mostrarModalSinResultados();
+                        return; // <--- IMPORTANTE: DETENEMOS AQUÍ
                     }
                 } catch(e) {
                     console.error(e);
                     alert("Error de conexión con HERE Maps.");
+                    btn.innerHTML = textoOriginal;
+                    btn.disabled = false;
                     habilitarManual();
+                    return; 
                 }
-                btn.innerHTML = modoEdicion ? "📝 Actualizar Reserva" : "💾 Guardar Reserva";
-                btn.disabled = false;
-                return; 
             }
 
-            // Procesamiento de Ciudad Final para evitar "Desconocida"
+            // 4. PROCESAMIENTO DE DATOS
+            // Si llegamos aquí es porque:
+            // a) Ya teníamos coordenadas fijadas (lat/lon tienen valor).
+            // b) O el usuario decidió guardar "Sin Ciudad" (lat/lon vacíos, pero se asume manual).
+
             let ciudadFinal = ciudad.trim();
             if (ciudadFinal === "" || ciudadFinal === "Desconocida" || ciudadFinal === "Ubicación") {
                 const partes = direccion.split(',');
@@ -1141,7 +1168,13 @@
 
             const grupoId = modoEdicion ? idGrupoEdicion : Date.now().toString(); 
 
+            // UI Guardando
+            const btnFinal = document.querySelector('#reservaModal .btn-save');
+            btnFinal.innerHTML = "💾 Guardando...";
+            btnFinal.disabled = true;
+
             try {
+                // Si es edición, borramos lo anterior
                 if (modoEdicion && idGrupoEdicion) {
                     const q = query(collection(db, "reservas"), where("groupId", "==", idGrupoEdicion));
                     const querySnapshot = await getDocs(q);
@@ -1150,6 +1183,7 @@
                     await batch.commit();
                 }
 
+                // Guardamos en Firebase
                 for (let r of rangos) {
                     let fInicio = r.start.toISOString().split('T')[0];
                     let fFin = r.end.toISOString().split('T')[0];
@@ -1159,12 +1193,12 @@
                         fechaFin: fFin,
                         ciudad: ciudadFinal,
                         cliente: nombre,
-                        direccion: direccion,
-                        lat: lat, 
-                        lng: lon, 
+                        direccion: direccion, // <--- Aquí se guarda el texto que tú editaste (ej. "Parque Industrial")
+                        lat: lat,             // <--- Aquí se guardan las coordenadas del Plus Code (ej. RVJV+VQ)
+                        lng: lon,             
                         groupId: grupoId, 
                         creado: new Date(),
-                        pdfUrl: urlEdicion // Conserva el link de Drive
+                        pdfUrl: urlEdicion 
                     });
                 }
 
@@ -1173,7 +1207,12 @@
                 document.getElementById('successModal').style.display = "block";
             } catch (e) {
                 console.error(e);
-                alert("Error al guardar.");
+                alert("Error al guardar en base de datos.");
+            } finally {
+                // Restauramos el botón a su estado original para la próxima vez
+                btnFinal.innerHTML = "💾 Guardar Reserva";
+                btnFinal.style.background = "#28a745"; 
+                btnFinal.disabled = false;
             }
         };
 
@@ -1185,17 +1224,35 @@
                 const li = document.createElement('li');
                 li.className = 'match-item';
                 
-                // Mapeo jerárquico de HERE Maps
+                // Extraemos datos de HERE
                 const ciudad = item.address.city || item.address.locality || item.address.district || "Ubicación";
+                const direccionDetectada = item.address.label;
 
-                li.innerHTML = `<strong>${ciudad}</strong><small>${item.address.label}</small>`;
+                li.innerHTML = `<strong>${ciudad}</strong><br><small>${direccionDetectada}</small>`;
                 
                 li.onclick = function() {
-                    document.getElementById('ciudadInput').value = ciudad;
+                    // 1. Llenamos las coordenadas (Lo más importante)
                     document.getElementById('latTemp').value = item.position.lat;
                     document.getElementById('lonTemp').value = item.position.lng;
+                    
+                    // 2. Llenamos ciudad y dirección sugerida
+                    document.getElementById('ciudadInput').value = ciudad;
+                    document.getElementById('direccionInput').value = direccionDetectada;
+
+                    // 3. CAMBIO IMPORTANTE:
+                    // Ya NO guardamos automáticamente. 
+                    // Cerramos el modal y avisamos al usuario que puede editar.
                     cerrarModal('selectionModal');
-                    guardarReserva(); 
+                    
+                    // 4. Enfocamos el campo de dirección para que puedas editarlo si salió genérico
+                    const inputDir = document.getElementById('direccionInput');
+                    inputDir.focus();
+                    inputDir.select(); // Selecciona el texto para borrarlo fácil si quieres
+                    
+                    // Cambiamos el texto del botón para indicar que ya tenemos ubicación
+                    const btnSave = document.querySelector('#reservaModal .btn-save');
+                    btnSave.innerHTML = "✅ Ubicación fijada. Clic para Guardar.";
+                    btnSave.style.background = "#17a2b8"; // Color azul informativo
                 };
                 lista.appendChild(li);
             });
@@ -1470,9 +1527,34 @@
         }
         
         async function cargarReservas() {
+            // Mostrar indicador de carga visual
+            const calendarEl = document.getElementById('calendar');
+            calendarEl.style.opacity = "0.5";
+            document.body.style.cursor = "wait";
+
             try {
-                const q = query(collection(db, "reservas"));
+                // 1. DEFINIR RANGO DE FECHAS (Ventana de Tiempo)
+                // Descargamos: Año Pasado, Actual y Siguiente.
+                // Esto hace que la carga sea MUCHO más rápida.
+                const hoy = new Date();
+                const yearActual = hoy.getFullYear();
+                
+                const fechaMinima = `${yearActual - 1}-01-01`; // 1 Ene del año pasado
+                const fechaMaxima = `${yearActual + 1}-12-31`; // 31 Dic del próximo año
+
+                // 2. QUERY OPTIMIZADA
+                // Usamos 'where' para pedirle a Firebase solo lo necesario.
+                // Nota: Al filtrar por rango, Firebase puede pedirte crear un índice en la consola.
+                // Si ves un error en consola con un link, dale clic al link para crear el índice.
+                const q = query(
+                    collection(db, "reservas"),
+                    where("fechaInicio", ">=", fechaMinima),
+                    where("fechaInicio", "<=", fechaMaxima)
+                );
+
                 const querySnapshot = await getDocs(q);
+                
+                // Procesamiento (Igual que antes)
                 calcularEstadisticas(querySnapshot); 
                 calendar.removeAllEvents();
                 configurarDiasEspeciales(); 
@@ -1481,20 +1563,15 @@
                 querySnapshot.forEach((documento) => {
                     const data = documento.data();
 
-                    // 1. VALIDACIÓN: Si faltan fechas, saltamos
                     if (!data.fechaInicio || !data.fechaFin) return; 
 
-                    // 2. CONVERSIÓN: Creamos los objetos de fecha
                     let startObj = new Date(data.fechaInicio + 'T00:00:00');
                     let endObj = new Date(data.fechaFin + 'T00:00:00');
 
-                    // 3. SEGURIDAD: Si las fechas son inválidas (NaN), saltamos
                     if (isNaN(startObj.getTime()) || isNaN(endObj.getTime())) {
-                        console.warn("⚠️ Fecha corrupta encontrada y omitida:", data);
                         return; 
                     }
 
-                    // Si pasa las validaciones, agregamos a la lista global
                     globalReservas.push({
                         id: documento.id,
                         data: data,
@@ -1502,11 +1579,9 @@
                         end: endObj
                     });
 
-                    // Cálculo visual para FullCalendar (fecha fin + 1 día)
                     let fechaFinVisual = new Date(endObj);
                     fechaFinVisual.setDate(fechaFinVisual.getDate() + 1);
                     
-                    // Agregamos al calendario
                     calendar.addEvent({
                         id: documento.id,
                         title: '📍 ' + (data.ciudad ? data.ciudad.split(",")[0] : "Sin ciudad") + ' - ' + data.cliente,
@@ -1521,12 +1596,25 @@
                             fechaFinReal: data.fechaFin,
                             ciudadCompleta: data.ciudad,
                             groupId: data.groupId,
-                            pdfUrl: data.pdfUrl 
+                            pdfUrl: data.pdfUrl,
+                            lat: data.lat,
+                            lng: data.lng
                         }
                     });
                 });
+                
                 actualizarMapaYLista();
-            } catch (error) { console.error(error); }
+
+            } catch (error) { 
+                console.error("Error cargando reservas:", error); 
+            } finally {
+                // Restaurar interfaz
+                calendarEl.style.opacity = "1";
+                document.body.style.cursor = "default";
+
+                const loading = document.getElementById('loading-overlay');
+                if(loading) loading.style.display = 'none';
+            }
         }
         
         function actualizarMapaYLista(centrarHoy = false) {
@@ -1896,7 +1984,6 @@
             eventoSeleccionadoID = evento.id; 
             grupoSeleccionadoID = evento.extendedProps.groupId || null;
             
-            // Referencias DOM
             const seccionPDF = document.getElementById('seccionPDF');
             const pdfInfo = document.getElementById('pdfInfo');
             const linkPDF = document.getElementById('linkPDF');
@@ -1907,41 +1994,63 @@
             const btnEliminar = document.getElementById('btnEliminar');
             const btnEditar = document.getElementById('btnEditar');
 
-            // --- INICIO CAMBIOS: Dirección con Enlace a Maps ---
-            
-            // Llenar datos básicos (Cliente y Ciudad igual que antes)
+            // 1. Llenar datos básicos
             document.getElementById('detCliente').innerText = evento.extendedProps.cliente || "No especificado";
             document.getElementById('detCiudad').innerText = evento.extendedProps.ciudadCompleta || evento.title;
             
-            // Lógica inteligente para la dirección
+            // --- INICIO CAMBIOS DIRECCIÓN E ICONOS ---
             const direccionTexto = evento.extendedProps.direccion;
-            const ciudadTexto = evento.extendedProps.ciudadCompleta || "";
+            const lat = evento.extendedProps.lat;
+            const lng = evento.extendedProps.lng;
             const spanDireccion = document.getElementById('detDireccion');
 
-            if (direccionTexto) {
-                // Creamos una búsqueda combinada: "Calle 123, Ciudad" para mayor precisión
-                const queryMaps = encodeURIComponent(direccionTexto + ", " + ciudadTexto);
-                const urlMaps = `https://www.google.com/maps/search/?api=1&query=${queryMaps}`;
+            if (direccionTexto && direccionTexto.trim().length > 0) {
+                let urlMaps = "";
+                // Prioridad a coordenadas si existen
+                if (lat && lng) {
+                    urlMaps = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+                } else {
+                    // Respaldo por búsqueda de texto
+                    const busqueda = encodeURIComponent(direccionTexto + ", " + (evento.extendedProps.ciudadCompleta || ""));
+                    urlMaps = `https://www.google.com/maps/search/?api=1&query=${busqueda}`;
+                }
 
-                // Insertamos el enlace HTML
+                // Escapamos comillas simples por seguridad para la función onclick
+                const textoSeguroParaCopiar = direccionTexto.replace(/'/g, "\\'");
+
+                // NUEVA ESTRUCTURA HTML:
+                // Usamos un contenedor flex para alinear texto e iconos
                 spanDireccion.innerHTML = `
-                    <a href="${urlMaps}" target="_blank" style="color:#007bff; text-decoration:none; font-weight:bold;">
-                        📍 ${direccionTexto} ↗️
-                    </a>`;
+                    <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 10px;">
+                        <span style="flex-grow: 1; word-break: break-word;">📍 ${direccionTexto}</span>
+                        
+                        <div style="display: flex; gap: 8px; align-items: center; flex-shrink: 0;">
+                            <span title="Copiar dirección al portapapeles" 
+                                  style="cursor: pointer; font-size: 1.3em; transition: transform 0.1s;"
+                                  onmouseover="this.style.transform='scale(1.2)'"
+                                  onmouseout="this.style.transform='scale(1)'"
+                                  onclick="copiarTextoAlPortapapeles('${textoSeguroParaCopiar}', this)">
+                                🗐
+                            </span>
+                            
+                            <a href="${urlMaps}" target="_blank" title="Abrir ubicación en Google Maps" 
+                               style="text-decoration:none; font-size: 1.3em; color: #007bff; transition: transform 0.1s;"
+                               onmouseover="this.style.transform='scale(1.2)'"
+                               onmouseout="this.style.transform='scale(1)'">
+                                🔗
+                            </a>
+                        </div>
+                    </div>`;
             } else {
                 spanDireccion.innerText = "Sin dirección registrada";
             }
+            // --- FIN CAMBIOS DIRECCIÓN ---
 
             // Fechas
             document.getElementById('detFechas').innerText = `${evento.start.toISOString().split('T')[0]} al ${evento.extendedProps.fechaFinReal}`;
-
-            // --- FIN CAMBIOS ---
             
+            // ... (EL RESTO DE LA FUNCIÓN PERMANECE EXACTAMENTE IGUAL: Lógica de PDF, Admin, botones) ...
             const urlExistente = evento.extendedProps.pdfUrl;
-
-            // ... (El resto de la función 'mostrarDetalles' sigue igual con la lógica de Admin/PDF) ...
-            
-            // --- PEGA AQUÍ EL RESTO DE TU LÓGICA DE ADMIN SI LA BORRASTE, O MANTÉN LO QUE YA TENÍAS ---
             if (esAdmin) {
                 seccionPDF.style.display = 'block';
                 adminPDFInput.style.display = 'block';
@@ -1983,13 +2092,12 @@
                     btnEliminar.style.display = 'none';
                     btnEditar.style.display = 'none';
                 } else {
-                    seccionPDF.style.display = 'none'; // Ocultar si no hay PDF y no es admin
+                    seccionPDF.style.display = 'none';
                 }
             }
-            
             document.getElementById('detalleModal').style.display = "block";
         }
-                
+
         window.cerrarModal = function(idModal) { document.getElementById(idModal).style.display = "none"; }
 
         window.borrarReserva = async function() {
@@ -2176,11 +2284,18 @@
         });
 
         // --- FUNCIONES DE IMPORTACIÓN CSV ---
+        // Función para abrir el selector de archivos
         window.abrirSelectorCSV = function() {
-            document.getElementById('inputCSV').click();
+            const input = document.getElementById('fileInput'); // <--- Debe coincidir con el ID del HTML
+            if (input) {
+                input.click();
+            } else {
+                console.error("No se encontró el elemento <input type='file' id='fileInput'>");
+                alert("Error: No se encuentra el campo de carga de archivos. Recarga la página.");
+            }
         }
 
-        window.procesarArchivoCSV = function(input) {
+        window.procesarArchivoExcel = function(input) {
             const archivo = input.files[0];
             if (!archivo) return;
 
@@ -2189,134 +2304,202 @@
             btnImport.disabled = true;
 
             const reader = new FileReader();
-            
+
             reader.onload = async function(e) {
-                const contenido = e.target.result;
-                const lineas = contenido.split('\n');
-                
-                if (lineas.length < 2) {
-                    alert("El archivo vacío o sin formato.");
-                    btnImport.disabled = false;
-                    return;
-                }
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, {type: 'array', cellDates: true, dateNF: 'yyyy-mm-dd'}); 
+                    const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const lineas = XLSX.utils.sheet_to_json(worksheet, {header: 1, defval: "", raw: false});
 
-                if(!confirm(`Procesando ${lineas.length - 1} líneas. Se validarán las ciudades estrictamente. ¿Continuar?`)) {
-                    input.value = ''; 
-                    btnImport.disabled = false;
-                    return;
-                }
-
-                let contExito = 0;
-                let contError = 0;
-                let contSinUbicacion = 0;
-
-                const formatearFecha = (fechaStr) => {
-                    if (!fechaStr) return null;
-                    fechaStr = fechaStr.trim();
-                    if (/^\d{4}-\d{2}-\d{2}$/.test(fechaStr)) return fechaStr;
-                    if (fechaStr.includes('/')) {
-                        const partes = fechaStr.split('/');
-                        if (partes.length === 3) return `${partes[2]}-${partes[1].padStart(2, '0')}-${partes[0].padStart(2, '0')}`;
+                    if (lineas.length < 2) {
+                        alert("El archivo Excel parece estar vacío.");
+                        btnImport.disabled = false;
+                        return;
                     }
-                    return null;
-                };
 
-                // --- CAMBIO CLAVE AQUÍ: Recibimos dirección Y ciudad por separado ---
-                const obtenerCoordenadas = async (direccion, ciudad) => {
-                    if (!direccion || direccion.length < 2) return { lat: "", lng: "" };
-                    
-                    try {
-                        // 1. 'q' busca la calle y número
-                        let url = `https://geocode.search.hereapi.com/v1/geocode?q=${encodeURIComponent(direccion)}&apiKey=${API_KEY_HERE}&lang=es&limit=1`;
-                        
-                        // 2. 'qq' (Qualified Query) FUERZA que sea en esa ciudad
-                        if (ciudad && ciudad.length > 2 && ciudad !== "Sin Ciudad") {
-                            // Añadimos country=MEX para evitar ciudades homónimas en otros países
-                            url += `&qq=city=${encodeURIComponent(ciudad)};country=MEX`;
-                        }
-
-                        const res = await fetch(url);
-                        const data = await res.json();
-                        
-                        if (data.items && data.items.length > 0) {
-                            return { lat: data.items[0].position.lat, lng: data.items[0].position.lng };
-                        }
-                    } catch (error) {
-                        console.error("Error geocodificando:", error);
+                    if(!confirm(`Procesando Excel (${lineas.length - 1} filas).\n\nMODO DE PRECISIÓN:\n1. Si hay Coordenadas (Col F y G) -> Se usan directo (Exactitud 100%).\n2. Si no -> Se busca la Dirección en el mapa.\n\n¿Continuar?`)) {
+                        input.value = ''; 
+                        btnImport.disabled = false;
+                        return;
                     }
-                    return { lat: "", lng: "" };
-                };
 
-                const esperar = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+                    let contExito = 0;
+                    let contError = 0;
+                    let contCoordsDirectas = 0; // Contador para saber cuántas usaron GPS directo
 
-                for (let i = 1; i < lineas.length; i++) {
-                    const linea = lineas[i].trim();
-                    if (linea === "") continue;
+                    // Batch config
+                    const BATCH_SIZE = 400; 
+                    let batch = writeBatch(db);
+                    let operationCounter = 0;
 
-                    btnImport.innerHTML = `⏳ ${i}/${lineas.length - 1}`;
-
-                    // Asumimos formato CSV sin comas internas en los campos
-                    const partes = linea.split(','); 
-                    
-                    if (partes.length >= 3) {
-                        const fInicio = formatearFecha(partes[0]);
-                        const fFin = formatearFecha(partes[1]);
-                        const cliente = partes[2].trim();
-                        const ciudad = partes[3] ? partes[3].trim() : "Sin Ciudad";
-                        const direccion = partes[4] ? partes[4].trim() : "";
-
-                        if (!fInicio || !fFin) {
-                            contError++;
-                            continue; 
+                    const formatearFecha = (val) => {
+                        if (!val) return null;
+                        if (val instanceof Date) return val.toISOString().split('T')[0];
+                        let str = val.toString().trim();
+                        if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+                        if (str.includes('/')) {
+                            const partes = str.split('/');
+                            if (partes.length === 3) {
+                                let dia = partes[0].padStart(2, '0');
+                                let mes = partes[1].padStart(2, '0');
+                                let ano = partes[2];
+                                if (ano.length === 2) ano = "20" + ano; 
+                                return `${ano}-${mes}-${dia}`;
+                            }
                         }
+                        return null;
+                    };
 
-                        // --- CAMBIO CLAVE AQUÍ: Pasamos los dos parámetros separados ---
-                        const coords = await obtenerCoordenadas(direccion, ciudad);
-                        
-                        await esperar(200);
-
+                    const obtenerCoordenadasDeAPI = async (direccion, ciudad) => {
+                        if (!direccion || direccion.length < 2) return { lat: "", lng: "" };
                         try {
-                            const groupId = Date.now().toString() + "_" + i;
+                            let url = `https://geocode.search.hereapi.com/v1/geocode?q=${encodeURIComponent(direccion)}&apiKey=${API_KEY_HERE}&lang=es&limit=1`;
+                            if (ciudad && ciudad.length > 2 && ciudad !== "Sin Ciudad") url += `&qq=city=${encodeURIComponent(ciudad)};country=MEX`;
+                            else url += `&qq=country=MEX`;
 
-                            await addDoc(collection(db, "reservas"), {
-                                fechaInicio: fInicio,
-                                fechaFin: fFin,
+                            const res = await fetch(url);
+                            const data = await res.json();
+
+                            if (data.items && data.items.length > 0) {
+                                return { lat: data.items[0].position.lat, lng: data.items[0].position.lng };
+                            }
+                        } catch (e) { console.error("Error Geo", e); }
+                        return { lat: "", lng: "" };
+                    };
+
+                    const esperar = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+                    // Bucle principal
+                    for (let i = 1; i < lineas.length; i++) {
+                        const fila = lineas[i];
+                        if (!fila || fila.length === 0) continue;
+
+                        btnImport.innerHTML = `⏳ ${i}/${lineas.length - 1}`;
+
+                        // --- MAPEO DE COLUMNAS ---
+                        const rawInicio = fila[0];
+                        const rawFin = fila[1];
+                        const cliente = fila[2] ? fila[2].toString().trim() : "Cliente";
+                        const ciudad = fila[3] ? fila[3].toString().trim() : "Sin Ciudad";
+                        const direccionTexto = fila[4] ? fila[4].toString().trim() : "";
+                        
+                        // NUEVAS COLUMNAS: F (Latitud) y G (Longitud)
+                        const rawLat = fila[5]; 
+                        const rawLng = fila[6];
+
+                        const fInicio = formatearFecha(rawInicio);
+                        const fFin = formatearFecha(rawFin);
+
+                        if (!fInicio || !fFin) { contError++; continue; }
+
+                        // --- LÓGICA DE UBICACIÓN ---
+                        let latFinal = "";
+                        let lngFinal = "";
+
+                        // 1. ¿Vienen coordenadas en el Excel?
+                        if (rawLat && rawLng && !isNaN(parseFloat(rawLat)) && !isNaN(parseFloat(rawLng))) {
+                            latFinal = parseFloat(rawLat);
+                            lngFinal = parseFloat(rawLng);
+                            contCoordsDirectas++;
+                            // No esperamos tiempo porque no usamos la API externa
+                        } 
+                        // 2. Si no, buscamos por dirección en HERE Maps
+                        else {
+                            const coordsAPI = await obtenerCoordenadasDeAPI(direccionTexto, ciudad);
+                            latFinal = coordsAPI.lat;
+                            lngFinal = coordsAPI.lng;
+                            await esperar(150); // Pausa solo si usamos la API
+                        }
+
+                        const rangos = calcularRangosSinDomingo(fInicio, fFin);
+                        if (rangos.length === 0) { contError++; continue; }
+
+                        const cleanClient = cliente.replace(/[^a-zA-Z0-9]/g, '');
+                        const groupId = `GRP_${fInicio}_${cleanClient}`;
+
+                        for (let r of rangos) {
+                            let startStr = r.start.toISOString().split('T')[0];
+                            let endStr = r.end.toISOString().split('T')[0];
+                            const docId = `${startStr}_${cleanClient}`;
+                            const docRef = doc(db, "reservas", docId);
+                            
+                            batch.set(docRef, {
+                                fechaInicio: startStr,
+                                fechaFin: endStr,
                                 cliente: cliente,
                                 ciudad: ciudad,
-                                direccion: direccion,
-                                lat: coords.lat, 
-                                lng: coords.lng, 
+                                direccion: direccionTexto, // Siempre guardamos TU texto
+                                lat: latFinal,           
+                                lng: lngFinal,           
                                 groupId: groupId,
                                 creado: new Date(),
-                                pdfUrl: null
-                            });
+                                pdfUrl: null 
+                            }, { merge: true });
 
-                            if(coords.lat === "") contSinUbicacion++;
-                            contExito++;
+                            operationCounter++;
+                            contExito++; 
 
-                        } catch (err) {
-                            console.error("Error Firebase", err);
-                            contError++;
+                            if (operationCounter >= BATCH_SIZE) {
+                                await batch.commit();
+                                batch = writeBatch(db); 
+                                operationCounter = 0;
+                            }
                         }
-                    } else {
-                        contError++;
                     }
+
+                    if (operationCounter > 0) await batch.commit();
+
+                    alert(`Importación Completada.\n✅ Total Registros: ${contExito}\n🎯 Usaron Coordenadas Exactas: ${contCoordsDirectas}\n🗺️ Buscados en Mapa: ${contExito - contCoordsDirectas}`);
+                    await cargarReservas();
+
+                } catch (error) {
+                    console.error(error);
+                    alert("Error en el archivo Excel: " + error.message);
+                } finally {
+                    btnImport.innerHTML = textoOriginal;
+                    btnImport.disabled = false;
+                    input.value = '';
                 }
-
-                btnImport.innerHTML = textoOriginal;
-                btnImport.disabled = false;
-                input.value = ''; 
-
-                let mensaje = `Proceso finalizado.\n✅ Importados: ${contExito}`;
-                if (contSinUbicacion > 0) mensaje += `\n⚠️ Sin mapa (dirección ambigua): ${contSinUbicacion}`;
-                if (contError > 0) mensaje += `\n❌ Errores: ${contError}`;
-                
-                alert(mensaje);
-                await cargarReservas(); 
             };
-
-            reader.readAsText(archivo);
+            reader.readAsArrayBuffer(archivo);
         }
+
+        // --- Función auxiliar para copiar texto al portapapeles ---
+        window.copiarTextoAlPortapapeles = function(texto, elementoIcono) {
+            if (!texto) return;
+
+            // API moderna de portapapeles
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                 navigator.clipboard.writeText(texto)
+                    .then(() => {
+                        // Feedback visual: cambiar icono temporalmente
+                        const iconoOriginal = elementoIcono.innerText;
+                        elementoIcono.innerText = "✅";
+                        // Restaurar el icono original después de 1.5 segundos
+                        setTimeout(() => {
+                            elementoIcono.innerText = iconoOriginal;
+                        }, 1500);
+                    })
+                    .catch(err => {
+                        console.error('Error al copiar: ', err);
+                        alert("Hubo un problema al intentar copiar automáticamente.");
+                    });
+            } else {
+                // Método de respaldo (fallback) para navegadores muy viejos
+                const textArea = document.createElement("textarea");
+                textArea.value = texto;
+                document.body.appendChild(textArea);
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    alert("Dirección copiada.");
+                } catch (err) {
+                    alert("No se pudo copiar la dirección.");
+                }
+                document.body.removeChild(textArea);
+            }
+        };
 
     </script>
 
