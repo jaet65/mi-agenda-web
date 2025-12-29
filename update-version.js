@@ -1,4 +1,5 @@
 const fs = require('fs');
+const path = require('path'); // <--- ESTA ES LA LÍNEA QUE FALTABA
 
 // 1. Configuración para obtener la hora exacta de CDMX
 const obtenerFechaCDMX = () => {
@@ -12,22 +13,46 @@ const obtenerFechaCDMX = () => {
         day: '2-digit',
         hour: '2-digit',
         minute: '2-digit',
-        hour12: true // Poner en false si prefieres 24h
+        hour12: true // true para AM/PM, false para 24h
     };
 
-    // Usamos Intl para formatear correctamente sin errores de servidor
     return new Intl.DateTimeFormat('es-MX', opciones).format(fecha);
 };
 
-// 2. Generar el string de versión
-const fechaActual = obtenerFechaCDMX(); // Ej: "28/01/2025, 07:30 p. m."
-const nuevaVersion = `1.0.${Date.now().toString().slice(-4)}`; // Ejemplo de versión autogenerada
-const textoFooter = `TrackSIM v${nuevaVersion} | Actualizado: ${fechaActual}`;
-const indexPath = path.join(__dirname, 'public', 'index.html');
-let content = fs.readFileSync(indexPath, 'utf8');
+// 2. Definir la ruta del archivo (Basado en tu error, está en la carpeta 'public')
+const indexPath = path.join(__dirname, 'index.html'); 
+// NOTA: Si tu index.html está dentro de una carpeta 'public', usa esta línea en su lugar:
+// const indexPath = path.join(__dirname, 'public', 'index.html');
 
-// Reemplazar el texto dentro del span con id app-version
-content = content.replace(/id="app-version">.*?<\/span>/, `id="app-version">${version}</span>`);
+// 3. Generar los datos
+const fechaActual = obtenerFechaCDMX(); 
+// Generamos una versión basada en el timestamp para que sea única
+const version = `1.0.${Math.floor(Date.now() / 1000)}`; 
 
-fs.writeFileSync(indexPath, content);
-console.log(`Versión actualizada a: ${version}`);
+console.log(`ℹ️ Generando versión: ${version} con fecha CDMX: ${fechaActual}`);
+
+try {
+    // 4. Leer el HTML
+    let html = fs.readFileSync(indexPath, 'utf8');
+
+    // 5. Reemplazar el contenido
+    // Buscamos el span con id="app-version" o el texto genérico TrackSIM v...
+    // Esta expresión regular busca "TrackSIM v" seguido de cualquier cosa hasta el cierre del span
+    // y lo reemplaza con la nueva info.
+    const regex = /TrackSIM v.*?<\/span>/;
+    const nuevoContenido = `TrackSIM v${version} (${fechaActual})</span>`;
+
+    if (html.match(regex)) {
+        html = html.replace(regex, nuevoContenido);
+        
+        // 6. Guardar cambios
+        fs.writeFileSync(indexPath, html);
+        console.log("✅ index.html actualizado correctamente.");
+    } else {
+        console.warn("⚠️ No se encontró el patrón 'TrackSIM v...' en el HTML para reemplazar.");
+    }
+
+} catch (error) {
+    console.error("❌ Error al actualizar el archivo:", error.message);
+    process.exit(1); // Forzar error en GitHub Actions
+}
