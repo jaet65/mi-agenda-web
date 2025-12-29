@@ -254,14 +254,51 @@
         /* --- ESTILOS MAPA Y LISTA LATERAL (ITINERARIO) --- */
         #map-sidebar {
             width: 300px; 
-            background: white; 
-            border-right: 1px solid #ddd; 
+
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%; /* Ocupa toda la altura disponible */
+            z-index: 2000;
+
+            background:rgba(255, 255, 255, 0.50); /* Transparencia */
+            backdrop-filter: blur(10px);           /* Desenfoque */
+            -webkit-backdrop-filter: blur(10px);   /* Soporte Safari/iPhone */
+            border-right: 1px solid rgba(255, 255, 255, 0.15); /* Borde sutil brillante */
+            box-shadow: 2px 0 15px rgba(0,0,0,0.1);
+            
             display: flex; 
             flex-direction: column; /* Apila elementos verticalmente */
             flex-shrink: 0; 
-            z-index: 10;
-            height: 100%; /* Ocupa toda la altura disponible */
             overflow: hidden; /* Evita que la barra entera haga scroll */
+        }
+
+        /* Configuración del Encabezado en Escritorio */
+        #itinerary-header {
+            padding: 10px 15px;
+            margin: 0;
+            background: transparent; /* O el color que prefieras */
+            border-bottom: 1px solid rgba(0,0,0,0.1);
+            font-size: 0.9rem;
+            color: #7f8c8d;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            
+            /* En escritorio NO es clicable */
+            cursor: default; 
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* OCULTAR la flecha en Escritorio */
+        #itinerary-toggle-icon {
+            display: none; 
+        }
+
+        .leaflet-left {
+            left: 310px; /* 300px del sidebar + 10px de margen */
+            transition: left 0.3s;
         }
 
         /* ESTILOS DE ESTADO EN LISTA (JERARQUÍA DE COLORES) */
@@ -302,7 +339,7 @@
         .map-year-controls { display: flex; justify-content: center; gap: 10px; align-items: center; padding: 10px 15px; background: #f8f9fa; border-bottom: 1px solid #ddd; }
         .map-year-btn { background: white; border: 1px solid #ccc; border-radius: 4px; cursor: pointer; padding: 4px 10px; font-weight: bold; color: #555; }
         #map-year-display { font-weight: bold; font-size: 1.1rem; color: #2c3e50; min-width: 50px; text-align: center; }
-        #map-sidebar h3 { padding: 10px 15px; margin: 0; background: #fff; border-bottom: 1px solid #eee; font-size: 0.9rem; color: #7f8c8d; text-transform: uppercase; letter-spacing: 1px; }
+        #map-sidebar h3 { padding: 10px 15px; margin: 0; background: rgba(255,255,255,1.0); border-bottom: 1px solid #eee; font-size: 0.9rem; color: #7f8c8d; text-transform: uppercase; letter-spacing: 1px; }
         #lista-rutas {
             list-style: none; 
             padding: 0; 
@@ -357,11 +394,71 @@
             .search-container { margin: 0 10px; }
             .desktop-buttons { display: none; } 
             .hamburger-btn { display: block; }
-            #map-view { flex-direction: column-reverse; } 
-            #map-sidebar { width: 100%; height: 35%; }
-            #map-canvas { height: 65%; }
+            .leaflet-left {
+                left: 0 !important; /* Volver a la esquina original */
+            }
+
+            #map-view { 
+                display: block; 
+                position: relative; /* Necesario para contener los absolutos */
+            }
+
+            #map-sidebar { 
+                top: auto;
+                width: 100%; 
+                height: 35px; /* Altura colapsada */
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                z-index: 2500; 
+                
+                /* --- EFECTO CRISTAL (GLASSMORPHISM) --- */
+                background: rgba(255, 255, 255, 0.07); /* Blanco al 10% de opacidad */
+                backdrop-filter: blur(10px);           /* Desenfoca el mapa detrás */
+                -webkit-backdrop-filter: blur(10px);   /* Soporte para Safari/iPhone */
+                border-top: 1px solid rgba(255, 255, 255, 0.85); /* Borde sutil brillante */
+                /* ------------------------------------ */
+
+                transition: height 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); 
+                border-radius: 20px 20px 0 0; 
+                box-shadow: 0 -4px 20px rgba(0,0,0,0.15); /* Sombra un poco más suave */
+                overflow: hidden; 
+
+                    /* Reactivar interactividad en Móvil */
+                #itinerary-header {
+                    cursor: pointer; /* Aquí SÍ es clicable */
+                }
+
+                /* MOSTRAR la flecha en Móvil */
+                #itinerary-toggle-icon {
+                    display: block; 
+                }
+            }
+
+            #map-canvas { 
+                height: 100%; 
+                width: 100%; 
+            }
+
+            #map-sidebar.open {
+                height: 100%; /* Altura expandida (ajustable) */
+            }
+
             #btn-back-calendar { top: 10px; }
-            #btn-fit-map { top: auto; bottom: 20px; right: 15px; padding: 10px; border-radius: 50%; width: 45px; height: 45px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
+
+            #btn-fit-map { 
+                top: auto; 
+                bottom: 60px; /* Subido para no chocar con el itinerario colapsado */
+                right: 15px; 
+                padding: 10px; 
+                border-radius: 50%; 
+                width: 45px; 
+                height: 45px; 
+                display: flex; 
+                align-items: center; 
+                justify-content: center; 
+                font-size: 1.2rem; 
+            }
         }
 
         /* Modales */
@@ -522,7 +619,10 @@
 
         <div id="map-view" style="display:none;">
             <div id="map-sidebar">
-                <h3>📍 Itinerario</h3>
+                <h3 onclick="toggleItinerary()" id="itinerary-header">
+                    <span>📍 Itinerario</span>
+                    <span id="itinerary-toggle-icon">▲</span>
+                </h3>
                 
                 <div class="map-year-controls">
                     <button class="map-year-btn" onclick="cambiarAnoMapa(-1)">&lt;</button>
@@ -2569,6 +2669,22 @@
                     alert("No se pudo copiar la dirección.");
                 }
                 document.body.removeChild(textArea);
+            }
+        };
+
+        window.toggleItinerary = function() {
+            const sidebar = document.getElementById('map-sidebar');
+            const icon = document.getElementById('itinerary-toggle-icon');
+            
+            // Solo actuar si estamos en modo móvil (verificando si el header está colapsado o tiene la clase)
+            // Aunque la clase .open solo afecta en móvil por el CSS media query, es seguro alternarla siempre.
+            
+            if (sidebar.classList.contains('open')) {
+                sidebar.classList.remove('open');
+                if(icon) icon.style.transform = 'rotate(0deg)'; // Flecha arriba
+            } else {
+                sidebar.classList.add('open');
+                if(icon) icon.style.transform = 'rotate(180deg)'; // Flecha abajo
             }
         };
 
