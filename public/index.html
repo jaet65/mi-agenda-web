@@ -784,12 +784,12 @@
             shadowSize: [41, 41]
         });
 
-        document.addEventListener('DOMContentLoaded', async function() {
+        document.addEventListener('DOMContentLoaded', function() {
             var calendarEl = document.getElementById('calendar');
             const esMovil = window.innerWidth < 768; 
 
+            // 1. Configuración del Calendario (Esto es ligero)
             calendar = new FullCalendar.Calendar(calendarEl, {
-
                 eventContent: function(arg) {
                     let container = document.createElement('div');
                     container.style.display = 'flex';
@@ -798,7 +798,6 @@
                     container.style.width = '100%';
                     container.style.padding = '0 2px';                    
                     
-                    // Contenedor del título
                     let titleEl = document.createElement('div');
                     titleEl.innerHTML = arg.event.title;
                     titleEl.style.overflow = 'hidden';
@@ -806,19 +805,16 @@
                     titleEl.style.whiteSpace = 'nowrap';
                     container.appendChild(titleEl);
 
-                    // Si tiene documentación, añadir distintivo discreto
                     if (arg.event.extendedProps.pdfUrl) {
                         let iconEl = document.createElement('span');
-                        iconEl.innerHTML = ' 📎'; // Icono discreto
+                        iconEl.innerHTML = ' 📎'; 
                         iconEl.style.fontSize = '1.0em';
                         iconEl.style.marginLeft = '4px';
                         iconEl.style.color='white';
                         container.appendChild(iconEl);
                     }
-
                     return { domNodes: [container] };
                 },
-
                 height: '100%',
                 initialView: 'multiMonthYear', 
                 locale: 'es',
@@ -841,56 +837,40 @@
                 },
                 dateClick: function(info) { 
                     if (!esAdmin) return;
-                    
                     const parts = info.dateStr.split('-');
                     const localDate = new Date(parts[0], parts[1]-1, parts[2]);
-
-                    if (localDate.getDay() === 0) {
-                        alert("⛔ Servicio no disponible los domingos.");
-                        return;
-                    }
-
+                    if (localDate.getDay() === 0) { alert("⛔ Servicio no disponible los domingos."); return; }
                     const fechaClickeada = info.dateStr;
-                    const ocupado = globalReservas.some(r => {
-                        return fechaClickeada >= r.data.fechaInicio && fechaClickeada <= r.data.fechaFin;
-                    });
-
-                    if (ocupado) {
-                        alert("⚠️ Fecha no disponible. Ya existe una reserva.");
-                    } else {
-                        abrirModalCrear(info.dateStr); 
-                    }
+                    const ocupado = globalReservas.some(r => fechaClickeada >= r.data.fechaInicio && fechaClickeada <= r.data.fechaFin);
+                    if (ocupado) alert("⚠️ Fecha no disponible.");
+                    else abrirModalCrear(info.dateStr); 
                 },
                 eventClick: function(info) { 
-                    if (info.event.display === 'background') {
-                        return;
-                    }
-
-                    if (info.event.start.getDay() === 0) {
-                        info.jsEvent.preventDefault();
-                        info.jsEvent.stopPropagation(); 
-                        alert("⛔ Servicio no disponible los domingos.");
-                        return;
-                    }
-                    
+                    if (info.event.display === 'background') return;
+                    if (info.event.start.getDay() === 0) { alert("⛔ Servicio no disponible los domingos."); return; }
                     mostrarDetalles(info.event); 
                 }
             });
+            
+            // 2. Renderizar el calendario vacío (Instantáneo)
             calendar.render();
-            cargarReservas();
 
+            // 3. Inicializar Mapa (Ligero si no agregamos pines aún)
             map = L.map('map-canvas').setView([23.6345, -102.5528], 5);
-
             const HERE_STYLE = 'explore.day'; 
-
             L.tileLayer(`https://maps.hereapi.com/v3/base/mc/{z}/{x}/{y}/png8?style=${HERE_STYLE}&apiKey=${API_KEY_HERE}`, {
-                attribution: '&copy; 2024 HERE',
+                attribution: '© 2024 HERE',
                 maxZoom: 20
             }).addTo(map);
 
             document.getElementById('map-year-display').textContent = currentMapYear;
 
-            await cargarReservas(); 
+            // 4. CARGA DE DATOS DIFERIDA (EL TRUCO FINAL)
+            // Esperamos 100ms para que el navegador termine de pintar la interfaz inicial.
+            // Esto saca la carga de datos del proceso de arranque (DOMContentLoaded).
+            setTimeout(() => {
+                cargarReservas();
+            }, 100);
         });
 
         // --- BUSCADOR GLOBAL ---
@@ -1540,290 +1520,348 @@
         }
         
         async function cargarReservas(forzarRecarga = false) {
-            // 1. CHEQUEO DE CACHÉ
-            // Si ya cargamos datos y NO nos están obligando a recargar, salimos.
-            if (datosYaCargados && !forzarRecarga) {
-                console.log("⚡ Datos ya en memoria. Omitiendo descarga.");
-                return;
-            }
-
             const calendarEl = document.getElementById('calendar');
+            const loadingOverlay = document.getElementById('loading-overlay');
+            
+            if(loadingOverlay) loadingOverlay.style.display = 'flex';
             calendarEl.style.opacity = "0.5";
             document.body.style.cursor = "wait";
-            console.log("⬇️ Descargando base de datos...");
 
             try {
-                // 2. RANGO AMPLIO (Carga todo de una vez)
-                const fechaMinima = "2020-01-01"; 
-                const fechaMaxima = "2030-12-31"; 
+                // --- 1. CACHÉ LOCAL ---
+                const cacheGuardado = localStorage.getItem('agenda_reservas_cache');
+                let datosParaProcesar = [];
+                let origenDatos = "";
 
-                const q = query(
-                    collection(db, "reservas"),
-                    where("fechaInicio", ">=", fechaMinima),
-                    where("fechaInicio", "<=", fechaMaxima)
-                );
+                if (!forzarRecarga && cacheGuardado) {
+                    console.log("⚡ Usando Caché Local...");
+                    try {
+                        // Solo parseamos el JSON, es muy rápido
+                        datosParaProcesar = JSON.parse(cacheGuardado);
+                        origenDatos = "CACHE";
+                    } catch (err) {
+                        console.warn("Caché corrupto, descargando...");
+                        origenDatos = "FIREBASE";
+                    }
+                }
 
-                const querySnapshot = await getDocs(q);
+                // --- 2. FIREBASE (Si no hubo caché) ---
+                if (datosParaProcesar.length === 0 || origenDatos === "FIREBASE") {
+                    console.log("⬇️ Descargando de Firebase...");
+                    const q = query(
+                        collection(db, "reservas"),
+                        where("fechaInicio", ">=", "2020-01-01"),
+                        where("fechaInicio", "<=", "2030-12-31")
+                    );
+                    const querySnapshot = await getDocs(q);
+                    
+                    querySnapshot.forEach((documento) => {
+                        const data = documento.data();
+                        if (data.fechaInicio && data.fechaFin) {
+                            // Pre-calculamos fechas aquí para guardar el objeto limpio
+                            datosParaProcesar.push({
+                                id: documento.id,
+                                data: data,
+                                start: data.fechaInicio, // Guardamos string ISO por ahora
+                                end: data.fechaFin
+                            });
+                        }
+                    });
+
+                    // Guardamos en caché lo que acabamos de bajar
+                    try {
+                        localStorage.setItem('agenda_reservas_cache', JSON.stringify(datosParaProcesar));
+                    } catch (e) { console.warn("Memoria llena", e); }
+                }
+
+                // --- 3. PROCESAMIENTO MASIVO (OPTIMIZACIÓN CLAVE) ---
                 
-                // 3. LIMPIEZA
+                // A. Limpiamos memoria
                 calendar.removeAllEvents();
-                globalReservas = []; 
-                statsPorAno = {}; // Reiniciar stats
+                globalReservas = [];
+                
+                // B. Preparamos el arreglo para FullCalendar (Batch)
+                const eventosFullCalendar = [];
 
-                // 4. PROCESAMIENTO
-                querySnapshot.forEach((documento) => {
-                    const data = documento.data();
+                datosParaProcesar.forEach(item => {
+                    // Reconvertir strings a Objetos Date
+                    const startObj = new Date(item.start); 
+                    const endObj = new Date(item.end);
 
-                    if (!data.fechaInicio || !data.fechaFin) return; 
-
-                    let startObj = new Date(data.fechaInicio + 'T00:00:00');
-                    let endObj = new Date(data.fechaFin + 'T00:00:00');
-
-                    // Guardamos en memoria global
+                    // Memoria Global
                     globalReservas.push({
-                        id: documento.id,
-                        data: data,
-                        start: startObj,
+                        id: item.id,
+                        data: item.data,
+                        start: startObj, 
                         end: endObj
                     });
 
-                    // Calculamos fecha fin visual para FullCalendar (+1 día)
+                    // Preparar objeto para el Calendario
+                    // Calculamos fecha visual (+1 día)
                     let fechaFinVisual = new Date(endObj);
                     fechaFinVisual.setDate(fechaFinVisual.getDate() + 1);
-                    
-                    // Agregamos al calendario
-                    calendar.addEvent({
-                        id: documento.id,
-                        title: '📍 ' + (data.ciudad ? data.ciudad.split(",")[0] : "Sin ciudad") + ' - ' + data.cliente,
-                        start: data.fechaInicio,
-                        end: fechaFinVisual.toISOString().split('T')[0], 
+
+                    eventosFullCalendar.push({
+                        id: item.id,
+                        title: '📍 ' + (item.data.ciudad ? item.data.ciudad.split(",")[0] : "Sin ciudad") + ' - ' + item.data.cliente,
+                        start: item.data.fechaInicio,
+                        end: fechaFinVisual.toISOString().split('T')[0],
                         allDay: true,
                         backgroundColor: '#FF5733',
                         borderColor: '#FF5733',
                         extendedProps: {
-                            cliente: data.cliente,
-                            direccion: data.direccion,
-                            fechaFinReal: data.fechaFin, // Fecha real sin el +1
-                            ciudadCompleta: data.ciudad,
-                            groupId: data.groupId,
-                            pdfUrl: data.pdfUrl,
-                            lat: data.lat,
-                            lng: data.lng
+                            cliente: item.data.cliente,
+                            direccion: item.data.direccion,
+                            fechaFinReal: item.data.fechaFin,
+                            ciudadCompleta: item.data.ciudad,
+                            groupId: item.data.groupId,
+                            pdfUrl: item.data.pdfUrl,
+                            lat: item.data.lat,
+                            lng: item.data.lng
                         }
                     });
                 });
 
-                // 5. FINALIZACIÓN
-                datosYaCargados = true; // ¡Marcamos como cargado!
-                
-                calcularEstadisticas(); // Recalcular con lo descargado
-                actualizarMapaYLista(); 
-                configurarDiasEspeciales();
+                // C. INSERCIÓN ÚNICA (Esto baja el tiempo de 10s a 0.5s)
+                calendar.addEventSource(eventosFullCalendar);
+
+                // --- 4. ACTUALIZACIÓN UI DIFERIDA ---
+                // Usamos setTimeout para liberar el hilo principal y que el navegador "respire"
+                setTimeout(() => {
+                    calcularEstadisticas();
+                    actualizarMapaYLista(); // Actualiza la lista lateral y mapa
+                }, 50);
 
             } catch (error) { 
-                console.error("Error cargando reservas:", error); 
-                alert("Error de conexión al cargar reservas.");
+                console.error("Error crítico:", error); 
             } finally {
                 calendarEl.style.opacity = "1";
                 document.body.style.cursor = "default";
-                const loading = document.getElementById('loading-overlay');
-                if(loading) loading.style.display = 'none';
+                if(loadingOverlay) loadingOverlay.style.display = 'none';
             }
         }
-        
-        function actualizarMapaYLista(centrarHoy = false) {
-            const listaDelAnio = globalReservas.filter(r => r.start.getFullYear() === currentMapYear || r.end.getFullYear() === currentMapYear);
-            const hoy = new Date();
-            hoy.setHours(0,0,0,0);
 
-            // 1. Ordenar por fecha
-            let listaVisualizar = [...listaDelAnio].sort((a, b) => a.start - b.start);
-            const reservaProxima = listaVisualizar.find(r => r.start > hoy);
+        // --- Función auxiliar para no repetir código de "addEvent" ---
+        function agregarEventoAlCalendario(data, id) {
+            // Calculamos fecha fin visual (+1 día para que FullCalendar llene el cuadro completo)
+            let fechaFinObj = new Date(data.fechaFin + 'T00:00:00');
+            let fechaFinVisual = new Date(fechaFinObj);
+            fechaFinVisual.setDate(fechaFinVisual.getDate() + 1);
 
-            // Función auxiliar para determinar prioridad de estado (Color)
-            // 3: Activo (Rojo), 2: Destacado (Dorado), 1: Futuro (Azul), 0: Pasado (Gris)
-            const getPrioridad = (r) => {
-                if (r.start <= hoy && r.end >= hoy) return 3;
-                if (r === reservaProxima) return 2;
-                if (r.end < hoy) return 0;
-                return 1;
-            };
-
-            const getNombreEstado = (prioridad) => {
-                switch(prioridad) {
-                    case 3: return 'activo';
-                    case 2: return 'destacado';
-                    case 0: return 'pasado';
-                    default: return 'futuro';
-                }
-            };
-
-            // --- A. CONSTRUCCIÓN DE LA LISTA LATERAL (Agrupación Inteligente) ---
-            const rutasAgrupadas = [];
-            
-            listaVisualizar.forEach((reserva, index) => {
-                const ciudadActual = reserva.data.ciudad ? reserva.data.ciudad.split(",")[0].trim() : "Desconocida";
-                const prioridadActual = getPrioridad(reserva);
-
-                if (index === 0) {
-                    rutasAgrupadas.push({
-                        ciudad: ciudadActual,
-                        inicio: reserva.data.fechaInicio,
-                        fin: reserva.data.fechaFin,
-                        clientes: [reserva.data.cliente],
-                        lat: reserva.data.lat, 
-                        lng: reserva.data.lng,
-                        prioridadGrupo: prioridadActual // Guardamos la prioridad numérica
-                    });
-                    return;
-                }
-
-                const ultimoGrupo = rutasAgrupadas[rutasAgrupadas.length - 1];
-                
-                // CÁLCULO DE DÍAS: Diferencia entre Fin del anterior e Inicio del actual
-                const finAnterior = new Date(ultimoGrupo.fin + 'T00:00:00');
-                const inicioActual = new Date(reserva.data.fechaInicio + 'T00:00:00');
-                const diferenciaTiempo = inicioActual - finAnterior;
-                const diasDiferencia = Math.ceil(diferenciaTiempo / (1000 * 60 * 60 * 24));
-
-                // REGLA DE AGRUPACIÓN:
-                // 1. Misma ciudad
-                // 2. Consecutivos (<= 2 días de diferencia para tolerar fines de semana o saltos de 1 día)
-                if (ultimoGrupo.ciudad === ciudadActual && diasDiferencia <= 3) {
-                    
-                    // FUSIONAMOS
-                    ultimoGrupo.fin = reserva.data.fechaFin; // Extendemos fecha fin
-                    
-                    // Si el nuevo tiene mayor prioridad (ej. es HOY), actualizamos el color del grupo
-                    if (prioridadActual > ultimoGrupo.prioridadGrupo) {
-                        ultimoGrupo.prioridadGrupo = prioridadActual;
-                    }
-
-                    // Agregamos cliente si no existe
-                    if (!ultimoGrupo.clientes.includes(reserva.data.cliente)) {
-                        ultimoGrupo.clientes.push(reserva.data.cliente);
-                    }
-                } else {
-                    // NUEVO GRUPO
-                    rutasAgrupadas.push({
-                        ciudad: ciudadActual,
-                        inicio: reserva.data.fechaInicio,
-                        fin: reserva.data.fechaFin,
-                        clientes: [reserva.data.cliente],
-                        lat: reserva.data.lat,
-                        lng: reserva.data.lng,
-                        prioridadGrupo: prioridadActual
-                    });
+            calendar.addEvent({
+                id: id,
+                title: '📍 ' + (data.ciudad ? data.ciudad.split(",")[0] : "Sin ciudad") + ' - ' + data.cliente,
+                start: data.fechaInicio,
+                end: fechaFinVisual.toISOString().split('T')[0], 
+                allDay: true,
+                backgroundColor: '#FF5733',
+                borderColor: '#FF5733',
+                extendedProps: {
+                    cliente: data.cliente,
+                    direccion: data.direccion,
+                    fechaFinReal: data.fechaFin,
+                    ciudadCompleta: data.ciudad,
+                    groupId: data.groupId,
+                    pdfUrl: data.pdfUrl,
+                    lat: data.lat,
+                    lng: data.lng
                 }
             });
+        }
+        
+        window.actualizarMapaYLista = function(centrarHoy = false) {
+            if (!globalReservas) return;
 
-            // RENDERIZADO DE LISTA
-            const ulLista = document.getElementById('lista-rutas');
-            ulLista.innerHTML = rutasAgrupadas.length === 0 ? '<li style="padding:15px;color:#999;text-align:center;">Sin reservas este año.</li>' : '';
+            // Diferir la ejecución para que no bloquee la interfaz inmediata
+            requestAnimationFrame(() => {
+                const listaDelAnio = globalReservas.filter(r => r.start.getFullYear() === currentMapYear || r.end.getFullYear() === currentMapYear);
+                const hoy = new Date();
+                hoy.setHours(0,0,0,0);
 
-            rutasAgrupadas.forEach(grupo => {
-                const li = document.createElement('li');
-                
-                // Convertir prioridad numérica a clase CSS
-                let estadoTexto = getNombreEstado(grupo.prioridadGrupo);
-                let claseEstado = '';
+                // 1. Ordenar
+                let listaVisualizar = [...listaDelAnio].sort((a, b) => a.start - b.start);
+                const reservaProxima = listaVisualizar.find(r => r.start > hoy);
 
-                if (estadoTexto === 'pasado') claseEstado = ' pasada';
-                else if (estadoTexto === 'activo') claseEstado = ' activa';
-                else if (estadoTexto === 'destacado') claseEstado = ' destacada';
-                
-                li.className = 'ruta-item' + claseEstado;
-                
-                const clientesHTML = grupo.clientes.map(c => `<div style="padding-left:10px; margin-bottom:2px;">• ${c}</div>`).join('');
+                const getPrioridad = (r) => {
+                    if (r.start <= hoy && r.end >= hoy) return 3;
+                    if (r === reservaProxima) return 2;
+                    if (r.end < hoy) return 0;
+                    return 1;
+                };
 
-                li.innerHTML = `
-                    <div class="ruta-ciudad">${grupo.ciudad}</div>
-                    <div class="ruta-fechas">📅 ${formatearFecha(grupo.inicio)} ➝ ${formatearFecha(grupo.fin)}</div>
-                    <div class="ruta-cliente" style="margin-top:8px; border-top:1px dashed #dedede; padding-top:4px;">
-                        ${clientesHTML}
-                    </div>
-                `;
-                
-                li.onclick = () => { 
-                    if (grupo.lat && grupo.lng) {
-                        map.flyTo([grupo.lat, grupo.lng], 13);
-                        setTimeout(() => {
-                            const marker = markers.find(m => {
-                                const latLng = m.getLatLng();
-                                return Math.abs(latLng.lat - grupo.lat) < 0.00001 && Math.abs(latLng.lng - grupo.lng) < 0.00001;
-                            });
-                            if (marker) marker.openPopup();
-                        }, 500);
+                const getNombreEstado = (prioridad) => {
+                    switch(prioridad) {
+                        case 3: return 'activo';
+                        case 2: return 'destacado';
+                        case 0: return 'pasado';
+                        default: return 'futuro';
                     }
                 };
+
+                // --- PASO 1: CALCULAR Y AGRUPAR ---
+                const rutasAgrupadas = [];
                 
-                if(estadoTexto === 'destacado' || estadoTexto === 'activo') {
-                    // block: 'center' asegura que el elemento quede a la mitad de la lista visible
-                    setTimeout(() => {
-                        li.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    }, 600); // Pequeño delay para dar tiempo al renderizado
+                listaVisualizar.forEach((reserva, index) => {
+                    const ciudadActual = reserva.data.ciudad ? reserva.data.ciudad.split(",")[0].trim() : "Desconocida";
+                    const prioridadActual = getPrioridad(reserva);
+
+                    if (index === 0) {
+                        rutasAgrupadas.push({
+                            ciudad: ciudadActual,
+                            inicio: reserva.data.fechaInicio,
+                            fin: reserva.data.fechaFin,
+                            clientes: [reserva.data.cliente],
+                            lat: reserva.data.lat, 
+                            lng: reserva.data.lng,
+                            prioridadGrupo: prioridadActual 
+                        });
+                        return;
+                    }
+
+                    const ultimoGrupo = rutasAgrupadas[rutasAgrupadas.length - 1];
+                    const finAnterior = new Date(ultimoGrupo.fin + 'T00:00:00');
+                    const inicioActual = new Date(reserva.data.fechaInicio + 'T00:00:00');
+                    const diferenciaTiempo = inicioActual - finAnterior;
+                    const diasDiferencia = Math.ceil(diferenciaTiempo / (1000 * 60 * 60 * 24));
+
+                    if (ultimoGrupo.ciudad === ciudadActual && diasDiferencia <= 3) {
+                        ultimoGrupo.fin = reserva.data.fechaFin; 
+                        if (prioridadActual > ultimoGrupo.prioridadGrupo) ultimoGrupo.prioridadGrupo = prioridadActual;
+                        if (!ultimoGrupo.clientes.includes(reserva.data.cliente)) ultimoGrupo.clientes.push(reserva.data.cliente);
+                    } else {
+                        rutasAgrupadas.push({
+                            ciudad: ciudadActual,
+                            inicio: reserva.data.fechaInicio,
+                            fin: reserva.data.fechaFin,
+                            clientes: [reserva.data.cliente],
+                            lat: reserva.data.lat,
+                            lng: reserva.data.lng,
+                            prioridadGrupo: prioridadActual
+                        });
+                    }
+                });
+
+                // --- PASO 2: RENDERIZAR LISTA (Batch Fragment) ---
+                const ulLista = document.getElementById('lista-rutas');
+                if (ulLista) {
+                    ulLista.innerHTML = '';
+                    if (rutasAgrupadas.length === 0) {
+                        ulLista.innerHTML = '<li style="padding:15px;color:#999;text-align:center;">Sin reservas este año.</li>';
+                    } else {
+                        const fragmento = document.createDocumentFragment();
+                        rutasAgrupadas.forEach(grupo => {
+                            const li = document.createElement('li');
+                            let estadoTexto = getNombreEstado(grupo.prioridadGrupo);
+                            let claseEstado = '';
+                            if (estadoTexto === 'pasado') claseEstado = ' pasada';
+                            else if (estadoTexto === 'activo') claseEstado = ' activa';
+                            else if (estadoTexto === 'destacado') claseEstado = ' destacada';
+                            
+                            li.className = 'ruta-item' + claseEstado;
+                            const clientesHTML = grupo.clientes.map(c => `<div style="padding-left:10px; margin-bottom:2px;">• ${c}</div>`).join('');
+
+                            li.innerHTML = `
+                                <div class="ruta-ciudad">${grupo.ciudad}</div>
+                                <div class="ruta-fechas">📅 ${formatearFecha(grupo.inicio)} ➝ ${formatearFecha(grupo.fin)}</div>
+                                <div class="ruta-cliente" style="margin-top:8px; border-top:1px dashed #dedede; padding-top:4px;">${clientesHTML}</div>
+                            `;
+                            
+                            li.onclick = () => { 
+                                if (typeof map !== 'undefined' && map && grupo.lat && grupo.lng) {
+                                    map.flyTo([grupo.lat, grupo.lng], 13);
+                                    // Búsqueda optimizada de marcador en el grupo
+                                    if (window.markersLayer) {
+                                        window.markersLayer.eachLayer(layer => {
+                                            const latLng = layer.getLatLng();
+                                            if (Math.abs(latLng.lat - grupo.lat) < 0.0001 && Math.abs(latLng.lng - grupo.lng) < 0.0001) {
+                                                layer.openPopup();
+                                            }
+                                        });
+                                    }
+                                }
+                            };
+                            fragmento.appendChild(li);
+                        });
+                        ulLista.appendChild(fragmento);
+                        
+                        // Scroll diferido para evitar Forced Reflow
+                        setTimeout(() => {
+                            const destacado = ulLista.querySelector('.ruta-item.destacada, .ruta-item.activa');
+                            if(destacado) destacado.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }, 100);
+                    }
                 }
 
-                ulLista.appendChild(li);
-            });
+                // --- PASO 3: RENDERIZAR MAPA (OPTIMIZACIÓN LAYER GROUP) ---
+                if (typeof map !== 'undefined' && map) {
+                    
+                    // 1. Crear el grupo de capas si no existe
+                    if (!window.markersLayer) {
+                        window.markersLayer = L.layerGroup().addTo(map);
+                    }
+                    
+                    // 2. Limpiar el grupo de golpe (Mucho más rápido que un bucle removeLayer)
+                    window.markersLayer.clearLayers();
+                    
+                    const ciudadesMap = {};
 
-            // --- B. CONSTRUCCIÓN DEL MAPA (Igual lógica de prioridad visual) ---
-            markers.forEach(marker => map.removeLayer(marker));
-            markers = [];
-            const ciudadesMap = {};
+                    listaVisualizar.forEach(r => {
+                        if (!r.data.lat || !r.data.lng) return;
+                        const nombreCiudad = r.data.ciudad ? r.data.ciudad.split(",")[0].trim() : "Ubicación";
 
-            listaVisualizar.forEach(r => {
-                if (!r.data.lat || !r.data.lng) return;
-                const nombreCiudad = r.data.ciudad ? r.data.ciudad.split(",")[0].trim() : "Ubicación";
+                        if (!ciudadesMap[nombreCiudad]) {
+                            ciudadesMap[nombreCiudad] = {
+                                lat: r.data.lat, lng: r.data.lng, clientes: new Set(), diasTotales: 0, prioridadVisual: 0 
+                            };
+                        }
+                        ciudadesMap[nombreCiudad].clientes.add(r.data.cliente);
+                        
+                        let current = new Date(r.start);
+                        while (current <= r.end) {
+                            if (current.getDay() !== 0) ciudadesMap[nombreCiudad].diasTotales++;
+                            current.setDate(current.getDate() + 1);
+                        }
 
-                if (!ciudadesMap[nombreCiudad]) {
-                    ciudadesMap[nombreCiudad] = {
-                        lat: r.data.lat, lng: r.data.lng, clientes: new Set(), diasTotales: 0, prioridadVisual: 0 
-                    };
-                }
-                ciudadesMap[nombreCiudad].clientes.add(r.data.cliente);
-                
-                let current = new Date(r.start);
-                while (current <= r.end) {
-                    if (current.getDay() !== 0) ciudadesMap[nombreCiudad].diasTotales++;
-                    current.setDate(current.getDate() + 1);
-                }
+                        let p = getPrioridad(r);
+                        if (p > ciudadesMap[nombreCiudad].prioridadVisual) ciudadesMap[nombreCiudad].prioridadVisual = p;
+                    });
 
-                // Usamos la misma lógica de prioridad para el pin
-                let p = getPrioridad(r);
-                if (p > ciudadesMap[nombreCiudad].prioridadVisual) {
-                    ciudadesMap[nombreCiudad].prioridadVisual = p;
-                }
-            });
+                    // 3. Crear marcadores y agregarlos AL GRUPO (no al mapa directamente)
+                    const nuevosMarcadores = [];
+                    
+                    Object.keys(ciudadesMap).forEach(ciudadKey => {
+                        const datos = ciudadesMap[ciudadKey];
+                        let icono = blueIcon; 
+                        let zIndex = 500;
 
-            Object.keys(ciudadesMap).forEach(ciudadKey => {
-                const datos = ciudadesMap[ciudadKey];
-                let icono = blueIcon; 
-                let zIndex = 500;
+                        if (datos.prioridadVisual === 0) { icono = greyIcon; zIndex = 100; }
+                        else if (datos.prioridadVisual === 2) { icono = goldIcon; zIndex = 900; }
+                        else if (datos.prioridadVisual === 3) { icono = redIcon; zIndex = 1000; }
 
-                if (datos.prioridadVisual === 0) { icono = greyIcon; zIndex = 100; }
-                else if (datos.prioridadVisual === 2) { icono = goldIcon; zIndex = 900; }
-                else if (datos.prioridadVisual === 3) { icono = redIcon; zIndex = 1000; }
+                        // NOTA: Ya no usamos .addTo(map) aquí.
+                        const marker = L.marker([datos.lat, datos.lng], { icon: icono, zIndexOffset: zIndex });
 
-                const marker = L.marker([datos.lat, datos.lng], { icon: icono, zIndexOffset: zIndex }).addTo(map);
+                        const listaClientesVertical = Array.from(datos.clientes).map(c => `<div style="margin-bottom:3px;">• ${c}</div>`).join('');
 
-                const listaClientesVertical = Array.from(datos.clientes).map(c => `<div style="margin-bottom:3px;">• ${c}</div>`).join('');
-
-                marker.bindPopup(`
-                    <div style="text-align:center; min-width:160px;">
-                        <h3 style="margin:0; color:#2c3e50; font-size:1.1rem;">${ciudadKey}</h3>
-                        <hr style="border:0; border-top:1px solid #eee; margin:8px 0;">
-                        <div style="text-align:left; font-size:0.9rem; line-height:1.4;">
-                            <strong style="color:#333;">👥 Clientes:</strong>
-                            <div style="margin-top:5px; margin-left:5px; max-height:100px; overflow-y:auto; color:#555;">${listaClientesVertical}</div>
-                            <br>
-                            <div style="border-top:1px dashed #ccc; padding-top:5px;">
-                                ⏱️ <b>Días ocupados:</b> ${datos.diasTotales}
+                        marker.bindPopup(`
+                            <div style="text-align:center; min-width:160px;">
+                                <h3 style="margin:0; color:#2c3e50; font-size:1.1rem;">${ciudadKey}</h3>
+                                <hr style="border:0; border-top:1px solid #eee; margin:8px 0;">
+                                <div style="text-align:left; font-size:0.9rem; line-height:1.4;">
+                                    <strong style="color:#333;">👥 Clientes:</strong>
+                                    <div style="margin-top:5px; margin-left:5px; max-height:100px; overflow-y:auto; color:#555;">${listaClientesVertical}</div>
+                                    <br>
+                                    <div style="border-top:1px dashed #ccc; padding-top:5px;">
+                                        ⏱️ <b>Días ocupados:</b> ${datos.diasTotales}
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-                    </div>
-                `);
-                markers.push(marker);
+                        `);
+                        
+                        // Agregar al grupo
+                        window.markersLayer.addLayer(marker);
+                    });
+                }
             });
         }
 
