@@ -217,6 +217,22 @@
             width: 100%;
         }
 
+        /* --- VISIBILIDAD DEL AÑO EN ENCABEZADO --- */
+        
+        /* 1. Cuando el panel se abre (Móvil), ocultamos el año del título 
+              porque ya se ven los controles grandes abajo */
+        #map-sidebar.open #header-year-label {
+            display: none;
+        }
+
+        /* 2. En Escritorio también lo ocultamos, porque el panel siempre 
+              muestra los controles de año completos */
+        @media (min-width: 769px) {
+            #header-year-label {
+                display: none !important;
+            }
+        }
+
         /* VISTAS */
         #calendar-container { 
             width: 100%; height: 100%; background: white; padding: 10px; box-sizing: border-box; overflow-y: auto; display: block; 
@@ -396,6 +412,12 @@
             .hamburger-btn { display: block; }
             .leaflet-left {
                 left: 0 !important; /* Volver a la esquina original */
+            }
+            #map-sidebar h3, 
+            #itinerary-header,
+            .map-year-controls, 
+            .legend-container {
+                flex-shrink: 0; /* Mantiene su altura real, forzando a ocultar el resto */
             }
 
             #map-view { 
@@ -620,7 +642,11 @@
         <div id="map-view" style="display:none;">
             <div id="map-sidebar">
                 <h3 onclick="toggleItinerary()" id="itinerary-header">
-                    <span>📍 Itinerario</span>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <span>📍 Itinerario</span>
+                        <span id="header-year-label" style="color:#007bff; font-weight:bold;"></span>
+                    </div>
+                    
                     <span id="itinerary-toggle-icon">▲</span>
                 </h3>
                 
@@ -824,6 +850,7 @@
         }, {passive: true});
 
         function manejarSwipe() {
+            if (!sidebarSwipe.classList.contains('open')) return;
             // Mínima distancia para considerar que fue un deslizamiento intencional (50px)
             const umbral = 50; 
             const distancia = touchEndX - touchStartX;
@@ -972,6 +999,9 @@
         document.addEventListener('DOMContentLoaded', function() {
             var calendarEl = document.getElementById('calendar');
             const esMovil = window.innerWidth < 768; 
+
+            const headerYearLabel = document.getElementById('header-year-label');
+            if(headerYearLabel) headerYearLabel.textContent = currentMapYear;
 
             // 1. Configuración del Calendario (Esto es ligero)
             calendar = new FullCalendar.Calendar(calendarEl, {
@@ -1548,6 +1578,8 @@
         window.cambiarAnoMapa = function(delta) {
             currentMapYear += delta;
             document.getElementById('map-year-display').textContent = currentMapYear;
+            const headerYearLabel = document.getElementById('header-year-label');
+            if(headerYearLabel) headerYearLabel.textContent = currentMapYear;
             actualizarMapaYLista(); 
         }
 
