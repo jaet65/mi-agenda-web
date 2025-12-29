@@ -1273,34 +1273,41 @@
         function calcularEstadisticas() {
             statsPorAno = {}; 
             
-            // Usamos la variable global que llenamos en cargarReservas
             globalReservas.forEach(item => {
-                const data = item.data;
-                const start = item.start;
-                const end = item.end;
-                
-                // --- Tu lógica de cálculo de semanas ---
+                // TRUCO FINAL: No usamos item.start (que tiene Timezone problemático).
+                // Usamos el texto original "YYYY-MM-DD" que viene de la base de datos.
+                const fechaStringInicio = item.data.fechaInicio; // Ej: "2026-01-12"
+                const fechaStringFin = item.data.fechaFin;       // Ej: "2026-01-16"
+
+                // Construimos la fecha forzando las 12:00:00 (Mediodía Local)
+                // Al unirlo con 'T12:00:00', el navegador crea un Lunes a las 12pm TUYA.
+                let current = new Date(fechaStringInicio + 'T12:00:00');
+                const fechaLimite = new Date(fechaStringFin + 'T12:00:00');
+
                 let diasLaborales = 0;
-                let current = new Date(start);
-                while (current <= end) {
-                    if (current.getDay() !== 0) diasLaborales++;
+
+                // Bucle de conteo
+                while (current <= fechaLimite) {
+                    // Si el día NO es domingo (0), cuenta como laboral
+                    if (current.getDay() !== 0) {
+                        diasLaborales++;
+                    }
+                    // Avanzamos un día
                     current.setDate(current.getDate() + 1);
                 }
-                // Calculamos semanas (5 días laborales = 1 semana)
+                
+                // Cálculo: 5 días = 1 semana
                 const semanas = diasLaborales / 5; 
 
-                console.log(`Reserva: ${data.cliente}`, {
-                    Inicio: start.toISOString(),
-                    Fin: end.toISOString(),
-                    DiasContados: diasLaborales,
-                    Divisor: 5,
-                    Resultado: semanas
-                });
-                
-                const year = start.getFullYear();
-                
-                if (!statsPorAno[year]) statsPorAno[year] = 0;
-                statsPorAno[year] += semanas;
+                const year = current.getFullYear(); // Usamos el año de la fecha procesada
+                // Nota: usamos current (que al final del bucle está cerca de la fecha) 
+                // o mejor volvemos a sacar el año del inicio para ser consistentes:
+                const yearInicio = new Date(fechaStringInicio + 'T12:00:00').getFullYear();
+
+                if (!statsPorAno[yearInicio]) {
+                    statsPorAno[yearInicio] = 0;
+                }
+                statsPorAno[yearInicio] += semanas;
             });
 
             actualizarHeaderAdmin();
