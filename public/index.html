@@ -701,6 +701,10 @@
     </div>
 
     <script type="module">
+        // Cache para evitar recargas
+        const aniosCargados = new Set(); 
+        let cargandoDatos = false; // Semáforo para no llamar dos veces seguidas
+
         const API_KEY_HERE = 'vtP_Ocp9-jUl3SG6HpMHLSaRQoumNPiDV7SyOYmNkZA'; // Reemplaza con tu llave de HERE
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
@@ -738,6 +742,7 @@
         let urlEdicion = null;
         
         let globalReservas = []; 
+        let datosYaCargados = false;
         let currentMapYear = new Date().getFullYear(); 
 
         const CONTRASEÑA_ADMIN = "servicio2024"; 
@@ -872,6 +877,7 @@
                 }
             });
             calendar.render();
+            cargarReservas();
 
             map = L.map('map-canvas').setView([23.6345, -102.5528], 5);
 
@@ -1284,22 +1290,29 @@
             document.getElementById('direccionInput').focus();
         }
 
-        function calcularEstadisticas(reservasSnap) {
+        function calcularEstadisticas() {
             statsPorAno = {}; 
-            reservasSnap.forEach(doc => {
-                const data = doc.data();
-                if (!data.fechaInicio || !data.fechaFin) return;
-                let current = new Date(data.fechaInicio + 'T00:00:00');
-                let end = new Date(data.fechaFin + 'T00:00:00');
+            
+            // Usamos la variable global que llenamos en cargarReservas
+            globalReservas.forEach(item => {
+                const data = item.data;
+                const start = item.start;
+                const end = item.end;
+                
+                // --- Tu lógica de cálculo de semanas ---
+                let diasLaborales = 0;
+                let current = new Date(start);
                 while (current <= end) {
-                    const year = current.getFullYear();
-                    const day = current.getDay();
-                    if (!statsPorAno[year]) statsPorAno[year] = 0;
-                    if (day >= 1 && day <= 5) statsPorAno[year] += 0.2; 
-                    else if (day === 6) statsPorAno[year] += 0.1;
+                    if (current.getDay() !== 0) diasLaborales++;
                     current.setDate(current.getDate() + 1);
                 }
+                const semanas = diasLaborales / 5; 
+                const year = start.getFullYear();
+                
+                if (!statsPorAno[year]) statsPorAno[year] = 0;
+                statsPorAno[year] += semanas;
             });
+
             actualizarHeaderAdmin();
         }
 
@@ -1526,26 +1539,24 @@
             return `${partes[2]}/${meses[parseInt(partes[1]) - 1]}/${partes[0]}`;
         }
         
-        async function cargarReservas() {
-            // Mostrar indicador de carga visual
+        async function cargarReservas(forzarRecarga = false) {
+            // 1. CHEQUEO DE CACHÉ
+            // Si ya cargamos datos y NO nos están obligando a recargar, salimos.
+            if (datosYaCargados && !forzarRecarga) {
+                console.log("⚡ Datos ya en memoria. Omitiendo descarga.");
+                return;
+            }
+
             const calendarEl = document.getElementById('calendar');
             calendarEl.style.opacity = "0.5";
             document.body.style.cursor = "wait";
+            console.log("⬇️ Descargando base de datos...");
 
             try {
-                // 1. DEFINIR RANGO DE FECHAS (Ventana de Tiempo)
-                // Descargamos: Año Pasado, Actual y Siguiente.
-                // Esto hace que la carga sea MUCHO más rápida.
-                const hoy = new Date();
-                const yearActual = hoy.getFullYear();
-                
-                const fechaMinima = `${yearActual - 1}-01-01`; // 1 Ene del año pasado
-                const fechaMaxima = `${yearActual + 1}-12-31`; // 31 Dic del próximo año
+                // 2. RANGO AMPLIO (Carga todo de una vez)
+                const fechaMinima = "2020-01-01"; 
+                const fechaMaxima = "2030-12-31"; 
 
-                // 2. QUERY OPTIMIZADA
-                // Usamos 'where' para pedirle a Firebase solo lo necesario.
-                // Nota: Al filtrar por rango, Firebase puede pedirte crear un índice en la consola.
-                // Si ves un error en consola con un link, dale clic al link para crear el índice.
                 const q = query(
                     collection(db, "reservas"),
                     where("fechaInicio", ">=", fechaMinima),
@@ -1554,12 +1565,12 @@
 
                 const querySnapshot = await getDocs(q);
                 
-                // Procesamiento (Igual que antes)
-                calcularEstadisticas(querySnapshot); 
+                // 3. LIMPIEZA
                 calendar.removeAllEvents();
-                configurarDiasEspeciales(); 
                 globalReservas = []; 
+                statsPorAno = {}; // Reiniciar stats
 
+                // 4. PROCESAMIENTO
                 querySnapshot.forEach((documento) => {
                     const data = documento.data();
 
@@ -1568,10 +1579,7 @@
                     let startObj = new Date(data.fechaInicio + 'T00:00:00');
                     let endObj = new Date(data.fechaFin + 'T00:00:00');
 
-                    if (isNaN(startObj.getTime()) || isNaN(endObj.getTime())) {
-                        return; 
-                    }
-
+                    // Guardamos en memoria global
                     globalReservas.push({
                         id: documento.id,
                         data: data,
@@ -1579,9 +1587,11 @@
                         end: endObj
                     });
 
+                    // Calculamos fecha fin visual para FullCalendar (+1 día)
                     let fechaFinVisual = new Date(endObj);
                     fechaFinVisual.setDate(fechaFinVisual.getDate() + 1);
                     
+                    // Agregamos al calendario
                     calendar.addEvent({
                         id: documento.id,
                         title: '📍 ' + (data.ciudad ? data.ciudad.split(",")[0] : "Sin ciudad") + ' - ' + data.cliente,
@@ -1593,7 +1603,7 @@
                         extendedProps: {
                             cliente: data.cliente,
                             direccion: data.direccion,
-                            fechaFinReal: data.fechaFin,
+                            fechaFinReal: data.fechaFin, // Fecha real sin el +1
                             ciudadCompleta: data.ciudad,
                             groupId: data.groupId,
                             pdfUrl: data.pdfUrl,
@@ -1602,16 +1612,20 @@
                         }
                     });
                 });
+
+                // 5. FINALIZACIÓN
+                datosYaCargados = true; // ¡Marcamos como cargado!
                 
-                actualizarMapaYLista();
+                calcularEstadisticas(); // Recalcular con lo descargado
+                actualizarMapaYLista(); 
+                configurarDiasEspeciales();
 
             } catch (error) { 
                 console.error("Error cargando reservas:", error); 
+                alert("Error de conexión al cargar reservas.");
             } finally {
-                // Restaurar interfaz
                 calendarEl.style.opacity = "1";
                 document.body.style.cursor = "default";
-
                 const loading = document.getElementById('loading-overlay');
                 if(loading) loading.style.display = 'none';
             }
@@ -2030,7 +2044,7 @@
                                   onmouseover="this.style.transform='scale(1.2)'"
                                   onmouseout="this.style.transform='scale(1)'"
                                   onclick="copiarTextoAlPortapapeles('${textoSeguroParaCopiar}', this)">
-                                🗐
+                                📋
                             </span>
                             
                             <a href="${urlMaps}" target="_blank" title="Abrir ubicación en Google Maps" 
@@ -2193,10 +2207,11 @@
                 // Cerrar modal y limpiar campo
                 document.getElementById('inputPasswordAdmin').value = '';
                 cerrarModal('loginModal');
-
+                console.log("Login como administrador");
             } else {
                 alert("❌ Contraseña Incorrecta");
                 document.getElementById('inputPasswordAdmin').select(); // Seleccionar texto para reintentar
+                console.log("❌Intento de login fallido");
             }
         }
 
@@ -2225,7 +2240,7 @@
             if (btnImport) {
                 btnImport.style.display = 'none';
             }
-
+            console.log("Cierre de sesión de administrador");
             actualizarHeaderAdmin(); 
         }
 
@@ -2461,6 +2476,7 @@
                     btnImport.disabled = false;
                     input.value = '';
                 }
+                await cargarReservas(true);
             };
             reader.readAsArrayBuffer(archivo);
         }
