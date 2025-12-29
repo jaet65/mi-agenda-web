@@ -1286,7 +1286,17 @@
                     if (current.getDay() !== 0) diasLaborales++;
                     current.setDate(current.getDate() + 1);
                 }
+                // Calculamos semanas (5 días laborales = 1 semana)
                 const semanas = diasLaborales / 5; 
+
+                console.log(`Reserva: ${data.cliente}`, {
+                    Inicio: start.toISOString(),
+                    Fin: end.toISOString(),
+                    DiasContados: diasLaborales,
+                    Divisor: 5,
+                    Resultado: semanas
+                });
+                
                 const year = start.getFullYear();
                 
                 if (!statsPorAno[year]) statsPorAno[year] = 0;
