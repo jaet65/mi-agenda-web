@@ -807,6 +807,91 @@
 
         const API_KEY_HERE = 'vtP_Ocp9-jUl3SG6HpMHLSaRQoumNPiDV7SyOYmNkZA'; // Reemplaza con tu llave de HERE
 
+        // --- DETECCIÓN DE SWIPE (DESLIZAR) PARA CAMBIAR AÑO ---
+        const sidebarSwipe = document.getElementById('map-sidebar');
+        let touchStartX = 0;
+        let touchEndX = 0;
+        
+        // 1. Detectar dónde empieza el toque
+        sidebarSwipe.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+        }, {passive: true});
+
+        // 2. Detectar dónde termina el toque
+        sidebarSwipe.addEventListener('touchend', (e) => {
+            touchEndX = e.changedTouches[0].screenX;
+            manejarSwipe();
+        }, {passive: true});
+
+        function manejarSwipe() {
+            // Mínima distancia para considerar que fue un deslizamiento intencional (50px)
+            const umbral = 50; 
+            const distancia = touchEndX - touchStartX;
+
+            if (Math.abs(distancia) < umbral) return; // Fue un toque accidental o muy corto
+
+            if (distancia < 0) {
+                // Deslizó hacia la IZQUIERDA ( <-- ) 
+                // Significa "Traer el futuro", avanzar año
+                cambiarAnoMapa(1);
+                animarCambioAno('derecha'); // Opcional: Feedback visual
+            } else {
+                // Deslizó hacia la DERECHA ( --> )
+                // Significa "Traer el pasado", retroceder año
+                cambiarAnoMapa(-1);
+                animarCambioAno('izquierda'); // Opcional: Feedback visual
+            }
+        }
+
+        // Pequeña animación visual para confirmar la acción
+        function animarCambioAno(direccion) {
+            const display = document.getElementById('map-year-display');
+            display.style.transition = 'transform 0.2s, opacity 0.2s';
+            
+            // Efecto de salida
+            const x = direccion === 'derecha' ? '-20px' : '20px';
+            display.style.transform = `translateX(${x})`;
+            display.style.opacity = '0.5';
+            
+            setTimeout(() => {
+                // Restaurar
+                display.style.transform = 'translateX(0)';
+                display.style.opacity = '1';
+            }, 200);
+        }
+
+        // --- DETECCIÓN DE SWIPE PARA CALENDARIO ---
+        const calendarElement = document.getElementById('calendar');
+        let touchStartXCal = 0;
+        let touchEndXCal = 0;
+
+        calendarElement.addEventListener('touchstart', (e) => {
+            touchStartXCal = e.changedTouches[0].screenX;
+        }, {passive: true});
+
+        calendarElement.addEventListener('touchend', (e) => {
+            touchEndXCal = e.changedTouches[0].screenX;
+            manejarSwipeCalendario();
+        }, {passive: true});
+
+        function manejarSwipeCalendario() {
+            // Mínima distancia para considerar el gesto (50px)
+            const umbral = 50; 
+            const distancia = touchEndXCal - touchStartXCal;
+
+            if (Math.abs(distancia) < umbral) return; // Toque accidental
+
+            if (distancia < 0) {
+                // Deslizó hacia la IZQUIERDA (<--) 
+                // Significa "Siguiente mes"
+                calendar.next();
+            } else {
+                // Deslizó hacia la DERECHA (-->)
+                // Significa "Mes anterior"
+                calendar.prev();
+            }
+        }
+
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, where, writeBatch, updateDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
         
@@ -2742,7 +2827,7 @@
     </script>
 
     <footer style="flex-shrink: 0; background: #fff; padding: 5px; text-align: center; font-size: 0.75rem; color: #888; border-top: 1px solid #ddd;">
-        TrackSIM v<span id="app-version">1.0.0</span>
+        TrackSIM v1.0.1766992362 (29/12/2025, 01:12 a.m.)</span>
     </footer>
 
 </body>
