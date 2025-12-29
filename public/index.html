@@ -2688,6 +2688,57 @@
             }
         };
 
+        // --- SISTEMA DE AUTO-ACTUALIZACIÓN ---
+        async function verificarNuevaVersion() {
+            try {
+                // 1. Obtener la versión que tiene el HTML cargado actualmente
+                // Nota: Esto depende del span que ya tienes: <span id="app-version">1.0.X</span>
+                const elementoVersion = document.getElementById('app-version');
+                if (!elementoVersion) return;
+                
+                // Limpiamos el texto para obtener solo el número "1.0.XXXX"
+                // Asume formato "1.0.1234 (Fecha)" -> split toma la primera parte
+                const versionLocal = elementoVersion.innerText.split(' ')[0].trim();
+
+                // 2. Consultar al servidor la versión real (usamos timestamp para evitar caché)
+                const respuesta = await fetch(`version.json?t=${new Date().getTime()}`, { cache: "no-store" });
+                if (!respuesta.ok) return;
+                
+                const datosServidor = await respuesta.json();
+                const versionServidor = datosServidor.version;
+
+                console.log(`Versión Local: ${versionLocal} | Versión Servidor: ${versionServidor}`);
+
+                // 3. Comparar y recargar si es necesario
+                if (versionServidor && versionLocal !== versionServidor) {
+                    console.log("🔄 Nueva versión detectada. Actualizando...");
+                    
+                    // Opción A: Recarga silenciosa (puede perder datos no guardados)
+                    // window.location.reload(true);
+                    
+                    // Opción B (Recomendada): Preguntar al usuario o mostrar un aviso discreto
+                    if(confirm("¡Nueva actualización disponible!\n\nSe recargará la página para obtener las mejoras.")) {
+                        // El 'true' fuerza la recarga desde el servidor, ignorando caché
+                        window.location.reload(true);
+                    }
+                }
+            } catch (error) {
+                console.log("No se pudo verificar actualizaciones:", error);
+            }
+        }
+
+        // Ejecutar verificación al cargar
+        window.addEventListener('load', () => {
+            setTimeout(verificarNuevaVersion, 3000); // Espera 3 seg para no alentar el inicio
+        });
+
+        // Ejecutar verificación cada vez que la app vuelve a primer plano (común en celulares)
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') {
+                verificarNuevaVersion();
+            }
+        });
+
     </script>
 
     <footer style="flex-shrink: 0; background: #fff; padding: 5px; text-align: center; font-size: 0.75rem; color: #888; border-top: 1px solid #ddd;">
