@@ -1081,25 +1081,34 @@
                 height: '100%',
                 initialView: 'multiMonthYear', 
                 locale: 'es',
+                
                 customButtons: {
-                    btnHoy: { text: 'Hoy', click: function() { calendar.changeView('dayGridMonth'); calendar.today(); } },
+                    // CAMBIO 1: Al hacer clic en HOY, forzamos la vista de AÑO y vamos a la fecha
+                    btnHoy: { 
+                        text: 'Hoy', 
+                        click: function() { 
+                            calendar.changeView('multiMonthYear'); 
+                            calendar.today(); 
+                        } 
+                    },
                     btnCustomAgenda: {
                         text: 'Agenda',
                         click: function() { mostrarVistaAgenda(); }
                     }
                 },
-                buttonText: { month: 'Mes', year:  'Año' },
+                
                 headerToolbar: {
                     left: 'prev,next btnHoy', 
                     center: 'title',
-                    right: 'dayGridMonth,multiMonthYear btnCustomAgenda' 
+                    // CAMBIO 2: Quitamos 'dayGridMonth' de la barra derecha
+                    right: 'btnCustomAgenda' 
                 },
-                multiMonthMaxColumns: esMovil ? 1 : 4, 
                 
                 views: {
-                    dayGridMonth: { buttonText: 'Mes' },
+                    // CAMBIO 3: Eliminamos la configuración de dayGridMonth
                     multiMonthYear: { buttonText: 'Año' } 
                 },
+                
                 dateClick: function(info) { 
                     if (!esAdmin) return;
                     const parts = info.dateStr.split('-');
