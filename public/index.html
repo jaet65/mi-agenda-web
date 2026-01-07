@@ -1812,26 +1812,38 @@
             document.body.style.cursor = "wait";
 
             try {
-                // --- 1. CACHÉ LOCAL ---
+                // --- 1. CACHÉ LOCAL CON TIEMPO DE EXPIRACIÓN ---
                 const cacheGuardado = localStorage.getItem('agenda_reservas_cache');
+                const cacheTimestamp = localStorage.getItem('agenda_reservas_timestamp'); // Leemos la hora guardada
+                
                 let datosParaProcesar = [];
                 let origenDatos = "";
 
+                // Calculamos si el caché es válido (Menor a 5 min = 300,000 ms)
+                const ahora = Date.now();
+                const esCacheValido = cacheTimestamp && (ahora - parseInt(cacheTimestamp) < 300000);
+
                 if (!forzarRecarga && cacheGuardado) {
-                    console.log("⚡ Usando Caché Local...");
-                    try {
-                        // Solo parseamos el JSON, es muy rápido
-                        datosParaProcesar = JSON.parse(cacheGuardado);
-                        origenDatos = "CACHE";
-                    } catch (err) {
-                        console.warn("Caché corrupto, descargando...");
+                    if (esCacheValido) {
+                        console.log("⚡ Usando Caché Local (Fresco)...");
+                        try {
+                            datosParaProcesar = JSON.parse(cacheGuardado);
+                            origenDatos = "CACHE";
+                        } catch (err) {
+                            console.warn("Caché corrupto, descargando...");
+                            origenDatos = "FIREBASE";
+                        }
+                    } else {
+                        console.log("⌛ Caché expirado (+5 min). Forzando descarga...");
                         origenDatos = "FIREBASE";
                     }
                 }
 
-                // --- 2. FIREBASE (Si no hubo caché) ---
+                // --- 2. FIREBASE (Si no hay caché o expiró) ---
                 if (datosParaProcesar.length === 0 || origenDatos === "FIREBASE") {
                     console.log("⬇️ Descargando de Firebase...");
+                    datosParaProcesar = []; // Limpiamos lista por seguridad
+
                     const q = query(
                         collection(db, "reservas"),
                         where("fechaInicio", ">=", "2020-01-01"),
@@ -1842,19 +1854,19 @@
                     querySnapshot.forEach((documento) => {
                         const data = documento.data();
                         if (data.fechaInicio && data.fechaFin) {
-                            // Pre-calculamos fechas aquí para guardar el objeto limpio
                             datosParaProcesar.push({
                                 id: documento.id,
                                 data: data,
-                                start: data.fechaInicio, // Guardamos string ISO por ahora
+                                start: data.fechaInicio,
                                 end: data.fechaFin
                             });
                         }
                     });
 
-                    // Guardamos en caché lo que acabamos de bajar
+                    // Guardamos en caché CON LA HORA ACTUAL
                     try {
                         localStorage.setItem('agenda_reservas_cache', JSON.stringify(datosParaProcesar));
+                        localStorage.setItem('agenda_reservas_timestamp', Date.now().toString()); // Guardamos timestamp
                     } catch (e) { console.warn("Memoria llena", e); }
                 }
 
@@ -2641,14 +2653,24 @@
             const archivo = input.files[0];
             if (!archivo) return;
 
+            // 1. Referencias al Overlay (Spinner Pantalla Completa)
+            const overlay = document.getElementById('loading-overlay');
+            const textoOverlay = overlay.querySelector('p'); // El texto debajo del spinner
+            const textoOriginalOverlay = textoOverlay.innerText; // Guardamos "Cargando Agenda..." para restaurarlo luego
+
+            // Referencias al botón (para evitar doble clic de fondo)
             const btnImport = document.getElementById('btnImport');
-            const textoOriginal = btnImport.innerHTML;
             btnImport.disabled = true;
 
             const reader = new FileReader();
 
             reader.onload = async function(e) {
                 try {
+                    // 2. ACTIVAR SPINNER
+                    overlay.style.display = 'flex';
+                    textoOverlay.innerText = "📂 Analizando Excel...";
+
+                    // --- LECTURA DEL ARCHIVO ---
                     const data = new Uint8Array(e.target.result);
                     const workbook = XLSX.read(data, {type: 'array', cellDates: true, dateNF: 'yyyy-mm-dd'}); 
                     const worksheet = workbook.Sheets[workbook.SheetNames[0]];
@@ -2656,19 +2678,26 @@
 
                     if (lineas.length < 2) {
                         alert("El archivo Excel parece estar vacío.");
-                        btnImport.disabled = false;
                         return;
                     }
 
-                    if(!confirm(`Procesando Excel (${lineas.length - 1} filas).\n\nMODO DE PRECISIÓN:\n1. Si hay Coordenadas (Col F y G) -> Se usan directo (Exactitud 100%).\n2. Si no -> Se busca la Dirección en el mapa.\n\n¿Continuar?`)) {
+                    // Pausa momentánea para ocultar spinner y mostrar confirmación (el confirm bloquea el render)
+                    overlay.style.display = 'none'; 
+                    
+                    if(!confirm(`Procesando Excel (${lineas.length - 1} filas).\n\nMODO DE PRECISIÓN:\n1. Si hay Coordenadas (Col F y G) -> Se usan directo.\n2. Si no -> Se busca la Dirección en el mapa.\n\n¿Continuar?`)) {
                         input.value = ''; 
                         btnImport.disabled = false;
+                        textoOverlay.innerText = textoOriginalOverlay;
                         return;
                     }
+
+                    // 3. REACTIVAR SPINNER PARA EL PROCESO
+                    overlay.style.display = 'flex';
+                    textoOverlay.innerText = "🚀 Iniciando motor de importación...";
 
                     let contExito = 0;
                     let contError = 0;
-                    let contCoordsDirectas = 0; // Contador para saber cuántas usaron GPS directo
+                    let contCoordsDirectas = 0; 
 
                     // Batch config
                     const BATCH_SIZE = 400; 
@@ -2712,12 +2741,13 @@
 
                     const esperar = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-                    // Bucle principal
+                    // --- BUCLE PRINCIPAL ---
                     for (let i = 1; i < lineas.length; i++) {
                         const fila = lineas[i];
                         if (!fila || fila.length === 0) continue;
 
-                        btnImport.innerHTML = `⏳ ${i}/${lineas.length - 1}`;
+                        // 4. ACTUALIZAR TEXTO DEL SPINNER CON EL PROGRESO
+                        textoOverlay.innerText = `⏳ Importando fila ${i} de ${lineas.length - 1}...`;
 
                         // --- MAPEO DE COLUMNAS ---
                         const rawInicio = fila[0];
@@ -2725,8 +2755,6 @@
                         const cliente = fila[2] ? fila[2].toString().trim() : "Cliente";
                         const ciudad = fila[3] ? fila[3].toString().trim() : "Sin Ciudad";
                         const direccionTexto = fila[4] ? fila[4].toString().trim() : "";
-                        
-                        // NUEVAS COLUMNAS: F (Latitud) y G (Longitud)
                         const rawLat = fila[5]; 
                         const rawLng = fila[6];
 
@@ -2739,19 +2767,15 @@
                         let latFinal = "";
                         let lngFinal = "";
 
-                        // 1. ¿Vienen coordenadas en el Excel?
                         if (rawLat && rawLng && !isNaN(parseFloat(rawLat)) && !isNaN(parseFloat(rawLng))) {
                             latFinal = parseFloat(rawLat);
                             lngFinal = parseFloat(rawLng);
                             contCoordsDirectas++;
-                            // No esperamos tiempo porque no usamos la API externa
-                        } 
-                        // 2. Si no, buscamos por dirección en HERE Maps
-                        else {
+                        } else {
                             const coordsAPI = await obtenerCoordenadasDeAPI(direccionTexto, ciudad);
                             latFinal = coordsAPI.lat;
                             lngFinal = coordsAPI.lng;
-                            await esperar(150); // Pausa solo si usamos la API
+                            await esperar(150); 
                         }
 
                         const rangos = calcularRangosSinDomingo(fInicio, fFin);
@@ -2771,12 +2795,12 @@
                                 fechaFin: endStr,
                                 cliente: cliente,
                                 ciudad: ciudad,
-                                direccion: direccionTexto, // Siempre guardamos TU texto
+                                direccion: direccionTexto,
                                 lat: latFinal,           
                                 lng: lngFinal,           
                                 groupId: groupId,
-                                creado: new Date(),
-                                pdfUrl: null 
+                                creado: new Date()
+                                // pdfUrl: null  <-- Mantenemos comentada esta línea para no borrar adjuntos
                             }, { merge: true });
 
                             operationCounter++;
@@ -2792,18 +2816,24 @@
 
                     if (operationCounter > 0) await batch.commit();
 
+                    // 5. MENSAJE FINAL
+                    textoOverlay.innerText = "✅ Finalizando...";
+                    
                     alert(`Importación Completada.\n✅ Total Registros: ${contExito}\n🎯 Usaron Coordenadas Exactas: ${contCoordsDirectas}\n🗺️ Buscados en Mapa: ${contExito - contCoordsDirectas}`);
-                    await cargarReservas();
+                    
+                    await cargarReservas(true); // Recarga forzada
 
                 } catch (error) {
                     console.error(error);
-                    alert("Error en el archivo Excel: " + error.message);
+                    alert("Error crítico en el archivo Excel: " + error.message);
                 } finally {
-                    btnImport.innerHTML = textoOriginal;
+                    // 6. LIMPIEZA FINAL: OCULTAR SPINNER Y RESTAURAR TEXTO
+                    overlay.style.display = 'none';
+                    textoOverlay.innerText = textoOriginalOverlay; // "Cargando Agenda..."
+                    
                     btnImport.disabled = false;
                     input.value = '';
                 }
-                await cargarReservas(true);
             };
             reader.readAsArrayBuffer(archivo);
         }
@@ -2927,7 +2957,7 @@
     </script>
 
     <footer style="flex-shrink: 0; background: #fff; padding: 5px; text-align: center; font-size: 0.75rem; color: #888; border-top: 1px solid #ddd;">
-        TrackSIM v1.0.1 ()</span>
+        TrackSIM vLOCAL ()</span>
     </footer>
 
 </body>
