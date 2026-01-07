@@ -889,35 +889,81 @@
             }, 200);
         }
 
-        // --- DETECCIÓN DE SWIPE PARA CALENDARIO ---
+        // --- DETECCIÓN DE GESTOS DEFINITIVA (ZOOM Y SWIPE) ---
         const calendarElement = document.getElementById('calendar');
         let touchStartXCal = 0;
         let touchEndXCal = 0;
+        
+        let distanciaInicioPinch = 0;
+        let isPinching = false;
 
         calendarElement.addEventListener('touchstart', (e) => {
-            touchStartXCal = e.changedTouches[0].screenX;
+            if (e.touches.length === 2) {
+                isPinching = true;
+                distanciaInicioPinch = Math.hypot(
+                    e.touches[0].pageX - e.touches[1].pageX,
+                    e.touches[0].pageY - e.touches[1].pageY
+                );
+            } else {
+                isPinching = false;
+                touchStartXCal = e.changedTouches[0].screenX;
+            }
+        }, {passive: true});
+
+        calendarElement.addEventListener('touchmove', (e) => {
+            if (isPinching && e.touches.length === 2) {
+                const distanciaActual = Math.hypot(
+                    e.touches[0].pageX - e.touches[1].pageX,
+                    e.touches[0].pageY - e.touches[1].pageY
+                );
+                
+                // Sensibilidad 20px
+                if (Math.abs(distanciaActual - distanciaInicioPinch) > 20) {
+                    if (distanciaActual > distanciaInicioPinch) {
+                        ajustarZoom(-1); // Zoom In (Menos columnas)
+                    } else {
+                        ajustarZoom(1);  // Zoom Out (Más columnas)
+                    }
+                    distanciaInicioPinch = distanciaActual; 
+                }
+            }
         }, {passive: true});
 
         calendarElement.addEventListener('touchend', (e) => {
-            touchEndXCal = e.changedTouches[0].screenX;
-            manejarSwipeCalendario();
+            if (!isPinching && e.changedTouches.length > 0) {
+                touchEndXCal = e.changedTouches[0].screenX;
+                manejarSwipeCalendario();
+            }
+            if (e.touches.length < 2) isPinching = false;
         }, {passive: true});
 
         function manejarSwipeCalendario() {
-            // Mínima distancia para considerar el gesto (50px)
-            const umbral = 50; 
-            const distancia = touchEndXCal - touchStartXCal;
+            if (isPinching || !calendar) return;
+            const diff = touchEndXCal - touchStartXCal;
+            if (Math.abs(diff) < 50) return;
+            
+            if (diff < 0) calendar.next(); 
+            else calendar.prev();
+        }
 
-            if (Math.abs(distancia) < umbral) return; // Toque accidental
+        function ajustarZoom(delta) {
+            if (!calendar || calendar.view.type !== 'multiMonthYear') return;
 
-            if (distancia < 0) {
-                // Deslizó hacia la IZQUIERDA (<--) 
-                // Significa "Siguiente mes"
-                calendar.next();
-            } else {
-                // Deslizó hacia la DERECHA (-->)
-                // Significa "Mes anterior"
-                calendar.prev();
+            // Detectar límites
+            const esCelular = window.innerWidth < 768;
+            const limiteMax = esCelular ? 2 : 4; 
+
+            // Leer valor actual (ahora sí funciona leerlo directo)
+            let colsActuales = calendar.getOption('multiMonthMaxColumns') || (esCelular ? 1 : 4);
+            let nuevasCols = colsActuales + delta;
+            
+            if (nuevasCols < 1) nuevasCols = 1;
+            if (nuevasCols > limiteMax) nuevasCols = limiteMax;
+
+            if (nuevasCols !== colsActuales) {
+                // Aplicar cambio directo
+                calendar.setOption('multiMonthMaxColumns', nuevasCols);
+                console.log(`Zoom: ${colsActuales} -> ${nuevasCols}`);
             }
         }
 
@@ -1048,9 +1094,11 @@
                     center: 'title',
                     right: 'dayGridMonth,multiMonthYear btnCustomAgenda' 
                 },
+                multiMonthMaxColumns: esMovil ? 1 : 4, 
+                
                 views: {
                     dayGridMonth: { buttonText: 'Mes' },
-                    multiMonthYear: { buttonText: 'Año', multiMonthMaxColumns: esMovil ? 1 : 4 }
+                    multiMonthYear: { buttonText: 'Año' } 
                 },
                 dateClick: function(info) { 
                     if (!esAdmin) return;
@@ -2879,7 +2927,7 @@
     </script>
 
     <footer style="flex-shrink: 0; background: #fff; padding: 5px; text-align: center; font-size: 0.75rem; color: #888; border-top: 1px solid #ddd;">
-        TrackSIM v1.0.1766993934 (29/12/2025, 01:38 a.m.)</span>
+        TrackSIM v1.0.1 ()</span>
     </footer>
 
 </body>
