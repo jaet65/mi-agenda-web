@@ -36,7 +36,7 @@ if (!indexPath) {
 
 // 3. Generar datos
 const fechaActual = obtenerFechaCDMX();
-const version = `${Math.floor(Date.now() / 10000000)}`;
+const version = `${Math.floor(Date.now() / 100000000)}`;
 
 console.log(`ℹ️ Archivo encontrado en: ${indexPath}`);
 console.log(`ℹ️ Generando versión: ${version} | Fecha: ${fechaActual}`);

@@ -2300,7 +2300,7 @@
                 await updateDoc(docRef, { pdfUrl: null });
                 
                 alert("🗑️ Enlace eliminado.");
-                await cargarReservas(); 
+                await cargarReservas(true); 
                 cerrarModal('detalleModal');
             } catch (error) {
                 console.error("Error al eliminar enlace:", error);
@@ -2606,7 +2606,7 @@
                 const docRef = doc(db, "reservas", eventoSeleccionadoID);
                 await updateDoc(docRef, { pdfUrl: url });
                 alert("✅ Enlace de Drive guardado.");
-                await cargarReservas(); // Refresca el calendario
+                await cargarReservas(true); // Refresca el calendario
                 cerrarModal('detalleModal');
             } catch (error) {
                 console.error("Error al guardar link:", error);
