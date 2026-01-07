@@ -586,7 +586,7 @@
                 </div>
 
                 <button id="btn-go-map" class="btn-action btn-map-toggle" onclick="mostrarMapa()">🗺️ Mapa</button>
-                <button id="btnImport" class="btn-share" onclick="abrirSelectorCSV()" style="display:none; background-color: #6f42c1; margin-right: 5px;">📂 Importar</button>
+                <button id="btnImport" class="btn-share" onclick="abrirSelectorCSV()" style="display:none; background-color: #6f42c1; margin-right: 5px;">📥 Import</button>
                     <input type="file" id="fileInput" accept=".xlsx, .xls" style="display: none;" onchange="procesarArchivoExcel(this)">
                 <button id="btnLogin" class="btn-action" onclick="iniciarSesion()">🔐</button>
                 <button id="btnLogout" class="btn-action" onclick="cerrarSesion()" style="display:none;">🔓</button>
@@ -603,6 +603,8 @@
             
             <div class="mobile-section-title">Navegación</div>
             <button id="mobile-btn-map" onclick="mostrarMapa(); toggleMenu()">🗺️ Mapa</button>
+            
+            <button id="mobile-btn-import" onclick="abrirSelectorCSV(); toggleMenu()" style="display:none; background-color: #6f42c1; color: white;">📥 Import</button>
             
             <hr style="width:100%; border:0; border-top:1px solid #eee; margin:5px 0;">
             
@@ -2473,6 +2475,9 @@
                 const btnImport = document.getElementById('btnImport');
                 if (btnImport) btnImport.style.display = 'inline-block';
 
+                const mobileImport = document.getElementById('mobile-btn-import');
+                if (mobileImport) mobileImport.style.display = 'block';
+
                 actualizarHeaderAdmin(); 
                 // -------------------------------------------------------------
 
@@ -2509,9 +2514,11 @@
 
             // Ocultar botón importar (con verificación de seguridad)
             const btnImport = document.getElementById('btnImport');
-            if (btnImport) {
-                btnImport.style.display = 'none';
-            }
+            if (btnImport) btnImport.style.display = 'none';
+            
+            const mobileImport = document.getElementById('mobile-btn-import');
+            if (mobileImport) mobileImport.style.display = 'none';
+
             console.log("Cierre de sesión de administrador");
             actualizarHeaderAdmin(); 
         }
@@ -2853,6 +2860,19 @@
         document.addEventListener('visibilitychange', () => {
             if (document.visibilityState === 'visible') {
                 verificarNuevaVersion();
+            }
+        });
+
+        document.addEventListener('click', function(event) {
+            const menu = document.getElementById('mobile-menu');
+            const hamburger = document.querySelector('.hamburger-btn');
+            
+            // Verificamos si el menú existe y si está abierto
+            if (menu && menu.classList.contains('open')) {
+                // Si el clic NO fue dentro del menú Y TAMPOCO en el botón de hamburguesa
+                if (!menu.contains(event.target) && !hamburger.contains(event.target)) {
+                    menu.classList.remove('open');
+                }
             }
         });
 
