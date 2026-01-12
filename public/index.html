@@ -1462,7 +1462,7 @@
                     });
                 }
 
-                await cargarReservas();
+                await cargarReservas(true);
                 cerrarModal('reservaModal');
                 document.getElementById('successModal').style.display = "block";
             } catch (e) {
@@ -2496,7 +2496,7 @@
                 }
 
                 cerrarModal('detalleModal');
-                await cargarReservas(); // Recargar calendario y mapa
+                await cargarReservas(true); // Recargar calendario y mapa
                 alert("🗑️ Reservación eliminada correctamente.");
 
             } catch (error) {
