@@ -251,7 +251,7 @@
             border-radius: 10px;
             padding: 20px;
             margin-bottom: 15px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
             cursor: pointer;
             transition: transform 0.2s, box-shadow 0.2s;
             border-left: 6px solid #007bff;
@@ -260,7 +260,7 @@
             gap: 5px;
         }
         .agenda-card:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
-        .agenda-card.pasada { border-left-color: #aaa; background: #fafafa; opacity: 0.8; }
+        .agenda-card.pasada { border-left-color: #aaa; background: #fafafa; opacity: 0.3; }
         
         .ruta-ciudad { font-weight: bold; font-size: 1.1rem; color: #2c3e50; }
         .ruta-fechas { font-size: 0.9rem; color: #007bff; font-weight: 600; margin-top: 5px; }
@@ -327,7 +327,7 @@
             transition: all 0.2s;
             border-left: 5px solid #007bff; /* Azul por defecto */
         }
-        .ruta-item:hover { background-color: #e3effd; }
+        .ruta-item:hover { background-color: #007bff62; }
 
         /* 2. Pasado (Gris) */
         .ruta-item.pasada {
@@ -336,20 +336,24 @@
             opacity: 0.7;
         }
 
-        /* 3. Activo HOY (Rojo - Máxima Prioridad) */
+        /* 3. Activo HOY (Verde - Máxima Prioridad) */
         .ruta-item.activa {
-            background-color: #ffeaea; /* Rojo muy suave */
-            border-left-color: #dc3545 !important;
-            box-shadow: 0 0 8px rgba(220, 53, 69, 0.2);
+            background-color: #cbeed7; /* Verde muy suave */
+            border-left-color: #05a83b !important;
+            box-shadow: 0 0 8px rgba(53, 220, 98, 0);
         }
-        .ruta-item.activa .ruta-ciudad { color: #dc3545; }
+        .ruta-item.activa:hover { background-color: #05a83b55; }
+
+        .ruta-item.activa .ruta-ciudad { color: #05a83b; }
 
         /* 4. Destacado/Próximo (Dorado) */
         .ruta-item.destacada {
-            background-color: #fff9db; /* Amarillo suave */
+            background-color: #fff9db7c; /* Amarillo suave */
             border-left-color: #f1c40f !important;
-            box-shadow: 0 0 8px rgba(241, 196, 15, 0.3);
+            box-shadow: 0 0 8px rgba(241, 196, 15, 0);
         }
+        .ruta-item.destacada:hover { background-color: #f1c40f4e; }
+
         /* ---------------------------------------------------- */
 
         .map-year-controls { display: flex; justify-content: center; gap: 10px; align-items: center; padding: 10px 15px; background: #f8f9fa; border-bottom: 1px solid #ddd; }
@@ -547,7 +551,7 @@
         .dot.grey { background: #7f8c8d; }   /* Pasado */
         .dot.blue { background: #007bff; }   /* Futuro */
         .dot.gold { background: #f1c40f; }   /* Siguiente */
-        .dot.red { background: #dc3545; }    /* Hoy */
+        .dot.red { background: #35dc6d; }    /* Hoy */
     </style>
 
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
@@ -1027,7 +1031,7 @@
         });
 
         const redIcon = new L.Icon({
-            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
             shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
             iconSize: [25, 41],
             iconAnchor: [12, 41],
