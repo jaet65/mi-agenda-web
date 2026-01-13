@@ -585,7 +585,7 @@
                     <div class="dropdown-content">
                         <button onclick="compartirApp()">🔗 Enviar Vínculo</button>
                         <button onclick="verQR()">📱 Ver Código QR</button>
-                        <button onclick="exportarCalendario()">📅 Exportar Google Cal</button>
+                        <button onclick="exportarCalendario()">📅 Exportar Calendario</button>
                     </div>
                 </div>
 
@@ -2199,9 +2199,9 @@
                 icsContent += "BEGIN:VEVENT\n";
                 icsContent += `DTSTART;VALUE=DATE:${start}\n`;
                 icsContent += `DTEND;VALUE=DATE:${end}\n`;
-                icsContent += `SUMMARY:${ciudad} - ${cliente}\n`;
-                icsContent += `DESCRIPTION:Cliente: ${cliente}\\nDirección: ${direccion}\\nGestionado desde Agenda TrackSIM.\n`;
+                icsContent += `SUMMARY:${cliente} - ${ciudad}\n`;
                 icsContent += `LOCATION:${ciudad}, ${direccion}\n`;
+                icsContent += `DESCRIPTION:Gestionado desde Agenda TrackSIM. https://agendaservicios.web.app/index.html\n`;
                 icsContent += "STATUS:CONFIRMED\n";
                 icsContent += "END:VEVENT\n";
             });
