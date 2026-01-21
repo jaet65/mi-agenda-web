@@ -1158,6 +1158,58 @@
             }, 100);
         });
 
+        // --- NOTIFICACIONES DE ESCRITORIO (CLIENT-SIDE) ---
+
+        // 1. Solicitar permiso al usuario (Devuelve una promesa)
+        async function solicitarPermisoNotificaciones() {
+            if (!('Notification' in window) || !navigator.serviceWorker) {
+                console.log("Este navegador no soporta notificaciones.");
+                return false;
+            }
+            // Si el permiso ya fue concedido, no hacemos nada y devolvemos true
+            if (Notification.permission === 'granted') {
+                console.log("El permiso de notificación ya estaba concedido.");
+                verificarEventosProximos(); // Hacemos una primera verificación al cargar
+                return true;
+            }
+            // Si fue denegado, no podemos volver a preguntar
+            if (Notification.permission === 'denied') {
+                console.log("El permiso de notificación fue denegado previamente.");
+                return false;
+            }
+            // Si no se ha decidido (default), solicitamos permiso
+            const permission = await Notification.requestPermission();
+            if (permission === 'granted') {
+                console.log('Permiso de notificación concedido.');
+                verificarEventosProximos(); // Hacemos una primera verificación
+                return true;
+            }
+            return false;
+        }
+
+        // 2. Verificar eventos y pedir al Service Worker que notifique
+        async function verificarEventosProximos() {
+            if (Notification.permission !== 'granted' || globalReservas.length === 0) return;
+
+            const swRegistration = await navigator.serviceWorker.ready;
+            if (!swRegistration) return;
+
+            const manana = new Date(); manana.setDate(manana.getDate() + 1);
+            const mananaStr = manana.toISOString().split('T')[0];
+            const notificados = JSON.parse(localStorage.getItem('notificacionesEnviadas') || '[]');
+
+            for (const reserva of globalReservas) {
+                if (reserva.data.fechaInicio === mananaStr && !notificados.includes(reserva.id)) {
+                    const title = `🗓️ Próximo Servicio Mañana`;
+                    const body = `Cliente: ${reserva.data.cliente}\nCiudad: ${reserva.data.ciudad}`;
+                    // Le pedimos al Service Worker que muestre la notificación
+                    swRegistration.showNotification(title, { body: body, icon: '/icon-192.png' });
+                    notificados.push(reserva.id);
+                }
+            }
+            localStorage.setItem('notificacionesEnviadas', JSON.stringify(notificados));
+        }
+
         // --- BUSCADOR GLOBAL ---
         const searchInput = document.getElementById('globalSearch');
         const resultsList = document.getElementById('globalSearchResults');
