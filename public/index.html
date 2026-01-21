@@ -1190,21 +1190,46 @@
         // 2. Verificar eventos y pedir al Service Worker que notifique
         async function verificarEventosProximos() {
             if (Notification.permission !== 'granted' || globalReservas.length === 0) return;
-
+        
             const swRegistration = await navigator.serviceWorker.ready;
             if (!swRegistration) return;
-
-            const manana = new Date(); manana.setDate(manana.getDate() + 1);
+        
+            // Obtenemos las fechas clave para las notificaciones
+            const hoy = new Date();
+            const manana = new Date();
+            manana.setDate(hoy.getDate() + 1);
+            const semana = new Date();
+            semana.setDate(hoy.getDate() + 7);
+        
+            // Convertimos a formato YYYY-MM-DD
+            const hoyStr = hoy.toISOString().split('T')[0];
             const mananaStr = manana.toISOString().split('T')[0];
+            const semanaStr = semana.toISOString().split('T')[0];
+        
+            // El sistema de notificados ahora guarda el ID y el tipo de aviso (ej: "idReserva_7d")
             const notificados = JSON.parse(localStorage.getItem('notificacionesEnviadas') || '[]');
-
+        
             for (const reserva of globalReservas) {
-                if (reserva.data.fechaInicio === mananaStr && !notificados.includes(reserva.id)) {
-                    const title = `🗓️ Próximo Servicio Mañana`;
-                    const body = `Cliente: ${reserva.data.cliente}\nCiudad: ${reserva.data.ciudad}`;
-                    // Le pedimos al Service Worker que muestre la notificación
-                    swRegistration.showNotification(title, { body: body, icon: '/icon-192.png' });
-                    notificados.push(reserva.id);
+                const id = reserva.id;
+                const fechaInicio = reserva.data.fechaInicio;
+                const body = `Cliente: ${reserva.data.cliente}\nCiudad: ${reserva.data.ciudad}`;
+        
+                // Notificación de 7 días
+                if (fechaInicio === semanaStr && !notificados.includes(`${id}_7d`)) {
+                    swRegistration.showNotification('🗓️ Servicio en 1 Semana', { body, icon: '/icon-192.png' });
+                    notificados.push(`${id}_7d`);
+                }
+        
+                // Notificación de 1 día
+                if (fechaInicio === mananaStr && !notificados.includes(`${id}_1d`)) {
+                    swRegistration.showNotification('🗓️ Servicio Mañana', { body, icon: '/icon-192.png' });
+                    notificados.push(`${id}_1d`);
+                }
+        
+                // Notificación del mismo día
+                if (fechaInicio === hoyStr && !notificados.includes(`${id}_0d`)) {
+                    swRegistration.showNotification('✅ Servicio para Hoy', { body, icon: '/icon-192.png' });
+                    notificados.push(`${id}_0d`);
                 }
             }
             localStorage.setItem('notificacionesEnviadas', JSON.stringify(notificados));
@@ -3027,6 +3052,17 @@
         });
 
 
+    </script>
+
+    <script>
+        // Función de ayuda para depuración desde la consola del navegador.
+        // Se define en un script no-módulo para ser accesible globalmente.
+        function testNotificaciones() {
+            console.log("🧪 Forzando la verificación de notificaciones...");
+            // La función verificarEventosProximos() está en el módulo, por lo que no podemos llamarla directamente.
+            // En su lugar, disparamos un evento personalizado que el módulo escuchará.
+            window.dispatchEvent(new CustomEvent('test-notificaciones'));
+        }
     </script>
 
     <script>
