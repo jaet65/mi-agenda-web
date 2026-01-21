@@ -1148,6 +1148,13 @@
             // Esto saca la carga de datos del proceso de arranque (DOMContentLoaded).
             setTimeout(() => {
                 cargarReservas();
+                
+                // --- NOTIFICACIONES ---
+                // 1. Solicitar permiso al cargar la app
+                solicitarPermisoNotificaciones().then(permissionGranted => {
+                    // 2. Revisar eventos próximos cada hora si tenemos permiso
+                    if (permissionGranted) setInterval(verificarEventosProximos, 3600000); // 3600000 ms = 1 hora
+                });
             }, 100);
         });
 
@@ -2966,6 +2973,7 @@
                 }
             }
         });
+
 
     </script>
 

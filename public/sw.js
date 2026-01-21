@@ -48,3 +48,29 @@ self.addEventListener('fetch', (event) => {
     })
   );
 });
+
+// --- MANEJO DE NOTIFICACIONES PUSH ---
+
+// 4. Escuchar el evento 'push' (cuando el servidor envía una notificación)
+self.addEventListener('push', (event) => {
+  // El servidor (o la app cliente) nos envía los datos de la notificación en formato JSON
+  const data = event.data ? event.data.json() : {};
+
+  const title = data.title || 'Agenda TrackSIM';
+  const options = {
+    body: data.body,
+    icon: data.icon || '/icon-192.png', // Usar el icono enviado o uno por defecto
+    badge: '/icon-192.png', // Icono para la barra de notificaciones en Android
+    data: {
+      url: data.url || '/' // URL a la que se navegará al hacer clic
+    }
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+// 5. Escuchar el clic en la notificación
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close(); // Cierra la notificación
+  event.waitUntil(clients.openWindow(event.notification.data.url)); // Abre la app o la URL especificada
+});
