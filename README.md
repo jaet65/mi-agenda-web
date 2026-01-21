@@ -38,31 +38,36 @@
 
 ## 🚀 Instalación y Ejecución Local
 
-Para ejecutar este proyecto en tu máquina local:
+Para probar la aplicación en tu máquina local, es **muy recomendable** usar un servidor HTTPS para asegurar que todas las funcionalidades de la PWA (como notificaciones y Service Workers) operen correctamente.
 
 1.  **Clonar el repositorio:**
     ```bash
     git clone <URL_DEL_REPOSITORIO>
-    cd jaet65-mi-agenda-web
+    cd mi-agenda-web
     ```
 
-2.  **Configurar Firebase:**
-    Asegúrate de tener instalado `firebase-tools`:
+2.  **Instalar dependencias de Python:**
+    El servidor de desarrollo local requiere la librería `cryptography` para generar certificados SSL.
     ```bash
-    npm install -g firebase-tools
-    firebase login
+    pip install cryptography
     ```
 
-3.  **Ejecutar servidor local:**
-    Debido a que el proyecto utiliza Módulos ES6 y CORS para los mapas, es necesario usar un servidor local.
+3.  **Ejecutar el servidor HTTPS local:**
+    El proyecto incluye un script `server.py` listo para usar.
     ```bash
-    firebase serve
-    # O si tienes python:
-    # python -m http.server 8000
+    python server.py
     ```
+    La primera vez que lo ejecutes, creará los archivos `cert.pem` y `key.pem`.
 
-4.  **Acceder:**
-    Abre tu navegador en `http://localhost:5000` (o el puerto que indique la consola).
+4.  **Acceder a la aplicación:**
+    Abre tu navegador y ve a **`https://localhost:8000`**.
+    *   Tu navegador mostrará una advertencia de seguridad porque el certificado es autofirmado. Debes aceptarla para continuar (generalmente en "Avanzado" > "Continuar a localhost").
+
+### Alternativa (Despliegue con Firebase)
+Si prefieres usar el ecosistema de Firebase para el desarrollo:
+1.  Instala las herramientas de Firebase: `npm install -g firebase-tools`
+2.  Inicia sesión: `firebase login`
+3.  Ejecuta el emulador: `firebase serve`
 
 ## 🔄 Despliegue Automático (CI/CD)
 
