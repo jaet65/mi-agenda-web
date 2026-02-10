@@ -752,6 +752,13 @@
                 <input type="hidden" id="lonTemp">
             </div>
 
+            <div class="form-group" style="display: flex; align-items: center; gap: 10px; margin-top: 15px; user-select: none;">
+                <input type="checkbox" id="eventoEspecialCheck" style="width: auto; height: 18px; margin: 0; cursor: pointer;">
+                <label for="eventoEspecialCheck" style="margin: 0; font-weight: normal; cursor: pointer;">
+                    🎉 Evento especial (resaltar)
+                </label>
+            </div>
+
             <button onclick="guardarReserva()" class="btn-save">💾 Guardar Reserva</button>
         </div>
     </div>
@@ -1435,6 +1442,7 @@
             const nombre = document.getElementById('nombreInput').value;
             const direccion = document.getElementById('direccionInput').value;
             
+            const esEspecial = document.getElementById('eventoEspecialCheck').checked;
             // Coordenadas (pueden venir de un Plus Code previo o estar vacías)
             let lat = document.getElementById('latTemp').value;
             let lon = document.getElementById('lonTemp').value;
@@ -1546,7 +1554,8 @@
                         lng: lon,             
                         groupId: grupoId, 
                         creado: new Date(),
-                        pdfUrl: urlEdicion 
+                        pdfUrl: urlEdicion,
+                        esEspecial: esEspecial
                     });
                 }
 
@@ -1994,14 +2003,17 @@
                     let fechaFinVisual = new Date(endObj);
                     fechaFinVisual.setDate(fechaFinVisual.getDate() + 1);
 
+                    const esEspecial = item.data.esEspecial || false;
+                    const colorEvento = esEspecial ? '#7F00FF' : '#FF5733'; // Naranja para especial, rojo para normal
+
                     eventosFullCalendar.push({
                         id: item.id,
                         title: '📍 ' + (item.data.ciudad ? item.data.ciudad.split(",")[0] : "Sin ciudad") + ' - ' + item.data.cliente,
                         start: item.data.fechaInicio,
                         end: fechaFinVisual.toISOString().split('T')[0],
                         allDay: true,
-                        backgroundColor: '#FF5733',
-                        borderColor: '#FF5733',
+                        backgroundColor: colorEvento,
+                        borderColor: colorEvento,
                         extendedProps: {
                             cliente: item.data.cliente,
                             direccion: item.data.direccion,
@@ -2010,7 +2022,8 @@
                             groupId: item.data.groupId,
                             pdfUrl: item.data.pdfUrl,
                             lat: item.data.lat,
-                            lng: item.data.lng
+                            lng: item.data.lng,
+                            esEspecial: esEspecial
                         }
                     });
                 });
@@ -2040,6 +2053,9 @@
             let fechaFinObj = new Date(data.fechaFin + 'T00:00:00');
             let fechaFinVisual = new Date(fechaFinObj);
             fechaFinVisual.setDate(fechaFinVisual.getDate() + 1);
+            
+            const esEspecial = data.esEspecial || false;
+            const colorEvento = esEspecial ? '#e67e22' : '#FF5733';
 
             calendar.addEvent({
                 id: id,
@@ -2047,8 +2063,8 @@
                 start: data.fechaInicio,
                 end: fechaFinVisual.toISOString().split('T')[0], 
                 allDay: true,
-                backgroundColor: '#FF5733',
-                borderColor: '#FF5733',
+                backgroundColor: colorEvento,
+                borderColor: colorEvento,
                 extendedProps: {
                     cliente: data.cliente,
                     direccion: data.direccion,
@@ -2056,6 +2072,7 @@
                     ciudadCompleta: data.ciudad,
                     groupId: data.groupId,
                     pdfUrl: data.pdfUrl,
+                    esEspecial: esEspecial,
                     lat: data.lat,
                     lng: data.lng
                 }
@@ -2340,6 +2357,7 @@
             document.getElementById('direccionInput').value = "";
             document.getElementById('latTemp').value = ""; 
             document.getElementById('lonTemp').value = "";
+            document.getElementById('eventoEspecialCheck').checked = false;
 
             // Resetear botón
             const btn = document.querySelector('#reservaModal .btn-save');
@@ -2367,6 +2385,7 @@
             document.getElementById('direccionInput').value = evento.extendedProps.direccion || "";
             document.getElementById('ciudadInput').value = evento.extendedProps.ciudadCompleta || "";
 
+            document.getElementById('eventoEspecialCheck').checked = evento.extendedProps.esEspecial || false;
             const originalLat = evento.extendedProps.lat || "";
             const originalLng = evento.extendedProps.lng || "";
 
