@@ -930,7 +930,7 @@
         function manejarSwipeCalendario() {
             if (isPinching || !calendar) return;
             const diff = touchEndXCal - touchStartXCal;
-            if (Math.abs(diff) < 50) return;
+            if (Math.abs(diff) < 150) return; // Aumentado a 150 para reducir la sensibilidad
             
             if (diff < 0) calendar.next(); 
             else calendar.prev();
