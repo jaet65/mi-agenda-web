@@ -698,27 +698,6 @@
         </div>
     </div>
 
-    <div id="loginModal" class="modal">
-        <div class="modal-content" style="max-width: 300px;">
-            <span class="close-x" onclick="cerrarModal('loginModal')">×</span>
-            <h2 style="margin-top:0; text-align:center;">Administración</h2>
-            
-            <form onsubmit="validarLogin(event)">
-                
-                <input type="text" name="username" value="Admin" autocomplete="username" style="display:none;">
-
-                <div class="form-group">
-                    <label>Contraseña:</label>
-                    <input type="password" id="inputPasswordAdmin" placeholder="Ingresa contraseña" autocomplete="current-password" required>
-                </div>
-
-                <button type="submit" class="btn-action" style="width:100%; margin-top:10px; font-weight:bold;">
-                    🔓 Entrar
-                </button>
-            </form>
-        </div>
-    </div>
-
     <div id="reservaModal" class="modal">
         <div class="modal-content">
             <span class="close-x" onclick="cerrarModal('reservaModal')">×</span>
@@ -979,8 +958,9 @@
         }
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, where, writeBatch, updateDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-        
+        import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, where, writeBatch, updateDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";        
+        import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { ADMIN_EMAILS } from './admin-config.js'; // Importar ADMIN_EMAILS
         window.toggleMenu = function() {
             const menu = document.getElementById('mobile-menu');
             if (menu) {
@@ -998,6 +978,7 @@
         };
 
         const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app); // Inicializar Firebase Auth
         const db = getFirestore(app);
         
         let calendar;
@@ -1011,12 +992,8 @@
         let modoEdicion = false;
         let idGrupoEdicion = null;
         let urlEdicion = null;
-        
-        let globalReservas = []; 
-        let datosYaCargados = false;
+        let globalReservas = []; // Inicializar como array vacío
         let currentMapYear = new Date().getFullYear(); 
-
-        const CONTRASEÑA_ADMIN = "servicio2024"; 
 
         // Icono para la reserva más próxima (Gold)
         const goldIcon = new L.Icon({
@@ -1166,6 +1143,59 @@
         });
 
         // --- NOTIFICACIONES DE ESCRITORIO (CLIENT-SIDE) ---
+        
+        // 2. Verificar eventos y pedir al Service Worker que notifique
+        // Se mueve esta función a una posición anterior para que esté definida cuando se le llama.
+        async function verificarEventosProximos() {
+            // globalReservas está inicializado como array vacío, así que `.length` es seguro.
+            if (Notification.permission !== 'granted' || globalReservas.length === 0) return;
+        
+            const swRegistration = await navigator.serviceWorker.ready;
+            if (!swRegistration) return;
+        
+            // Obtenemos las fechas clave para las notificaciones
+            const hoy = new Date();
+            hoy.setHours(0,0,0,0); // Normalizar a inicio del día
+            const manana = new Date(hoy);
+            manana.setDate(hoy.getDate() + 1);
+            const semana = new Date(hoy);
+            semana.setDate(hoy.getDate() + 7);
+        
+            // Convertimos a formato YYYY-MM-DD
+            const hoyStr = hoy.toISOString().split('T')[0];
+            const mananaStr = manana.toISOString().split('T')[0];
+            const semanaStr = semana.toISOString().split('T')[0];
+        
+            // El sistema de notificados ahora guarda el ID y el tipo de aviso (ej: "idReserva_7d")
+            const notificados = JSON.parse(localStorage.getItem('notificacionesEnviadas') || '[]');
+        
+            for (const reserva of globalReservas) {
+                const id = reserva.id;
+                const fechaInicio = reserva.data.fechaInicio; // Esto es YYYY-MM-DD
+                const body = `Cliente: ${reserva.data.cliente}\nCiudad: ${reserva.data.ciudad}`;
+        
+                // Notificación de 7 días
+                if (fechaInicio === semanaStr && !notificados.includes(`${id}_7d`)) {
+                    swRegistration.showNotification('🗓️ Servicio en 1 Semana', { body, icon: './icon-192.png' });
+                    notificados.push(`${id}_7d`);
+                }
+        
+                // Notificación de 1 día
+                if (fechaInicio === mananaStr && !notificados.includes(`${id}_1d`)) {
+                    swRegistration.showNotification('🗓️ Servicio Mañana', { body, icon: './icon-192.png' });
+                    notificados.push(`${id}_1d`);
+                }
+        
+                // Notificación del mismo día
+                if (fechaInicio === hoyStr && !notificados.includes(`${id}_0d`)) {
+                    swRegistration.showNotification('✅ Servicio para Hoy', { body, icon: './icon-192.png' });
+                    notificados.push(`${id}_0d`);
+                }
+            }
+            localStorage.setItem('notificacionesEnviadas', JSON.stringify(notificados));
+        }
+
+        // --- NOTIFICACIONES DE ESCRITORIO (CLIENT-SIDE) ---
 
         // 1. Solicitar permiso al usuario (Devuelve una promesa)
         async function solicitarPermisoNotificaciones() {
@@ -1186,61 +1216,60 @@
             }
             // Si no se ha decidido (default), solicitamos permiso
             const permission = await Notification.requestPermission();
-            if (permission === 'granted') {
-                console.log('Permiso de notificación concedido.');
-                verificarEventosProximos(); // Hacemos una primera verificación
-                return true;
-            }
+            if (permission === 'granted') { console.log('Permiso de notificación concedido.'); verificarEventosProximos(); return true; }
             return false;
         }
 
-        // 2. Verificar eventos y pedir al Service Worker que notifique
-        async function verificarEventosProximos() {
-            if (Notification.permission !== 'granted' || globalReservas.length === 0) return;
-        
-            const swRegistration = await navigator.serviceWorker.ready;
-            if (!swRegistration) return;
-        
-            // Obtenemos las fechas clave para las notificaciones
-            const hoy = new Date();
-            const manana = new Date();
-            manana.setDate(hoy.getDate() + 1);
-            const semana = new Date();
-            semana.setDate(hoy.getDate() + 7);
-        
-            // Convertimos a formato YYYY-MM-DD
-            const hoyStr = hoy.toISOString().split('T')[0];
-            const mananaStr = manana.toISOString().split('T')[0];
-            const semanaStr = semana.toISOString().split('T')[0];
-        
-            // El sistema de notificados ahora guarda el ID y el tipo de aviso (ej: "idReserva_7d")
-            const notificados = JSON.parse(localStorage.getItem('notificacionesEnviadas') || '[]');
-        
-            for (const reserva of globalReservas) {
-                const id = reserva.id;
-                const fechaInicio = reserva.data.fechaInicio;
-                const body = `Cliente: ${reserva.data.cliente}\nCiudad: ${reserva.data.ciudad}`;
-        
-                // Notificación de 7 días
-                if (fechaInicio === semanaStr && !notificados.includes(`${id}_7d`)) {
-                    swRegistration.showNotification('🗓️ Servicio en 1 Semana', { body, icon: '/icon-192.png' });
-                    notificados.push(`${id}_7d`);
-                }
-        
-                // Notificación de 1 día
-                if (fechaInicio === mananaStr && !notificados.includes(`${id}_1d`)) {
-                    swRegistration.showNotification('🗓️ Servicio Mañana', { body, icon: '/icon-192.png' });
-                    notificados.push(`${id}_1d`);
-                }
-        
-                // Notificación del mismo día
-                if (fechaInicio === hoyStr && !notificados.includes(`${id}_0d`)) {
-                    swRegistration.showNotification('✅ Servicio para Hoy', { body, icon: '/icon-192.png' });
-                    notificados.push(`${id}_0d`);
-                }
+        // Función centralizada para actualizar la UI en base al estado de 'esAdmin'
+        function actualizarUIConEstadoAdmin() {
+            const btnLogin = document.getElementById('btnLogin');
+            const btnLogout = document.getElementById('btnLogout');
+            const adminStatus = document.getElementById('admin-status');
+            const mobileLogin = document.getElementById('mobile-btn-login');
+            const mobileLogout = document.getElementById('mobile-btn-logout');
+            const btnImport = document.getElementById('btnImport');
+            const mobileImport = document.getElementById('mobile-btn-import');
+
+            if (esAdmin) {
+                btnLogin.style.display = 'none';
+                btnLogout.style.display = 'inline-block';
+                if(adminStatus && auth.currentUser) adminStatus.innerText = `🟢 ${auth.currentUser.displayName || auth.currentUser.email.split('@')[0]}`;
+                if(adminStatus) adminStatus.style.display = 'inline-block';
+                if(mobileLogin) mobileLogin.style.display = 'none';
+                if(mobileLogout) mobileLogout.style.display = 'block';
+                if (btnImport) btnImport.style.display = 'inline-block';
+                if (mobileImport) mobileImport.style.display = 'block';
+            } else {
+                btnLogin.style.display = 'inline-block';
+                btnLogout.style.display = 'none';
+                if(adminStatus) adminStatus.style.display = 'none';
+                if(mobileLogin) mobileLogin.style.display = 'block';
+                if(mobileLogout) mobileLogout.style.display = 'none';
+                if (btnImport) btnImport.style.display = 'none';
+                if (mobileImport) mobileImport.style.display = 'none';
             }
-            localStorage.setItem('notificacionesEnviadas', JSON.stringify(notificados));
+            actualizarHeaderAdmin(); // Esto gestiona las estadísticas del admin.
         }
+
+        // --- Manejo del estado de autenticación (Mantener sesión activa si el usuario recarga) ---
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                // Usuario autenticado. Verificar si es admin.
+                if (ADMIN_EMAILS.includes(user.email)) {
+                    esAdmin = true;
+                    console.log(`Sesión reestablecida como administrador: ${user.email}`);
+                } else {
+                    // Si por alguna razón el usuario autenticado no está en la lista ADMIN_EMAILS,
+                    // lo deslogueamos. Esto es una medida de seguridad.
+                    signOut(auth);
+                    esAdmin = false;
+                    console.warn(`Usuario autenticado (${user.email}) no es administrador y fue deslogueado.`);
+                }
+            } else {
+                esAdmin = false; // Usuario no autenticado
+            }
+            actualizarUIConEstadoAdmin(); // Llama a una función para actualizar la UI según 'esAdmin'
+        });
 
         // --- BUSCADOR GLOBAL ---
         const searchInput = document.getElementById('globalSearch');
@@ -2613,91 +2642,43 @@
         };
 
         // 1. Modificar iniciarSesion para abrir el modal en lugar del prompt
-        window.iniciarSesion = function() {
-            // Abrimos el modal
-            document.getElementById('loginModal').style.display = 'block';
-            
-            // Ponemos el foco en el input para escribir rápido
-            setTimeout(() => {
-                document.getElementById('inputPasswordAdmin').focus();
-            }, 100);
-        }
+        window.iniciarSesion = async function() {
+            const provider = new GoogleAuthProvider();
+            provider.addScope('profile');
+            provider.addScope('email');
 
-        // 2. Nueva función para procesar el formulario
-        window.validarLogin = function(event) {
-            event.preventDefault(); // Evita que la página se recargue
-
-            const passIngresada = document.getElementById('inputPasswordAdmin').value;
-
-            if (passIngresada === CONTRASEÑA_ADMIN) {
-                esAdmin = true;
+            try {
+                const result = await signInWithPopup(auth, provider);
+                const user = result.user;
                 
-                // --- Lógica de visualización de botones (Tu código original) ---
-                document.getElementById('btnLogin').style.display = 'none';
-                document.getElementById('btnLogout').style.display = 'inline-block';
-                
-                const adminStatus = document.getElementById('admin-status');
-                if(adminStatus) adminStatus.style.display = 'inline';
-                
-                const mobileLogin = document.getElementById('mobile-btn-login');
-                if(mobileLogin) mobileLogin.style.display = 'none';
-                
-                const mobileLogout = document.getElementById('mobile-btn-logout');
-                if(mobileLogout) mobileLogout.style.display = 'block';
-                
-                const mobileStatus = document.getElementById('mobile-admin-status');
-                if(mobileStatus) mobileStatus.style.display = 'block';
-
-                const btnImport = document.getElementById('btnImport');
-                if (btnImport) btnImport.style.display = 'inline-block';
-
-                const mobileImport = document.getElementById('mobile-btn-import');
-                if (mobileImport) mobileImport.style.display = 'block';
-
-                actualizarHeaderAdmin(); 
-                // -------------------------------------------------------------
-
-                // Cerrar modal y limpiar campo
-                document.getElementById('inputPasswordAdmin').value = '';
-                cerrarModal('loginModal');
-                console.log("Login como administrador");
-            } else {
-                alert("❌ Contraseña Incorrecta");
-                document.getElementById('inputPasswordAdmin').select(); // Seleccionar texto para reintentar
-                console.log("❌Intento de login fallido");
+                if (ADMIN_EMAILS.includes(user.email)) {
+                    console.log(`Login exitoso como administrador: ${user.email}`);
+                    esAdmin = true; // Setear la variable global
+                    actualizarUIConEstadoAdmin(); // Actualizar la UI
+                    alert(`¡Bienvenido, ${user.displayName || user.email.split('@')[0]}! Has iniciado sesión como administrador.`);
+                } else {
+                    // Si el correo no está en la lista de administradores, cerrar sesión inmediatamente
+                    await signOut(auth);
+                    alert("❌ Acceso denegado: Tu cuenta no tiene permisos de administrador.");
+                    console.warn(`Intento de login fallido: ${user.email} no es un administrador autorizado.`);
+                }
+            } catch (error) {
+                console.error("Error durante el login con Google:", error);
+                alert(`Error al iniciar sesión: ${error.message}`);
             }
-        }
+        };
 
-        window.cerrarSesion = function() {
-            esAdmin = false;
-            
-            // Botones de sesión
-            document.getElementById('btnLogin').style.display = 'inline-block';
-            document.getElementById('btnLogout').style.display = 'none';
-            
-            // Indicadores de estado
-            const adminStatus = document.getElementById('admin-status');
-            if(adminStatus) adminStatus.style.display = 'none';
-
-            const mobileLogin = document.getElementById('mobile-btn-login');
-            if(mobileLogin) mobileLogin.style.display = 'block';
-            
-            const mobileLogout = document.getElementById('mobile-btn-logout');
-            if(mobileLogout) mobileLogout.style.display = 'none';
-            
-            const mobileStatus = document.getElementById('mobile-admin-status');
-            if(mobileStatus) mobileStatus.style.display = 'none';
-
-            // Ocultar botón importar (con verificación de seguridad)
-            const btnImport = document.getElementById('btnImport');
-            if (btnImport) btnImport.style.display = 'none';
-            
-            const mobileImport = document.getElementById('mobile-btn-import');
-            if (mobileImport) mobileImport.style.display = 'none';
-
-            console.log("Cierre de sesión de administrador");
-            actualizarHeaderAdmin(); 
-        }
+        // 2. Función actualizada para cerrar sesión
+        window.cerrarSesion = async function() {
+            try {
+                await signOut(auth);
+                console.log("Cierre de sesión de administrador");
+                // onAuthStateChanged se encargará de setear esAdmin a false y actualizar la UI
+            } catch (error) {
+                console.error("Error al cerrar sesión:", error);
+                alert(`Error al cerrar sesión: ${error.message}`);
+            }
+        };
 
         window.ajustarMapa = function() {
             // Coordenadas originales utilizadas al cargar el mapa por primera vez
@@ -3088,7 +3069,7 @@
         // 1. Registrar Service Worker
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js')
+                navigator.serviceWorker.register('sw.js') // Ruta corregida
                     .then(reg => console.log('Service Worker registrado: ', reg.scope))
                     .catch(err => console.log('Service Worker falló: ', err));
             });
