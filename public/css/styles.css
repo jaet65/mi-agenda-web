@@ -1,0 +1,533 @@
+
+        /* 1. LAYOUT GENERAL */
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden; 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
+            display: flex;
+            flex-direction: column; 
+        }
+        
+        /* 2. CABECERA */
+        .header { 
+            flex-shrink: 0; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            background: white; 
+            padding: 10px 15px; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            z-index: 1500; 
+            position: relative; 
+        }
+        h1 { 
+            margin: 0; 
+            font-size: 1.2rem; 
+            color: #2c3e50; 
+            display: flex;
+            align-items: center;
+        }
+        .header-gif {
+            height: 35px;
+            margin-right: 10px;
+            vertical-align: middle;
+        }
+        
+        /* BUSCADOR GLOBAL */
+        .search-container {
+            position: relative;
+            flex-grow: 1;
+            max-width: 300px;
+            margin: 0 15px;
+        }
+        #globalSearch {
+            width: 100%;
+            padding: 8px 15px;
+            border-radius: 20px;
+            border: 1px solid #ccc;
+            outline: none;
+            font-size: 0.9rem;
+            background-color: #f9f9f9;
+            transition: all 0.3s;
+        }
+        #globalSearch:focus {
+            background-color: white;
+            border-color: #007bff;
+            box-shadow: 0 0 5px rgba(0,123,255,0.3);
+        }
+        #globalSearchResults {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            width: 100%;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 0 0 10px 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            z-index: 2000;
+            max-height: 300px;
+            overflow-y: auto;
+            display: none;
+        }
+        .search-result-item {
+            padding: 10px 15px;
+            border-bottom: 1px solid #f0f0f0;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .search-result-item:hover { background-color: #e3effd; }
+        .result-main { font-weight: bold; font-size: 0.9rem; color: #333; }
+        .result-sub { font-size: 0.8rem; color: #666; }
+
+        .header-controls { display: flex; align-items: center; gap: 10px; }
+        .desktop-buttons { display: flex; align-items: center; gap: 10px; }
+
+        /* MENÚ DESPLEGABLE COMPARTIR (Escritorio) */
+        .dropdown-share {
+            position: relative;
+            display: inline-block;
+        }
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            right: 0;
+            background-color: white;
+            min-width: 180px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+            border-radius: 8px;
+            z-index: 1600;
+            overflow: hidden;
+            border: 1px solid #eee;
+        }
+        .dropdown-content button {
+            color: #333;
+            padding: 12px 16px;
+            text-decoration: none;
+            display: block;
+            background: none;
+            border: none;
+            width: 100%;
+            text-align: left;
+            cursor: pointer;
+            font-size: 0.9rem;
+            border-bottom: 1px solid #f9f9f9;
+        }
+        .dropdown-content button:last-child { border-bottom: none; }
+        .dropdown-content button:hover { background-color: #f1f1f1; }
+        .dropdown-share:hover .dropdown-content { display: block; }
+
+        /* HAMBURGUESA */
+        .hamburger-btn {
+            display: none; 
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #333;
+            padding: 5px;
+        }
+
+        /* MENÚ MÓVIL */
+        .mobile-menu {
+            display: none; 
+            position: absolute;
+            top: 100%;
+            right: 0;
+            width: 220px;
+            background: white;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            border-radius: 0 0 0 8px;
+            flex-direction: column;
+            padding: 10px;
+            z-index: 3000; 
+        }
+        .mobile-menu.open { display: flex; }
+        .mobile-menu button {
+            width: 100%;
+            margin-bottom: 5px;
+            text-align: left;
+            padding: 12px;
+            background: #f8f9fa;
+            border: 1px solid #eee;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.95rem;
+        }
+        .mobile-menu button:hover { background: #e9ecef; }
+        
+        .mobile-section-title {
+            font-size: 0.75rem;
+            color: #999;
+            text-transform: uppercase;
+            margin: 10px 0 5px 5px;
+            font-weight: bold;
+        }
+
+        #admin-stats {
+            display: none; 
+            font-size: 0.85rem;
+            color: #555;
+            background: #f8f9fa;
+            padding: 5px 10px;
+            border-radius: 20px;
+            border: 1px solid #ddd;
+            margin-right: 10px;
+            font-weight: 600;
+            cursor: pointer; /* <--- AGREGAR ESTO */
+        }
+        #admin-stats:hover {
+            background-color: #e2e6ea; /* Un pequeño efecto hover */
+        }
+
+        /* 3. CONTENEDOR PRINCIPAL */
+        #main-container {
+            flex-grow: 1;
+            position: relative;
+            overflow: hidden;
+            width: 100%;
+        }
+
+        /* --- VISIBILIDAD DEL AÑO EN ENCABEZADO --- */
+        
+        /* 1. Cuando el panel se abre (Móvil), ocultamos el año del título 
+              porque ya se ven los controles grandes abajo */
+        #map-sidebar.open #header-year-label {
+            display: none;
+        }
+
+        /* 2. En Escritorio también lo ocultamos, porque el panel siempre 
+              muestra los controles de año completos */
+        @media (min-width: 769px) {
+            #header-year-label {
+                display: none !important;
+            }
+        }
+
+        /* VISTAS */
+        #calendar-container { 
+            width: 100%; height: 100%; background: white; padding: 10px; box-sizing: border-box; overflow-y: auto; display: block; 
+        }
+        #map-view { width: 100%; height: 100%; display: none; flex-direction: row; }
+        
+        /* VISTA AGENDA CUSTOM */
+        #agenda-view {
+            width: 100%; height: 100%; background: #f0f2f5; display: none; overflow-y: auto; padding: 15px; box-sizing: border-box;
+        }
+        .agenda-list {
+            max-width: 800px; margin: 0 auto; list-style: none; padding: 0;
+        }
+        .agenda-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            border-left: 6px solid #007bff;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .agenda-card:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        .agenda-card.pasada { border-left-color: #aaa; background: #fafafa; opacity: 0.3; }
+        
+        .ruta-ciudad { font-weight: bold; font-size: 1.1rem; color: #2c3e50; }
+        .ruta-fechas { font-size: 0.9rem; color: #007bff; font-weight: 600; margin-top: 5px; }
+        .ruta-cliente { font-size: 0.95rem; color: #555; }
+        .ruta-cliente small { display: block; color: #777; font-size: 0.85rem; margin-top: 2px; }
+
+        /* --- ESTILOS MAPA Y LISTA LATERAL (ITINERARIO) --- */
+        #map-sidebar {
+            width: 300px; 
+
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%; /* Ocupa toda la altura disponible */
+            z-index: 2000;
+
+            background:rgba(255, 255, 255, 0.50); /* Transparencia */
+            backdrop-filter: blur(10px);           /* Desenfoque */
+            -webkit-backdrop-filter: blur(10px);   /* Soporte Safari/iPhone */
+            border-right: 1px solid rgba(255, 255, 255, 0.15); /* Borde sutil brillante */
+            box-shadow: 2px 0 15px rgba(0,0,0,0.1);
+            
+            display: flex; 
+            flex-direction: column; /* Apila elementos verticalmente */
+            flex-shrink: 0; 
+            overflow: hidden; /* Evita que la barra entera haga scroll */
+        }
+
+        /* Configuración del Encabezado en Escritorio */
+        #itinerary-header {
+            padding: 10px 15px;
+            margin: 0;
+            background: transparent; /* O el color que prefieras */
+            border-bottom: 1px solid rgba(0,0,0,0.1);
+            font-size: 0.9rem;
+            color: #7f8c8d;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            
+            /* En escritorio NO es clicable */
+            cursor: default; 
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* OCULTAR la flecha en Escritorio */
+        #itinerary-toggle-icon {
+            display: none; 
+        }
+
+        .leaflet-left {
+            left: 310px; /* 300px del sidebar + 10px de margen */
+            transition: left 0.3s;
+        }
+
+        /* ESTILOS DE ESTADO EN LISTA (JERARQUÍA DE COLORES) */
+        
+        /* 1. Base (Futuro General - Azul) */
+        .ruta-item {
+            padding: 15px; 
+            border-bottom: 1px solid #f0f0f0; 
+            cursor: pointer; 
+            transition: all 0.2s;
+            border-left: 5px solid #007bff; /* Azul por defecto */
+        }
+        .ruta-item:hover { background-color: #007bff62; }
+
+        /* 2. Pasado (Gris) */
+        .ruta-item.pasada {
+            background-color: #fafafa;
+            border-left-color: #7f8c8d !important;
+            opacity: 0.7;
+        }
+
+        /* 3. Activo HOY (Verde - Máxima Prioridad) */
+        .ruta-item.activa {
+            background-color: #cbeed7; /* Verde muy suave */
+            border-left-color: #05a83b !important;
+            box-shadow: 0 0 8px rgba(53, 220, 98, 0);
+        }
+        .ruta-item.activa:hover { background-color: #05a83b55; }
+
+        .ruta-item.activa .ruta-ciudad { color: #05a83b; }
+
+        /* 4. Destacado/Próximo (Dorado) */
+        .ruta-item.destacada {
+            background-color: #fff9db7c; /* Amarillo suave */
+            border-left-color: #f1c40f !important;
+            box-shadow: 0 0 8px rgba(241, 196, 15, 0);
+        }
+        .ruta-item.destacada:hover { background-color: #f1c40f4e; }
+
+        /* ---------------------------------------------------- */
+
+        .map-year-controls { display: flex; justify-content: center; gap: 10px; align-items: center; padding: 10px 15px; background: #f8f9fa; border-bottom: 1px solid #ddd; }
+        .map-year-btn { background: white; border: 1px solid #ccc; border-radius: 4px; cursor: pointer; padding: 4px 10px; font-weight: bold; color: #555; }
+        #map-year-display { font-weight: bold; font-size: 1.1rem; color: #2c3e50; min-width: 50px; text-align: center; }
+        #map-sidebar h3 { padding: 10px 15px; margin: 0; background: rgba(255,255,255,1.0); border-bottom: 1px solid #eee; font-size: 0.9rem; color: #7f8c8d; text-transform: uppercase; letter-spacing: 1px; }
+        #lista-rutas {
+            list-style: none; 
+            padding: 0; 
+            margin: 0; 
+            flex-grow: 1; /* Ocupa todo el espacio sobrante */
+            overflow-y: auto; /* Scroll interno solo para la lista */
+            scroll-behavior: smooth;
+        }
+
+        #map-canvas { flex-grow: 1; position: relative; background: #e5e5e5; height: 100%; width: 100%; }
+
+        /* Botones Flotantes Mapa */
+        #btn-back-calendar { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); z-index: 1000; background-color: white; color: #333; border: 1px solid #ccc; padding: 8px 16px; border-radius: 30px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.2); cursor: pointer; font-size: 0.9rem; }
+        #btn-fit-map { position: absolute; top: 20px; right: 20px; z-index: 1000; background-color: white; color: #333; border: 1px solid #ccc; padding: 8px 16px; border-radius: 30px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.2); cursor: pointer; font-size: 0.9rem; }
+
+        /* Estilos Comunes Botones */
+        .btn-action { background: #007bff; color: white; padding: 6px 12px; border-radius: 5px; cursor: pointer; border: none; font-size: 0.9rem; }
+        .btn-secondary { background: #6c757d; color: white; padding: 6px 12px; border-radius: 5px; cursor: pointer; border: none; font-size: 0.9rem; }
+        .btn-share { background: #f39c12; color: white; padding: 6px 12px; border-radius: 5px; cursor: pointer; border: none; font-size: 0.9rem; font-weight: 500; }
+        .btn-map-toggle { background: #28a745; margin-right: 5px; } 
+        .btn-edit { background: #ffc107; color: #333; padding: 12px; width: 100%; border-radius: 6px; margin-top: 10px; font-weight: bold; border: none; cursor: pointer; }
+        
+        #admin-status { 
+            font-weight: bold; 
+            color: #28a745; 
+            display: none; 
+            margin-left: 10px;
+            margin-right: 5px; 
+            font-size: 0.8rem;
+            white-space: nowrap;
+        }
+
+        /* SPINNER DE CARGA */
+        .loader {
+            border: 3px solid #f3f3f3;
+            border-radius: 50%;
+            border-top: 3px solid #3498db;
+            width: 14px;
+            height: 14px;
+            -webkit-animation: spin 1s linear infinite; 
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            vertical-align: middle;
+            margin-right: 8px;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Media Queries Móvil */
+        @media (max-width: 768px) {
+            .header h1 { font-size: 0; } 
+            .header h1 .header-gif { margin-right: 0; }
+            .search-container { margin: 0 10px; }
+            .desktop-buttons { display: none; } 
+            .hamburger-btn { display: block; }
+            .leaflet-left {
+                left: 0 !important; /* Volver a la esquina original */
+            }
+            #map-sidebar h3, 
+            #itinerary-header,
+            .map-year-controls, 
+            .legend-container {
+                flex-shrink: 0; /* Mantiene su altura real, forzando a ocultar el resto */
+            }
+
+            #map-view { 
+                display: block; 
+                position: relative; /* Necesario para contener los absolutos */
+            }
+
+            #map-sidebar { 
+                top: auto;
+                width: 100%; 
+                height: 35px; /* Altura colapsada */
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                z-index: 2500; 
+                
+                /* --- EFECTO CRISTAL (GLASSMORPHISM) --- */
+                background: rgba(255, 255, 255, 0.07); /* Blanco al 10% de opacidad */
+                backdrop-filter: blur(10px);           /* Desenfoca el mapa detrás */
+                -webkit-backdrop-filter: blur(10px);   /* Soporte para Safari/iPhone */
+                border-top: 1px solid rgba(255, 255, 255, 0.85); /* Borde sutil brillante */
+                /* ------------------------------------ */
+
+                transition: height 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); 
+                border-radius: 20px 20px 0 0; 
+                box-shadow: 0 -4px 20px rgba(0,0,0,0.15); /* Sombra un poco más suave */
+                overflow: hidden; 
+
+                    /* Reactivar interactividad en Móvil */
+                #itinerary-header {
+                    cursor: pointer; /* Aquí SÍ es clicable */
+                }
+
+                /* MOSTRAR la flecha en Móvil */
+                #itinerary-toggle-icon {
+                    display: block; 
+                }
+            }
+
+            #map-canvas { 
+                height: 100%; 
+                width: 100%; 
+            }
+
+            #map-sidebar.open {
+                height: 100%; /* Altura expandida (ajustable) */
+            }
+
+            #btn-back-calendar { top: 10px; }
+
+            #btn-fit-map { 
+                top: auto; 
+                bottom: 60px; /* Subido para no chocar con el itinerario colapsado */
+                right: 15px; 
+                padding: 10px; 
+                border-radius: 50%; 
+                width: 45px; 
+                height: 45px; 
+                display: flex; 
+                align-items: center; 
+                justify-content: center; 
+                font-size: 1.2rem; 
+            }
+        }
+
+        /* Modales */
+        .modal { display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); backdrop-filter: blur(2px); }
+        .modal-content { background-color: white; margin: 5% auto; padding: 20px; width: 90%; max-width: 350px; border-radius: 12px; position: relative; max-height: 90vh; overflow-y: auto;}
+        .close-x { float: right; font-size: 20px; cursor: pointer; }
+        .form-group { margin-bottom: 15px; position: relative; } 
+        label { display: block; margin-bottom: 5px; font-weight: 600; font-size: 0.9rem; }
+        input { width: 100%; padding: 10px; box-sizing: border-box; border: 1px solid #ddd; border-radius: 6px; font-size: 1rem; }
+        input[readonly] { background-color: #e9ecef; color: #6c757d; cursor: not-allowed; } 
+        
+        .btn-save { background: #28a745; color: white; border: none; padding: 12px; width: 100%; border-radius: 6px; margin-top: 5px; font-weight: bold;}
+        .btn-delete { background: #dc3545; color: white; border: none; padding: 12px; width: 100%; border-radius: 6px; margin-top: 15px; font-weight: bold;}
+        
+        .suggestions-list { position: absolute; background: white; border: 1px solid #ddd; border-top: none; width: 100%; max-height: 150px; overflow-y: auto; z-index: 1001; list-style: none; padding: 0; margin: 0; border-radius: 0 0 6px 6px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); display: none; bottom: 100%; top: auto; border-radius: 6px 6px 0 0; border-top: 1px solid #ddd; border-bottom: none; }
+        .suggestion-item { padding: 10px; cursor: pointer; border-bottom: 1px solid #eee; font-size: 0.9rem; }
+        .suggestion-item:hover { background-color: #f0f2f5; }
+
+        /* Lista de Coincidencias en Modal */
+        .match-list { list-style: none; padding: 0; margin: 10px 0; max-height: 200px; overflow-y: auto; border: 1px solid #eee; border-radius: 6px; }
+        .match-item { padding: 10px; border-bottom: 1px solid #f0f0f0; cursor: pointer; }
+        .match-item:hover { background-color: #e3effd; }
+        .match-item strong { display: block; font-size: 0.95rem; color: #333; }
+        .match-item small { color: #666; font-size: 0.85rem; }
+
+        .modal-buttons-row { display: flex; flex-direction: column; gap: 8px; margin-top: 15px; }
+        .modal-buttons-row button { width: 100%; padding: 10px; border-radius: 5px; cursor: pointer; border: 1px solid #ccc; font-size: 0.9rem; }
+        .btn-omitir { background: #ffc107; color: #333; border: none; font-weight: 500; }
+        .btn-manual { background: #17a2b8; color: white; border: none; font-weight: 500; }
+        .btn-retry { background: #6c757d; color: white; border: none; }
+
+        .fc-header-toolbar { font-size: 0.85em; }
+        .fc-multimonth-header { background: #f8f9fa; padding: 5px 0; }
+        .fc-multimonth-title { font-size: 1em; font-weight: bold; }
+
+        /* --- ESTILOS DE LEYENDA --- */
+        .legend-container {
+            padding: 6px 5px;           /* Reduje el padding vertical */
+            background: white;
+            border-bottom: 1px solid #eee;
+            font-size: 0.7rem;          /* Letra más pequeña (aprox 11px) */
+            display: flex;
+            flex-direction: row;        /* Fuerza la dirección horizontal */
+            justify-content: center;    /* Centra los elementos */
+            gap: 15px;                  /* Espacio entre cada categoría */
+            align-items: center;
+            color: #666;
+            flex-shrink: 0;             /* Evita que desaparezca al hacer scroll */
+        }
+
+        .legend-item { 
+            display: flex; 
+            align-items: center; 
+            gap: 4px; 
+            white-space: nowrap;        /* Asegura que el texto no salte de línea */
+        }
+
+        .dot { 
+            width: 6px;                 /* Punto más pequeño (antes 8px) */
+            height: 6px; 
+            border-radius: 50%; 
+            display: inline-block; 
+        }
+        .dot.grey { background: #7f8c8d; }   /* Pasado */
+        .dot.blue { background: #007bff; }   /* Futuro */
+        .dot.gold { background: #f1c40f; }   /* Siguiente */
+        .dot.red { background: #35dc6d; }    /* Hoy */
+    

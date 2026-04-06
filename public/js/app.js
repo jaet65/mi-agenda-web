@@ -1,0 +1,2300 @@
+
+// Cache para evitar recargas
+const aniosCargados = new Set(); 
+let cargandoDatos = false; // Semáforo para no llamar dos veces seguidas
+
+const API_KEY_HERE = 'vtP_Ocp9-jUl3SG6HpMHLSaRQoumNPiDV7SyOYmNkZA'; // Reemplaza con tu llave de HERE
+
+// --- DETECCIÓN DE SWIPE (DESLIZAR) PARA CAMBIAR AÑO ---
+const sidebarSwipe = document.getElementById('map-sidebar');
+let touchStartX = 0;
+let touchEndX = 0;
+
+// 1. Detectar dónde empieza el toque
+sidebarSwipe.addEventListener('touchstart', (e) => {
+    touchStartX = e.changedTouches[0].screenX;
+}, {passive: true});
+
+// 2. Detectar dónde termina el toque
+sidebarSwipe.addEventListener('touchend', (e) => {
+    touchEndX = e.changedTouches[0].screenX;
+    manejarSwipe();
+}, {passive: true});
+
+function manejarSwipe() {
+    if (!sidebarSwipe.classList.contains('open')) return;
+    // Mínima distancia para considerar que fue un deslizamiento intencional (50px)
+    const umbral = 50; 
+    const distancia = touchEndX - touchStartX;
+
+    if (Math.abs(distancia) < umbral) return; // Fue un toque accidental o muy corto
+
+    if (distancia < 0) {
+        // Deslizó hacia la IZQUIERDA ( <-- ) 
+        // Significa "Traer el futuro", avanzar año
+        cambiarAnoMapa(1);
+        animarCambioAno('derecha'); // Opcional: Feedback visual
+    } else {
+        // Deslizó hacia la DERECHA ( --> )
+        // Significa "Traer el pasado", retroceder año
+        cambiarAnoMapa(-1);
+        animarCambioAno('izquierda'); // Opcional: Feedback visual
+    }
+}
+
+// Pequeña animación visual para confirmar la acción
+function animarCambioAno(direccion) {
+    const display = document.getElementById('map-year-display');
+    display.style.transition = 'transform 0.2s, opacity 0.2s';
+    
+    // Efecto de salida
+    const x = direccion === 'derecha' ? '-20px' : '20px';
+    display.style.transform = `translateX(${x})`;
+    display.style.opacity = '0.5';
+    
+    setTimeout(() => {
+        // Restaurar
+        display.style.transform = 'translateX(0)';
+        display.style.opacity = '1';
+    }, 200);
+}
+
+// --- DETECCIÓN DE GESTOS DEFINITIVA (ZOOM Y SWIPE) ---
+const calendarElement = document.getElementById('calendar');
+let touchStartXCal = 0;
+let touchEndXCal = 0;
+
+let distanciaInicioPinch = 0;
+let isPinching = false;
+
+calendarElement.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 2) {
+        isPinching = true;
+        distanciaInicioPinch = Math.hypot(
+            e.touches[0].pageX - e.touches[1].pageX,
+            e.touches[0].pageY - e.touches[1].pageY
+        );
+    } else {
+        isPinching = false;
+        touchStartXCal = e.changedTouches[0].screenX;
+    }
+}, {passive: true});
+
+calendarElement.addEventListener('touchmove', (e) => {
+    if (isPinching && e.touches.length === 2) {
+        const distanciaActual = Math.hypot(
+            e.touches[0].pageX - e.touches[1].pageX,
+            e.touches[0].pageY - e.touches[1].pageY
+        );
+        
+        // Sensibilidad 20px
+        if (Math.abs(distanciaActual - distanciaInicioPinch) > 20) {
+            if (distanciaActual > distanciaInicioPinch) {
+                ajustarZoom(-1); // Zoom In (Menos columnas)
+            } else {
+                ajustarZoom(1);  // Zoom Out (Más columnas)
+            }
+            distanciaInicioPinch = distanciaActual; 
+        }
+    }
+}, {passive: true});
+
+calendarElement.addEventListener('touchend', (e) => {
+    if (!isPinching && e.changedTouches.length > 0) {
+        touchEndXCal = e.changedTouches[0].screenX;
+        manejarSwipeCalendario();
+    }
+    if (e.touches.length < 2) isPinching = false;
+}, {passive: true});
+
+function manejarSwipeCalendario() {
+    if (isPinching || !calendar) return;
+    const diff = touchEndXCal - touchStartXCal;
+    if (Math.abs(diff) < 150) return; // Aumentado a 150 para reducir la sensibilidad
+    
+    if (diff < 0) calendar.next(); 
+    else calendar.prev();
+}
+
+function ajustarZoom(delta) {
+    if (!calendar || calendar.view.type !== 'multiMonthYear') return;
+
+    // Detectar límites
+    const esCelular = window.innerWidth < 768;
+    const limiteMax = esCelular ? 2 : 4; 
+
+    // Leer valor actual (ahora sí funciona leerlo directo)
+    let colsActuales = calendar.getOption('multiMonthMaxColumns') || (esCelular ? 1 : 4);
+    let nuevasCols = colsActuales + delta;
+    
+    if (nuevasCols < 1) nuevasCols = 1;
+    if (nuevasCols > limiteMax) nuevasCols = limiteMax;
+
+    if (nuevasCols !== colsActuales) {
+        // Aplicar cambio directo
+        calendar.setOption('multiMonthMaxColumns', nuevasCols);
+        console.log(`Zoom: ${colsActuales} -> ${nuevasCols}`);
+    }
+}
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, where, writeBatch, updateDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";        
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { ADMIN_EMAILS } from '../admin-config.js'; // Importar ADMIN_EMAILS
+window.toggleMenu = function() {
+    const menu = document.getElementById('mobile-menu');
+    if (menu) {
+        menu.classList.toggle('open');
+    }
+};
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCN7AD2GO_Ks4tcMxLMkG6jODKUaTPwlIk",
+  authDomain: "agendaservicios.firebaseapp.com",
+  projectId: "agendaservicios",
+  storageBucket: "agendaservicios.firebasestorage.app",
+  messagingSenderId: "1068275517204",
+  appId: "1:1068275517204:web:9bdd41c8233bc1fda06401"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app); // Inicializar Firebase Auth
+const db = getFirestore(app);
+
+let calendar;
+let map; 
+let markers = []; 
+let esAdmin = false;
+let eventoSeleccionadoID = null;
+let grupoSeleccionadoID = null; 
+let statsPorAno = {}; 
+
+let modoEdicion = false;
+let idGrupoEdicion = null;
+let urlEdicion = null;
+let globalReservas = []; // Inicializar como array vacío
+let currentMapYear = new Date().getFullYear(); 
+
+// Icono para la reserva más próxima (Gold)
+const goldIcon = new L.Icon({
+    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-gold.png',
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    shadowSize: [41, 41]
+});
+
+const blueIcon = new L.Icon({
+    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    shadowSize: [41, 41]
+});
+
+const redIcon = new L.Icon({
+    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    shadowSize: [41, 41]
+});
+
+const greyIcon = new L.Icon({
+    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-grey.png',
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    shadowSize: [41, 41]
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+    var calendarEl = document.getElementById('calendar');
+    const esMovil = window.innerWidth < 768; 
+
+    const headerYearLabel = document.getElementById('header-year-label');
+    if(headerYearLabel) headerYearLabel.textContent = currentMapYear;
+
+    // 1. Configuración del Calendario (Esto es ligero)
+    calendar = new FullCalendar.Calendar(calendarEl, {
+        eventContent: function(arg) {
+            let container = document.createElement('div');
+            container.style.display = 'flex';
+            container.style.justifyContent = 'space-between';
+            container.style.alignItems = 'center';
+            container.style.width = '100%';
+            container.style.padding = '0 2px';                    
+            
+            let titleEl = document.createElement('div');
+            titleEl.innerHTML = arg.event.title;
+            titleEl.style.overflow = 'hidden';
+            titleEl.style.textOverflow = 'ellipsis';
+            titleEl.style.whiteSpace = 'nowrap';
+            container.appendChild(titleEl);
+
+            if (arg.event.extendedProps.pdfUrl) {
+                let iconEl = document.createElement('span');
+                iconEl.innerHTML = ' 📎'; 
+                iconEl.style.fontSize = '1.0em';
+                iconEl.style.marginLeft = '4px';
+                iconEl.style.color='white';
+                container.appendChild(iconEl);
+            }
+            return { domNodes: [container] };
+        },
+        height: '100%',
+        initialView: 'multiMonthYear', 
+        locale: 'es',
+        
+        customButtons: {
+            // CAMBIO 1: Al hacer clic en HOY, forzamos la vista de AÑO y vamos a la fecha
+            btnHoy: { 
+                text: 'Hoy', 
+                click: function() { 
+                    calendar.changeView('multiMonthYear'); 
+                    calendar.today(); 
+                } 
+            },
+            btnCustomAgenda: {
+                text: 'Agenda',
+                click: function() { mostrarVistaAgenda(); }
+            }
+        },
+        
+        headerToolbar: {
+            left: 'prev,next btnHoy', 
+            center: 'title',
+            // CAMBIO 2: Quitamos 'dayGridMonth' de la barra derecha
+            right: 'btnCustomAgenda' 
+        },
+        
+        views: {
+            // CAMBIO 3: Eliminamos la configuración de dayGridMonth
+            multiMonthYear: { buttonText: 'Año' } 
+        },
+        
+        dateClick: function(info) { 
+            if (!esAdmin) return;
+            const parts = info.dateStr.split('-');
+            const localDate = new Date(parts[0], parts[1]-1, parts[2]);
+            if (localDate.getDay() === 0) { alert("⛔ Servicio no disponible los domingos."); return; }
+            const fechaClickeada = info.dateStr;
+            const ocupado = globalReservas.some(r => fechaClickeada >= r.data.fechaInicio && fechaClickeada <= r.data.fechaFin);
+            if (ocupado) alert("⚠️ Fecha no disponible.");
+            else abrirModalCrear(info.dateStr); 
+        },
+        eventClick: function(info) { 
+            if (info.event.display === 'background') return;
+            if (info.event.start.getDay() === 0) { alert("⛔ Servicio no disponible los domingos."); return; }
+            mostrarDetalles(info.event); 
+        }
+    });
+    
+    // 2. Renderizar el calendario vacío (Instantáneo)
+    calendar.render();
+
+    // 3. Inicializar Mapa (Ligero si no agregamos pines aún)
+    map = L.map('map-canvas').setView([23.6345, -102.5528], 5);
+    const HERE_STYLE = 'explore.day'; 
+    L.tileLayer(`https://maps.hereapi.com/v3/base/mc/{z}/{x}/{y}/png8?style=${HERE_STYLE}&apiKey=${API_KEY_HERE}`, {
+        attribution: '© 2024 HERE',
+        maxZoom: 20
+    }).addTo(map);
+
+    document.getElementById('map-year-display').textContent = currentMapYear;
+
+    // 4. CARGA DE DATOS DIFERIDA (EL TRUCO FINAL)
+    // Esperamos 100ms para que el navegador termine de pintar la interfaz inicial.
+    // Esto saca la carga de datos del proceso de arranque (DOMContentLoaded).
+    setTimeout(() => {
+        cargarReservas();
+        
+        // --- NOTIFICACIONES ---
+        // 1. Solicitar permiso al cargar la app
+        solicitarPermisoNotificaciones().then(permissionGranted => {
+            // 2. Revisar eventos próximos cada hora si tenemos permiso
+            if (permissionGranted) setInterval(verificarEventosProximos, 3600000); // 3600000 ms = 1 hora
+        });
+    }, 100);
+});
+
+// --- NOTIFICACIONES DE ESCRITORIO (CLIENT-SIDE) ---
+
+// 2. Verificar eventos y pedir al Service Worker que notifique
+// Se mueve esta función a una posición anterior para que esté definida cuando se le llama.
+async function verificarEventosProximos() {
+    // globalReservas está inicializado como array vacío, así que `.length` es seguro.
+    if (Notification.permission !== 'granted' || globalReservas.length === 0) return;
+
+    const swRegistration = await navigator.serviceWorker.ready;
+    if (!swRegistration) return;
+
+    // Obtenemos las fechas clave para las notificaciones
+    const hoy = new Date();
+    hoy.setHours(0,0,0,0); // Normalizar a inicio del día
+    const manana = new Date(hoy);
+    manana.setDate(hoy.getDate() + 1);
+    const semana = new Date(hoy);
+    semana.setDate(hoy.getDate() + 7);
+
+    // Convertimos a formato YYYY-MM-DD
+    const hoyStr = hoy.toISOString().split('T')[0];
+    const mananaStr = manana.toISOString().split('T')[0];
+    const semanaStr = semana.toISOString().split('T')[0];
+
+    // El sistema de notificados ahora guarda el ID y el tipo de aviso (ej: "idReserva_7d")
+    const notificados = JSON.parse(localStorage.getItem('notificacionesEnviadas') || '[]');
+
+    for (const reserva of globalReservas) {
+        const id = reserva.id;
+        const fechaInicio = reserva.data.fechaInicio; // Esto es YYYY-MM-DD
+        const body = `Cliente: ${reserva.data.cliente}
+Ciudad: ${reserva.data.ciudad}`;
+
+        // Notificación de 7 días
+        if (fechaInicio === semanaStr && !notificados.includes(`${id}_7d`)) {
+            swRegistration.showNotification('🗓️ Servicio en 1 Semana', { body, icon: './icon-192.png' });
+            notificados.push(`${id}_7d`);
+        }
+
+        // Notificación de 1 día
+        if (fechaInicio === mananaStr && !notificados.includes(`${id}_1d`)) {
+            swRegistration.showNotification('🗓️ Servicio Mañana', { body, icon: './icon-192.png' });
+            notificados.push(`${id}_1d`);
+        }
+
+        // Notificación del mismo día
+        if (fechaInicio === hoyStr && !notificados.includes(`${id}_0d`)) {
+            swRegistration.showNotification('✅ Servicio para Hoy', { body, icon: './icon-192.png' });
+            notificados.push(`${id}_0d`);
+        }
+    }
+    localStorage.setItem('notificacionesEnviadas', JSON.stringify(notificados));
+}
+
+// --- NOTIFICACIONES DE ESCRITORIO (CLIENT-SIDE) ---
+
+// 1. Solicitar permiso al usuario (Devuelve una promesa)
+async function solicitarPermisoNotificaciones() {
+    if (!('Notification' in window) || !navigator.serviceWorker) {
+        console.log("Este navegador no soporta notificaciones.");
+        return false;
+    }
+    // Si el permiso ya fue concedido, no hacemos nada y devolvemos true
+    if (Notification.permission === 'granted') {
+        console.log("El permiso de notificación ya estaba concedido.");
+        verificarEventosProximos(); // Hacemos una primera verificación al cargar
+        return true;
+    }
+    // Si fue denegado, no podemos volver a preguntar
+    if (Notification.permission === 'denied') {
+        console.log("El permiso de notificación fue denegado previamente.");
+        return false;
+    }
+    // Si no se ha decidido (default), solicitamos permiso
+    const permission = await Notification.requestPermission();
+    if (permission === 'granted') { console.log('Permiso de notificación concedido.'); verificarEventosProximos(); return true; }
+    return false;
+}
+
+// Función centralizada para actualizar la UI en base al estado de 'esAdmin'
+function actualizarUIConEstadoAdmin() {
+    const btnLogin = document.getElementById('btnLogin');
+    const btnLogout = document.getElementById('btnLogout');
+    const adminStatus = document.getElementById('admin-status');
+    const mobileLogin = document.getElementById('mobile-btn-login');
+    const mobileLogout = document.getElementById('mobile-btn-logout');
+    const btnImport = document.getElementById('btnImport');
+    const mobileImport = document.getElementById('mobile-btn-import');
+
+    if (esAdmin) {
+        btnLogin.style.display = 'none';
+        btnLogout.style.display = 'inline-block';
+        if(adminStatus && auth.currentUser) adminStatus.innerText = `🟢 ${auth.currentUser.displayName || auth.currentUser.email.split('@')[0]}`;
+        if(adminStatus) adminStatus.style.display = 'inline-block';
+        if(mobileLogin) mobileLogin.style.display = 'none';
+        if(mobileLogout) mobileLogout.style.display = 'block';
+        if (btnImport) btnImport.style.display = 'inline-block';
+        if (mobileImport) mobileImport.style.display = 'block';
+    } else {
+        btnLogin.style.display = 'inline-block';
+        btnLogout.style.display = 'none';
+        if(adminStatus) adminStatus.style.display = 'none';
+        if(mobileLogin) mobileLogin.style.display = 'block';
+        if(mobileLogout) mobileLogout.style.display = 'none';
+        if (btnImport) btnImport.style.display = 'none';
+        if (mobileImport) mobileImport.style.display = 'none';
+    }
+    actualizarHeaderAdmin(); // Esto gestiona las estadísticas del admin.
+}
+
+// --- Manejo del estado de autenticación (Mantener sesión activa si el usuario recarga) ---
+onAuthStateChanged(auth, (user) => {
+    if (user) {
+        // Usuario autenticado. Verificar si es admin.
+        if (ADMIN_EMAILS.includes(user.email)) {
+            esAdmin = true;
+            console.log(`Sesión reestablecida como administrador: ${user.email}`);
+        } else {
+            // Si por alguna razón el usuario autenticado no está en la lista ADMIN_EMAILS,
+            // lo deslogueamos. Esto es una medida de seguridad.
+            signOut(auth);
+            esAdmin = false;
+            console.warn(`Usuario autenticado (${user.email}) no es administrador y fue deslogueado.`);
+        }
+    } else {
+        esAdmin = false; // Usuario no autenticado
+    }
+    actualizarUIConEstadoAdmin(); // Llama a una función para actualizar la UI según 'esAdmin'
+});
+
+// --- BUSCADOR GLOBAL ---
+const searchInput = document.getElementById('globalSearch');
+const resultsList = document.getElementById('globalSearchResults');
+
+searchInput.addEventListener('input', function() {
+    const texto = this.value.toLowerCase().trim();
+    resultsList.innerHTML = '';
+    if (texto.length < 2) { resultsList.style.display = 'none'; return; }
+
+    const encontrados = globalReservas.filter(r => {
+        const cliente = (r.data.cliente || "").toLowerCase();
+        const ciudad = (r.data.ciudad || "").toLowerCase();
+        return cliente.includes(texto) || ciudad.includes(texto);
+    }).sort((a, b) => a.start - b.start).slice(0, 8); 
+
+    if (encontrados.length === 0) { resultsList.style.display = 'none'; return; }
+    resultsList.style.display = 'block';
+
+    encontrados.forEach(reserva => {
+        const li = document.createElement('li');
+        li.className = 'search-result-item';
+        const fechaStr = formatearFecha(reserva.data.fechaInicio);
+        li.innerHTML = `
+            <div>
+                <div class="result-main">👤 ${reserva.data.cliente}</div>
+                <div class="result-sub">📍 ${reserva.data.ciudad.split(',')[0]}</div>
+            </div>
+            <div class="result-sub" style="color:#007bff;">${fechaStr}</div>
+        `;
+        li.onclick = () => { seleccionarResultado(reserva); };
+        resultsList.appendChild(li);
+    });
+});
+
+document.addEventListener('click', (e) => {
+    if (!searchInput.contains(e.target) && !resultsList.contains(e.target)) { resultsList.style.display = 'none'; }
+});
+
+window.seleccionarResultado = function(reserva) {
+    resultsList.style.display = 'none';
+    searchInput.value = ''; 
+    const mapaVisible = document.getElementById('map-view').style.display !== 'none';
+
+    if (mapaVisible) {
+        const yearReserva = reserva.start.getFullYear();
+        if (yearReserva !== currentMapYear) {
+            currentMapYear = yearReserva;
+            document.getElementById('map-year-display').textContent = currentMapYear;
+            actualizarMapaYLista(); 
+        }
+        if (reserva.data.lat && reserva.data.lng) {
+            map.flyTo([reserva.data.lat, reserva.data.lng], 12);
+            setTimeout(() => {
+                const marker = markers.find(m => {
+                    const mLL = m.getLatLng();
+                    return Math.abs(mLL.lat - reserva.data.lat) < 0.0001 && Math.abs(mLL.lng - reserva.data.lng) < 0.0001;
+                });
+                if (marker) marker.openPopup();
+            }, 500);
+        } else { alert("Esta reserva no tiene coordenadas."); }
+    } else {
+        if(document.getElementById('agenda-view').style.display === 'block') {
+            mostrarCalendario();
+        }
+        calendar.gotoDate(reserva.start);
+        const eventoCal = calendar.getEventById(reserva.id);
+        if (eventoCal) mostrarDetalles(eventoCal);
+        else calendar.select(reserva.start);
+    }
+}
+
+// --- AUTOCOMPLETE DE DIRECCIÓN (MEJORADO PARA DIRECCIONES COMPLEJAS) ---
+const inputDireccion = document.getElementById('direccionInput');
+const listaSugerencias = document.getElementById('listaSugerencias');
+let timeoutBuscador = null;
+
+inputDireccion.addEventListener('input', function() {
+    const texto = this.value;
+    
+    document.getElementById('latTemp').value = "";
+    document.getElementById('lonTemp').value = "";
+    
+    listaSugerencias.innerHTML = ''; 
+    listaSugerencias.style.display = 'none';
+    
+    if (texto.length < 3) return; 
+
+    clearTimeout(timeoutBuscador);
+    timeoutBuscador = setTimeout(async () => {
+        try {
+            // Detectar si el usuario escribió un CP (5 dígitos)
+            const matchCP = texto.match(/\b\d{5}\b/);
+            const cpEncontrado = matchCP ? matchCP[0] : null;
+            
+            // URL base con búsqueda libre
+            let url = `https://geocode.search.hereapi.com/v1/geocode?q=${encodeURIComponent(texto)}&apiKey=${API_KEY_HERE}&lang=es&limit=8`;
+            
+            // Si hay CP, usamos el parámetro qq (Qualified Query) para filtrar por código postal
+            if (cpEncontrado) {
+                url += `&qq=postalCode=${cpEncontrado}`;
+            }
+
+            const respuesta = await fetch(url);
+            const data = await respuesta.json();
+
+            if (data.items && data.items.length > 0) {
+                listaSugerencias.style.display = 'block';
+                data.items.forEach(item => {
+                    const li = document.createElement('li');
+                    li.className = 'suggestion-item';
+                    
+                    // Extraer ciudad/localidad de la jerarquía de HERE
+                    const ciudad = item.address.city || item.address.locality || item.address.district || "";
+                    
+                    li.innerHTML = `<strong>📍 ${item.title}</strong><br><small>${item.address.label}</small>`;
+                    
+                    li.onclick = function() {
+                        inputDireccion.value = item.address.label;
+                        document.getElementById('latTemp').value = item.position.lat;
+                        document.getElementById('lonTemp').value = item.position.lng;
+                        document.getElementById('ciudadInput').value = ciudad;
+                        listaSugerencias.style.display = 'none'; 
+                    };
+                    listaSugerencias.appendChild(li);
+                });
+            }
+        } catch (e) { console.error("Error en HERE Maps:", e); }
+    }, 600); 
+});
+
+const inputCiudad = document.getElementById('ciudadInput');
+const listaSugerenciasCiudad = document.getElementById('listaSugerenciasCiudad');
+let timeoutCiudad = null;
+
+inputCiudad.addEventListener('input', function() {
+    if(this.readOnly) return;
+    const texto = this.value.trim();
+    const API_KEY_HERE = 'vtP_Ocp9-jUl3SG6HpMHLSaRQoumNPiDV7SyOYmNkZA';
+    
+    listaSugerenciasCiudad.innerHTML = ''; 
+    listaSugerenciasCiudad.style.display = 'none';
+
+    if (texto.length < 3) return; 
+
+    clearTimeout(timeoutCiudad);
+    timeoutCiudad = setTimeout(async () => {
+        try {
+            const matchCP = texto.match(/\b\d{5}\b/);
+            let url = `https://geocode.search.hereapi.com/v1/geocode?apiKey=${API_KEY_HERE}&lang=es&limit=5`;
+            
+            if (matchCP) {
+                // Si el texto es un CP, busca la ciudad vinculada a él
+                url += `&qq=postalCode=${matchCP[0]}`;
+            } else {
+                // Si es texto normal, busca por nombre de ciudad
+                url += `&q=${encodeURIComponent(texto)}&types=city`;
+            }
+
+            const respuesta = await fetch(url);
+            const data = await respuesta.json();
+
+            if (data.items && data.items.length > 0) {
+                listaSugerenciasCiudad.style.display = 'block';
+                data.items.forEach(item => {
+                    const li = document.createElement('li');
+                    li.className = 'suggestion-item';
+                    
+                    const nombreCiudad = item.address.city || item.address.locality || item.title;
+                    const estado = item.address.state || "";
+
+                    li.innerHTML = `<strong>🏙️ ${nombreCiudad}</strong><br><small>${estado}, CP: ${item.address.postalCode || ''}</small>`;
+                    
+                    li.onclick = function() {
+                        inputCiudad.value = nombreCiudad;
+                        if(!document.getElementById('latTemp').value) {
+                            document.getElementById('latTemp').value = item.position.lat;
+                            document.getElementById('lonTemp').value = item.position.lng;
+                        }
+                        listaSugerenciasCiudad.style.display = 'none'; 
+                    };
+                    listaSugerenciasCiudad.appendChild(li);
+                });
+            }
+        } catch (e) { console.error("Error ciudad CP:", e); }
+    }, 400); 
+});
+document.addEventListener('click', function(e) { 
+    if (e.target !== inputDireccion) listaSugerencias.style.display = 'none'; 
+    if (e.target !== inputCiudad) listaSugerenciasCiudad.style.display = 'none'; 
+});
+
+// --- GUARDAR RESERVA ---
+window.guardarReserva = async function() {
+    // 1. Obtener valores del formulario
+    const fechaInicioStr = document.getElementById('fechaInicio').value;
+    const fechaFinStr = document.getElementById('fechaFin').value;
+    const ciudad = document.getElementById('ciudadInput').value;
+    const nombre = document.getElementById('nombreInput').value;
+    const direccion = document.getElementById('direccionInput').value;
+    
+    const esEspecial = document.getElementById('eventoEspecialCheck').checked;
+    // Coordenadas (pueden venir de un Plus Code previo o estar vacías)
+    let lat = document.getElementById('latTemp').value;
+    let lon = document.getElementById('lonTemp').value;
+
+    // 2. Validaciones básicas
+    if (nombre === "" || fechaInicioStr === "") {
+        alert("⚠️ Faltan datos obligatorios: Cliente o Fechas.");
+        return;
+    }
+
+    // 3. LÓGICA DE BÚSQUEDA DE MAPA
+    // Solo buscamos si NO tenemos coordenadas fijadas Y hay texto en la dirección
+    if ((lat === "" || lon === "") && direccion.length > 2) {
+        const btn = document.querySelector('#reservaModal .btn-save');
+        const textoOriginal = btn.innerHTML; // Guardamos el texto actual del botón
+        
+        // Feedback visual de carga
+        btn.innerHTML = `<span class="loader"></span> Buscando en Mapa...`;
+        btn.disabled = true;
+        
+        try {
+            const matchCP = direccion.match(/\b\d{5}\b/);
+            const cpEncontrado = matchCP ? matchCP[0] : null;
+            
+            let url = `https://geocode.search.hereapi.com/v1/geocode?q=${encodeURIComponent(direccion)}&apiKey=${API_KEY_HERE}&lang=es&limit=5`;
+            
+            if (cpEncontrado) {
+                url += `&qq=postalCode=${cpEncontrado}`; 
+            }
+
+            const resp = await fetch(url);
+            const data = await resp.json();
+            
+            // Restauramos el botón antes de decidir qué hacer
+            btn.innerHTML = textoOriginal;
+            btn.disabled = false;
+            
+            if (data.items && data.items.length > 0) {
+                // CASO A: Encontramos ubicación
+                // Llamamos al selector, el cual llenará lat/lon y CERRARÁ el proceso.
+                // Esto permite al usuario editar el texto de la dirección antes de volver a dar clic en guardar.
+                mostrarSelectorUbicacion(data.items);
+                return; // <--- IMPORTANTE: DETENEMOS AQUÍ
+            } else {
+                // CASO B: No encontramos nada, mostramos opciones manuales
+                mostrarModalSinResultados();
+                return; // <--- IMPORTANTE: DETENEMOS AQUÍ
+            }
+        } catch(e) {
+            console.error(e);
+            alert("Error de conexión con HERE Maps.");
+            btn.innerHTML = textoOriginal;
+            btn.disabled = false;
+            habilitarManual();
+            return; 
+        }
+    }
+
+    // 4. PROCESAMIENTO DE DATOS
+    // Si llegamos aquí es porque:
+    // a) Ya teníamos coordenadas fijadas (lat/lon tienen valor).
+    // b) O el usuario decidió guardar "Sin Ciudad" (lat/lon vacíos, pero se asume manual).
+
+    let ciudadFinal = ciudad.trim();
+    if (ciudadFinal === "" || ciudadFinal === "Desconocida" || ciudadFinal === "Ubicación") {
+        const partes = direccion.split(',');
+        if (partes.length >= 2) {
+            ciudadFinal = partes[partes.length - 2].replace(/\d+/g, '').trim(); 
+        } else {
+            ciudadFinal = "Sin Ciudad";
+        }
+    }
+
+    const rangos = calcularRangosSinDomingo(fechaInicioStr, fechaFinStr);
+    if (rangos.length === 0) {
+        alert("⚠️ No has seleccionado ningún día laborable.");
+        return;
+    }
+
+    const grupoId = modoEdicion ? idGrupoEdicion : Date.now().toString(); 
+
+    // UI Guardando
+    const btnFinal = document.querySelector('#reservaModal .btn-save');
+    btnFinal.innerHTML = "💾 Guardando...";
+    btnFinal.disabled = true;
+
+    try {
+        // Si es edición, borramos lo anterior
+        if (modoEdicion && idGrupoEdicion) {
+            const q = query(collection(db, "reservas"), where("groupId", "==", idGrupoEdicion));
+            const querySnapshot = await getDocs(q);
+            const batch = writeBatch(db); 
+            querySnapshot.forEach((doc) => { batch.delete(doc.ref); });
+            await batch.commit();
+        }
+
+        // Guardamos en Firebase
+        for (let r of rangos) {
+            let fInicio = r.start.toISOString().split('T')[0];
+            let fFin = r.end.toISOString().split('T')[0];
+            
+            await addDoc(collection(db, "reservas"), {
+                fechaInicio: fInicio,
+                fechaFin: fFin,
+                ciudad: ciudadFinal,
+                cliente: nombre,
+                direccion: direccion, // <--- Aquí se guarda el texto que tú editaste (ej. "Parque Industrial")
+                lat: lat,             // <--- Aquí se guardan las coordenadas del Plus Code (ej. RVJV+VQ)
+                lng: lon,             
+                groupId: grupoId, 
+                creado: new Date(),
+                pdfUrl: urlEdicion,
+                esEspecial: esEspecial
+            });
+        }
+
+        await cargarReservas(true);
+        cerrarModal('reservaModal');
+        document.getElementById('successModal').style.display = "block";
+    } catch (e) {
+        console.error(e);
+        alert("Error al guardar en base de datos.");
+    } finally {
+        // Restauramos el botón a su estado original para la próxima vez
+        btnFinal.innerHTML = "💾 Guardar Reserva";
+        btnFinal.style.background = "#28a745"; 
+        btnFinal.disabled = false;
+    }
+};
+
+window.mostrarSelectorUbicacion = function(items) {
+    const lista = document.getElementById('listaCoincidencias');
+    lista.innerHTML = "";
+    
+    items.forEach(item => {
+        const li = document.createElement('li');
+        li.className = 'match-item';
+        
+        // Extraemos datos de HERE
+        const ciudad = item.address.city || item.address.locality || item.address.district || "Ubicación";
+        const direccionDetectada = item.address.label;
+
+        li.innerHTML = `<strong>${ciudad}</strong><br><small>${direccionDetectada}</small>`;
+        
+        li.onclick = function() {
+            // 1. Llenamos las coordenadas (Lo más importante)
+            document.getElementById('latTemp').value = item.position.lat;
+            document.getElementById('lonTemp').value = item.position.lng;
+            
+            // 2. Llenamos ciudad y dirección sugerida
+            document.getElementById('ciudadInput').value = ciudad;
+            document.getElementById('direccionInput').value = direccionDetectada;
+
+            // 3. CAMBIO IMPORTANTE:
+            // Ya NO guardamos automáticamente. 
+            // Cerramos el modal y avisamos al usuario que puede editar.
+            cerrarModal('selectionModal');
+            
+            // 4. Enfocamos el campo de dirección para que puedas editarlo si salió genérico
+            const inputDir = document.getElementById('direccionInput');
+            inputDir.focus();
+            inputDir.select(); // Selecciona el texto para borrarlo fácil si quieres
+            
+            // Cambiamos el texto del botón para indicar que ya tenemos ubicación
+            const btnSave = document.querySelector('#reservaModal .btn-save');
+            btnSave.innerHTML = "✅ Ubicación fijada. Clic para Guardar.";
+            btnSave.style.background = "#17a2b8"; // Color azul informativo
+        };
+        lista.appendChild(li);
+    });
+    document.getElementById('selectionModal').style.display = 'block';
+}
+
+window.mostrarModalSinResultados = function() {
+     const lista = document.getElementById('listaCoincidencias');
+     lista.innerHTML = "<li style='padding:15px; color:#666;'>No se encontraron coincidencias exactas.</li>";
+     document.getElementById('selectionModal').style.display = 'block';
+}
+
+window.habilitarManual = function() {
+    const inputC = document.getElementById('ciudadInput');
+    inputC.readOnly = false;
+    inputC.placeholder = "Escribe ciudad para buscar...";
+    inputC.focus();
+    cerrarModal('selectionModal');
+}
+
+window.usarSinCiudad = function() {
+    document.getElementById('ciudadInput').value = "Sin Ciudad";
+    cerrarModal('selectionModal');
+    guardarReserva();
+}
+
+window.reintentarDireccion = function() {
+    cerrarModal('selectionModal');
+    document.getElementById('direccionInput').focus();
+}
+
+function calcularEstadisticas() {
+    statsPorAno = {}; 
+    
+    globalReservas.forEach(item => {
+        // TRUCO FINAL: No usamos item.start (que tiene Timezone problemático).
+        // Usamos el texto original "YYYY-MM-DD" que viene de la base de datos.
+        const fechaStringInicio = item.data.fechaInicio; // Ej: "2026-01-12"
+        const fechaStringFin = item.data.fechaFin;       // Ej: "2026-01-16"
+
+        // Construimos la fecha forzando las 12:00:00 (Mediodía Local)
+        // Al unirlo con 'T12:00:00', el navegador crea un Lunes a las 12pm TUYA.
+        let current = new Date(fechaStringInicio + 'T12:00:00');
+        const fechaLimite = new Date(fechaStringFin + 'T12:00:00');
+
+        let diasLaborales = 0;
+
+        // Bucle de conteo
+        while (current <= fechaLimite) {
+            // Si el día NO es domingo (0), cuenta como laboral
+            if (current.getDay() !== 0) {
+                diasLaborales++;
+            }
+            // Avanzamos un día
+            current.setDate(current.getDate() + 1);
+        }
+        
+        // Cálculo: 5 días = 1 semana
+        const semanas = diasLaborales / 5; 
+
+        const year = current.getFullYear(); // Usamos el año de la fecha procesada
+        // Nota: usamos current (que al final del bucle está cerca de la fecha) 
+        // o mejor volvemos a sacar el año del inicio para ser consistentes:
+        const yearInicio = new Date(fechaStringInicio + 'T12:00:00').getFullYear();
+
+        if (!statsPorAno[yearInicio]) {
+            statsPorAno[yearInicio] = 0;
+        }
+        statsPorAno[yearInicio] += semanas;
+    });
+
+    actualizarHeaderAdmin();
+}
+
+function actualizarHeaderAdmin() {
+    const statsDiv = document.getElementById('admin-stats');
+    
+    if (esAdmin) {
+        const years = Object.keys(statsPorAno).sort(); // Ordenar años (ascendente)
+        
+        if (years.length === 0) {
+            statsDiv.textContent = "0 Semanas";
+            statsDiv.onclick = null; 
+        } else {
+            // 1. Mostrar resumen corto en el encabezado (Último año)
+            const ultimoAno = years[years.length - 1];
+            const semanasUltimo = statsPorAno[ultimoAno].toFixed(1);
+            
+            statsDiv.innerHTML = `📊 ${ultimoAno}: ${semanasUltimo} Sem <span style="font-size:0.8em">ℹ️</span>`;
+            
+            // 2. Evento Click: Abrir Modal
+            statsDiv.onclick = function() {
+                const listaUl = document.getElementById('listaStats');
+                listaUl.innerHTML = ''; // Limpiar lista anterior
+                
+                // Recorremos los años (invertimos para ver el más reciente arriba)
+                years.slice().reverse().forEach(y => {
+                    const li = document.createElement('li');
+                    li.className = 'match-item'; // Reusamos estilo de lista existente
+                    li.style.display = 'flex';
+                    li.style.justifyContent = 'space-between';
+                    li.style.cursor = 'default'; // No es clicable
+                    
+                    // Contenido de la fila
+                    li.innerHTML = `
+                        <strong style="color:#2c3e50;">Año ${y}</strong>
+                        <span style="color:#007bff; font-weight:bold;">${statsPorAno[y].toFixed(1)} Semanas</span>
+                    `;
+                    listaUl.appendChild(li);
+                });
+                
+                // Mostrar el modal
+                document.getElementById('statsModal').style.display = 'block';
+            };
+        }
+        statsDiv.style.display = 'inline-block';
+    } else { 
+        statsDiv.style.display = 'none'; 
+    }
+}
+
+window.cambiarAnoMapa = function(delta) {
+    currentMapYear += delta;
+    document.getElementById('map-year-display').textContent = currentMapYear;
+    const headerYearLabel = document.getElementById('header-year-label');
+    if(headerYearLabel) headerYearLabel.textContent = currentMapYear;
+    actualizarMapaYLista(); 
+}
+
+// --- SISTEMA DE VISTAS ---
+window.mostrarMapa = function() {
+    document.getElementById('calendar-container').style.display = 'none';
+    document.getElementById('agenda-view').style.display = 'none';
+    document.getElementById('map-view').style.display = 'flex';
+    document.getElementById('btn-go-map').style.display = 'none'; 
+    document.getElementById('mobile-btn-map').style.display = 'none';
+    setTimeout(() => { map.invalidateSize(); }, 200);
+}
+
+window.mostrarCalendario = function() {
+    document.getElementById('map-view').style.display = 'none';
+    document.getElementById('agenda-view').style.display = 'none';
+    document.getElementById('calendar-container').style.display = 'block';
+    document.getElementById('btn-go-map').style.display = 'inline-block'; 
+    document.getElementById('mobile-btn-map').style.display = 'block';
+    calendar.updateSize(); 
+}
+
+window.mostrarVistaAgenda = function() {
+    document.getElementById('calendar-container').style.display = 'none';
+    document.getElementById('map-view').style.display = 'none';
+    document.getElementById('agenda-view').style.display = 'block';
+    document.getElementById('btn-go-map').style.display = 'inline-block'; 
+    renderizarAgendaCustom();
+}
+
+function renderizarAgendaCustom() {
+    let listaOrdenada = [...globalReservas];
+    listaOrdenada.sort((a, b) => a.start - b.start);
+
+    const agendaContainer = document.getElementById('lista-agenda-custom');
+    agendaContainer.innerHTML = '';
+
+    if (listaOrdenada.length === 0) {
+        agendaContainer.innerHTML = '<li style="text-align:center; padding:20px; color:#777;">No hay reservas registradas.</li>';
+        return;
+    }
+
+    const hoy = new Date();
+    hoy.setHours(0,0,0,0);
+
+    const gruposAgenda = [];
+    
+    // 1. Agrupación de reservas (Lógica existente)
+    listaOrdenada.forEach((reserva, index) => {
+        if (index === 0) {
+            gruposAgenda.push({
+                ciudad: reserva.data.ciudad,
+                cliente: reserva.data.cliente,
+                direccion: reserva.data.direccion,
+                inicio: reserva.data.fechaInicio,
+                fin: reserva.data.fechaFin,
+                reservaObj: reserva
+            });
+            return;
+        }
+
+        const ultimo = gruposAgenda[gruposAgenda.length - 1];
+        
+        if (ultimo.reservaObj.data.groupId === reserva.data.groupId) {
+            ultimo.fin = reserva.data.fechaFin; 
+        } else {
+            gruposAgenda.push({
+                ciudad: reserva.data.ciudad,
+                cliente: reserva.data.cliente,
+                direccion: reserva.data.direccion,
+                inicio: reserva.data.fechaInicio,
+                fin: reserva.data.fechaFin,
+                reservaObj: reserva
+            });
+        }
+    });
+
+    // Variable para marcar solo el primer evento futuro encontrado
+    let proximoEncontrado = false;
+
+    // 2. Renderizado de tarjetas
+    gruposAgenda.forEach(grupo => {
+        // Convertir fecha fin a objeto Date para comparar
+        // (Sumamos 1 día a la fecha fin para que el evento de "hoy" no cuente como pasado hasta mañana)
+        const fechaFinObj = new Date(grupo.fin + 'T00:00:00');
+        fechaFinObj.setDate(fechaFinObj.getDate() + 1); 
+
+        const esPasado = fechaFinObj < hoy;
+        
+        const card = document.createElement('li');
+        card.className = 'agenda-card' + (esPasado ? ' pasada' : '');
+        
+        // NUEVO: Detectar el elemento objetivo para el Scroll
+        // Si NO es pasado y aun no hemos encontrado el "próximo", este es el ganador.
+        if (!esPasado && !proximoEncontrado) {
+            card.id = "scroll-objetivo"; // Le ponemos una marca
+            card.style.borderLeftColor = "#f1c40f"; // Opcional: Color dorado para resaltar
+            proximoEncontrado = true; // Ya no marcamos más
+        }
+
+        let direccionHtml = grupo.direccion ? `<small>📍 ${grupo.direccion}</small>` : '';
+
+        const tieneDoc = grupo.reservaObj.data.pdfUrl;
+        const enlaceDocHtml = (tieneDoc) 
+            ? `<div style="margin-top:6px; border-top:1px solid #eee; padding-top:4px;">
+                 <a href="${tieneDoc}" target="_blank" style="color:#007bff; text-decoration:none; font-size:0.85rem; font-weight:bold;">
+                   📄 Ver Documentación (Drive)
+                 </a>
+               </div>` 
+            : '';
+
+        card.innerHTML = `
+            <div class="ruta-ciudad">${grupo.ciudad}</div>
+            <div class="ruta-cliente">👤 ${grupo.cliente} ${direccionHtml}</div>
+            <div class="ruta-fechas">📅 ${formatearFecha(grupo.inicio)} ➝ ${formatearFecha(grupo.fin)}</div>
+            ${enlaceDocHtml}
+        `;
+        
+        card.onclick = () => {
+            mostrarCalendario();
+            calendar.gotoDate(grupo.inicio);
+            const evento = calendar.getEventById(grupo.reservaObj.id);
+            if(evento) mostrarDetalles(evento);
+        };
+
+        agendaContainer.appendChild(card);
+    });
+
+    // NUEVO: Ejecutar el scroll automático
+    setTimeout(() => {
+        const objetivo = document.getElementById('scroll-objetivo');
+        if (objetivo) {
+            objetivo.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else {
+            // Si todo es pasado, opcionalmente podrías hacer scroll al final
+            // agendaContainer.scrollTop = agendaContainer.scrollHeight;
+        }
+    }, 300); // Pequeño delay para asegurar que el DOM se pintó
+}
+
+function configurarDiasEspeciales() {
+    calendar.addEvent({ daysOfWeek: [0], display: 'background', color: '#e0e0e0' });
+    calendar.addEvent({ daysOfWeek: [6], display: 'background', color: '#fff9c4' });
+}
+
+function calcularRangosSinDomingo(fechaInicioStr, fechaFinStr) {
+    let start = new Date(fechaInicioStr + 'T00:00:00');
+    let end = new Date(fechaFinStr + 'T00:00:00');
+    let diasHabiles = [];
+    let current = new Date(start);
+    while (current <= end) {
+        if (current.getDay() !== 0) diasHabiles.push(new Date(current));
+        current.setDate(current.getDate() + 1);
+    }
+    let rangos = [];
+    if (diasHabiles.length === 0) return rangos;
+    let rangoActual = { start: new Date(diasHabiles[0]), end: new Date(diasHabiles[0]) };
+    for (let i = 1; i < diasHabiles.length; i++) {
+        let diff = (diasHabiles[i] - diasHabiles[i-1]) / (1000 * 60 * 60 * 24);
+        if (diff === 1) rangoActual.end = new Date(diasHabiles[i]);
+        else { rangos.push(rangoActual); rangoActual = { start: new Date(diasHabiles[i]), end: new Date(diasHabiles[i]) }; }
+    }
+    rangos.push(rangoActual);
+    return rangos;
+}
+
+function formatearFecha(fechaStr) {
+    if(!fechaStr) return "";
+    const partes = fechaStr.split('-');
+    const meses = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+    return `${partes[2]}/${meses[parseInt(partes[1]) - 1]}/${partes[0]}`;
+}
+
+async function cargarReservas(forzarRecarga = false) {
+    const calendarEl = document.getElementById('calendar');
+    const loadingOverlay = document.getElementById('loading-overlay');
+    
+    if(loadingOverlay) loadingOverlay.style.display = 'flex';
+    calendarEl.style.opacity = "0.5";
+    document.body.style.cursor = "wait";
+
+    try {
+        // --- 1. CACHÉ LOCAL CON TIEMPO DE EXPIRACIÓN ---
+        const cacheGuardado = localStorage.getItem('agenda_reservas_cache');
+        const cacheTimestamp = localStorage.getItem('agenda_reservas_timestamp'); // Leemos la hora guardada
+        
+        let datosParaProcesar = [];
+        let origenDatos = "";
+
+        // Calculamos si el caché es válido (Menor a 5 min = 300,000 ms)
+        const ahora = Date.now();
+        const esCacheValido = cacheTimestamp && (ahora - parseInt(cacheTimestamp) < 300000);
+
+        if (!forzarRecarga && cacheGuardado) {
+            if (esCacheValido) {
+                console.log("⚡ Usando Caché Local (Fresco)...");
+                try {
+                    datosParaProcesar = JSON.parse(cacheGuardado);
+                    origenDatos = "CACHE";
+                } catch (err) {
+                    console.warn("Caché corrupto, descargando...");
+                    origenDatos = "FIREBASE";
+                }
+            } else {
+                console.log("⌛ Caché expirado (+5 min). Forzando descarga...");
+                origenDatos = "FIREBASE";
+            }
+        }
+
+        // --- 2. FIREBASE (Si no hay caché o expiró) ---
+        if (datosParaProcesar.length === 0 || origenDatos === "FIREBASE") {
+            console.log("⬇️ Descargando de Firebase...");
+            datosParaProcesar = []; // Limpiamos lista por seguridad
+
+            const q = query(
+                collection(db, "reservas"),
+                where("fechaInicio", ">=", "2020-01-01"),
+                where("fechaInicio", "<=", "2030-12-31")
+            );
+            const querySnapshot = await getDocs(q);
+            
+            querySnapshot.forEach((documento) => {
+                const data = documento.data();
+                if (data.fechaInicio && data.fechaFin) {
+                    datosParaProcesar.push({
+                        id: documento.id,
+                        data: data,
+                        start: data.fechaInicio,
+                        end: data.fechaFin
+                    });
+                }
+            });
+
+            // Guardamos en caché CON LA HORA ACTUAL
+            try {
+                localStorage.setItem('agenda_reservas_cache', JSON.stringify(datosParaProcesar));
+                localStorage.setItem('agenda_reservas_timestamp', Date.now().toString()); // Guardamos timestamp
+            } catch (e) { console.warn("Memoria llena", e); }
+        }
+
+        // --- 3. PROCESAMIENTO MASIVO (OPTIMIZACIÓN CLAVE) ---
+        
+        // A. Limpiamos memoria
+        calendar.removeAllEvents();
+        globalReservas = [];
+        
+        // B. Preparamos el arreglo para FullCalendar (Batch)
+        const eventosFullCalendar = [];
+
+        datosParaProcesar.forEach(item => {
+            // Reconvertir strings a Objetos Date
+            const startObj = new Date(item.start); 
+            const endObj = new Date(item.end);
+
+            // Memoria Global
+            globalReservas.push({
+                id: item.id,
+                data: item.data,
+                start: startObj, 
+                end: endObj
+            });
+
+            // Preparar objeto para el Calendario
+            // Calculamos fecha visual (+1 día)
+            let fechaFinVisual = new Date(endObj);
+            fechaFinVisual.setDate(fechaFinVisual.getDate() + 1);
+
+            const esEspecial = item.data.esEspecial || false;
+            const colorEvento = esEspecial ? '#7F00FF' : '#FF5733'; // Naranja para especial, rojo para normal
+
+            eventosFullCalendar.push({
+                id: item.id,
+                title: '📍 ' + (item.data.ciudad ? item.data.ciudad.split(",")[0] : "Sin ciudad") + ' - ' + item.data.cliente,
+                start: item.data.fechaInicio,
+                end: fechaFinVisual.toISOString().split('T')[0],
+                allDay: true,
+                backgroundColor: colorEvento,
+                borderColor: colorEvento,
+                extendedProps: {
+                    cliente: item.data.cliente,
+                    direccion: item.data.direccion,
+                    fechaFinReal: item.data.fechaFin,
+                    ciudadCompleta: item.data.ciudad,
+                    groupId: item.data.groupId,
+                    pdfUrl: item.data.pdfUrl,
+                    lat: item.data.lat,
+                    lng: item.data.lng,
+                    esEspecial: esEspecial
+                }
+            });
+        });
+
+        // C. INSERCIÓN ÚNICA (Esto baja el tiempo de 10s a 0.5s)
+        calendar.addEventSource(eventosFullCalendar);
+
+        // --- 4. ACTUALIZACIÓN UI DIFERIDA ---
+        // Usamos setTimeout para liberar el hilo principal y que el navegador "respire"
+        setTimeout(() => {
+            calcularEstadisticas();
+            actualizarMapaYLista(); // Actualiza la lista lateral y mapa
+        }, 50);
+
+    } catch (error) { 
+        console.error("Error crítico:", error); 
+    } finally {
+        calendarEl.style.opacity = "1";
+        document.body.style.cursor = "default";
+        if(loadingOverlay) loadingOverlay.style.display = 'none';
+    }
+}
+
+// --- Función auxiliar para no repetir código de "addEvent" ---
+function agregarEventoAlCalendario(data, id) {
+    // Calculamos fecha fin visual (+1 día para que FullCalendar llene el cuadro completo)
+    let fechaFinObj = new Date(data.fechaFin + 'T00:00:00');
+    let fechaFinVisual = new Date(fechaFinObj);
+    fechaFinVisual.setDate(fechaFinVisual.getDate() + 1);
+    
+    const esEspecial = data.esEspecial || false;
+    const colorEvento = esEspecial ? '#e67e22' : '#FF5733';
+
+    calendar.addEvent({
+        id: id,
+        title: '📍 ' + (data.ciudad ? data.ciudad.split(",")[0] : "Sin ciudad") + ' - ' + data.cliente,
+        start: data.fechaInicio,
+        end: fechaFinVisual.toISOString().split('T')[0], 
+        allDay: true,
+        backgroundColor: colorEvento,
+        borderColor: colorEvento,
+        extendedProps: {
+            cliente: data.cliente,
+            direccion: data.direccion,
+            fechaFinReal: data.fechaFin,
+            ciudadCompleta: data.ciudad,
+            groupId: data.groupId,
+            pdfUrl: data.pdfUrl,
+            esEspecial: esEspecial,
+            lat: data.lat,
+            lng: data.lng
+        }
+    });
+}
+
+window.actualizarMapaYLista = function(centrarHoy = false) {
+    if (!globalReservas) return;
+
+    // Diferir la ejecución para que no bloquee la interfaz inmediata
+    requestAnimationFrame(() => {
+        const listaDelAnio = globalReservas.filter(r => r.start.getFullYear() === currentMapYear || r.end.getFullYear() === currentMapYear);
+        const hoy = new Date();
+        hoy.setHours(0,0,0,0);
+
+        // 1. Ordenar
+        let listaVisualizar = [...listaDelAnio].sort((a, b) => a.start - b.start);
+        const reservaProxima = listaVisualizar.find(r => r.start > hoy);
+
+        const getPrioridad = (r) => {
+            if (r.start <= hoy && r.end >= hoy) return 3;
+            if (r === reservaProxima) return 2;
+            if (r.end < hoy) return 0;
+            return 1;
+        };
+
+        const getNombreEstado = (prioridad) => {
+            switch(prioridad) {
+                case 3: return 'activo';
+                case 2: return 'destacado';
+                case 0: return 'pasado';
+                default: return 'futuro';
+            }
+        };
+
+        // --- PASO 1: CALCULAR Y AGRUPAR ---
+        const rutasAgrupadas = [];
+        
+        listaVisualizar.forEach((reserva, index) => {
+            const ciudadActual = reserva.data.ciudad ? reserva.data.ciudad.split(",")[0].trim() : "Desconocida";
+            const prioridadActual = getPrioridad(reserva);
+
+            if (index === 0) {
+                rutasAgrupadas.push({
+                    ciudad: ciudadActual,
+                    inicio: reserva.data.fechaInicio,
+                    fin: reserva.data.fechaFin,
+                    clientes: [reserva.data.cliente],
+                    lat: reserva.data.lat, 
+                    lng: reserva.data.lng,
+                    prioridadGrupo: prioridadActual 
+                });
+                return;
+            }
+
+            const ultimoGrupo = rutasAgrupadas[rutasAgrupadas.length - 1];
+            const finAnterior = new Date(ultimoGrupo.fin + 'T00:00:00');
+            const inicioActual = new Date(reserva.data.fechaInicio + 'T00:00:00');
+            const diferenciaTiempo = inicioActual - finAnterior;
+            const diasDiferencia = Math.ceil(diferenciaTiempo / (1000 * 60 * 60 * 24));
+
+            if (ultimoGrupo.ciudad === ciudadActual && diasDiferencia <= 3) {
+                ultimoGrupo.fin = reserva.data.fechaFin; 
+                if (prioridadActual > ultimoGrupo.prioridadGrupo) ultimoGrupo.prioridadGrupo = prioridadActual;
+                if (!ultimoGrupo.clientes.includes(reserva.data.cliente)) ultimoGrupo.clientes.push(reserva.data.cliente);
+            } else {
+                rutasAgrupadas.push({
+                    ciudad: ciudadActual,
+                    inicio: reserva.data.fechaInicio,
+                    fin: reserva.data.fechaFin,
+                    clientes: [reserva.data.cliente],
+                    lat: reserva.data.lat,
+                    lng: reserva.data.lng,
+                    prioridadGrupo: prioridadActual
+                });
+            }
+        });
+
+        // --- PASO 2: RENDERIZAR LISTA (Batch Fragment) ---
+        const ulLista = document.getElementById('lista-rutas');
+        if (ulLista) {
+            ulLista.innerHTML = '';
+            if (rutasAgrupadas.length === 0) {
+                ulLista.innerHTML = '<li style="padding:15px;color:#999;text-align:center;">Sin reservas este año.</li>';
+            } else {
+                const fragmento = document.createDocumentFragment();
+                rutasAgrupadas.forEach(grupo => {
+                    const li = document.createElement('li');
+                    let estadoTexto = getNombreEstado(grupo.prioridadGrupo);
+                    let claseEstado = '';
+                    if (estadoTexto === 'pasado') claseEstado = ' pasada';
+                    else if (estadoTexto === 'activo') claseEstado = ' activa';
+                    else if (estadoTexto === 'destacado') claseEstado = ' destacada';
+                    
+                    li.className = 'ruta-item' + claseEstado;
+                    const clientesHTML = grupo.clientes.map(c => `<div style="padding-left:10px; margin-bottom:2px;">• ${c}</div>`).join('');
+
+                    li.innerHTML = `
+                        <div class="ruta-ciudad">${grupo.ciudad}</div>
+                        <div class="ruta-fechas">📅 ${formatearFecha(grupo.inicio)} ➝ ${formatearFecha(grupo.fin)}</div>
+                        <div class="ruta-cliente" style="margin-top:8px; border-top:1px dashed #dedede; padding-top:4px;">${clientesHTML}</div>
+                    `;
+                    
+                    li.onclick = () => { 
+                        if (typeof map !== 'undefined' && map && grupo.lat && grupo.lng) {
+                            map.flyTo([grupo.lat, grupo.lng], 13);
+                            // Búsqueda optimizada de marcador en el grupo
+                            if (window.markersLayer) {
+                                window.markersLayer.eachLayer(layer => {
+                                    const latLng = layer.getLatLng();
+                                    if (Math.abs(latLng.lat - grupo.lat) < 0.0001 && Math.abs(latLng.lng - grupo.lng) < 0.0001) {
+                                        layer.openPopup();
+                                    }
+                                });
+                            }
+                        }
+                    };
+                    fragmento.appendChild(li);
+                });
+                ulLista.appendChild(fragmento);
+                
+                // Scroll diferido para evitar Forced Reflow
+                setTimeout(() => {
+                    const destacado = ulLista.querySelector('.ruta-item.destacada, .ruta-item.activa');
+                    if(destacado) destacado.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }, 100);
+            }
+        }
+
+        // --- PASO 3: RENDERIZAR MAPA (OPTIMIZACIÓN LAYER GROUP) ---
+        if (typeof map !== 'undefined' && map) {
+            
+            // 1. Crear el grupo de capas si no existe
+            if (!window.markersLayer) {
+                window.markersLayer = L.layerGroup().addTo(map);
+            }
+            
+            // 2. Limpiar el grupo de golpe (Mucho más rápido que un bucle removeLayer)
+            window.markersLayer.clearLayers();
+            
+            const ciudadesMap = {};
+
+            listaVisualizar.forEach(r => {
+                if (!r.data.lat || !r.data.lng) return;
+                const nombreCiudad = r.data.ciudad ? r.data.ciudad.split(",")[0].trim() : "Ubicación";
+
+                if (!ciudadesMap[nombreCiudad]) {
+                    ciudadesMap[nombreCiudad] = {
+                        lat: r.data.lat, lng: r.data.lng, clientes: new Set(), diasTotales: 0, prioridadVisual: 0 
+                    };
+                }
+                ciudadesMap[nombreCiudad].clientes.add(r.data.cliente);
+                
+                let current = new Date(r.start);
+                while (current <= r.end) {
+                    if (current.getDay() !== 0) ciudadesMap[nombreCiudad].diasTotales++;
+                    current.setDate(current.getDate() + 1);
+                }
+
+                let p = getPrioridad(r);
+                if (p > ciudadesMap[nombreCiudad].prioridadVisual) ciudadesMap[nombreCiudad].prioridadVisual = p;
+            });
+
+            // 3. Crear marcadores y agregarlos AL GRUPO (no al mapa directamente)
+            const nuevosMarcadores = [];
+            
+            Object.keys(ciudadesMap).forEach(ciudadKey => {
+                const datos = ciudadesMap[ciudadKey];
+                let icono = blueIcon; 
+                let zIndex = 500;
+
+                if (datos.prioridadVisual === 0) { icono = greyIcon; zIndex = 100; }
+                else if (datos.prioridadVisual === 2) { icono = goldIcon; zIndex = 900; }
+                else if (datos.prioridadVisual === 3) { icono = redIcon; zIndex = 1000; }
+
+                // NOTA: Ya no usamos .addTo(map) aquí.
+                const marker = L.marker([datos.lat, datos.lng], { icon: icono, zIndexOffset: zIndex });
+
+                const listaClientesVertical = Array.from(datos.clientes).map(c => `<div style="margin-bottom:3px;">• ${c}</div>`).join('');
+
+                marker.bindPopup(`
+                    <div style="text-align:center; min-width:160px;">
+                        <h3 style="margin:0; color:#2c3e50; font-size:1.1rem;">${ciudadKey}</h3>
+                        <hr style="border:0; border-top:1px solid #eee; margin:8px 0;">
+                        <div style="text-align:left; font-size:0.9rem; line-height:1.4;">
+                            <strong style="color:#333;">👥 Clientes:</strong>
+                            <div style="margin-top:5px; margin-left:5px; max-height:100px; overflow-y:auto; color:#555;">${listaClientesVertical}</div>
+                            <br>
+                            <div style="border-top:1px dashed #ccc; padding-top:5px;">
+                                ⏱️ <b>Días ocupados:</b> ${datos.diasTotales}
+                            </div>
+                        </div>
+                    </div>
+                `);
+                
+                // Agregar al grupo
+                window.markersLayer.addLayer(marker);
+            });
+        }
+    });
+}
+
+// --- FUNCIÓN RECUPERADA: EXPORTAR CALENDARIO ---
+window.exportarCalendario = function() {
+    if (globalReservas.length === 0) {
+        alert("⚠️ No hay eventos para exportar.");
+        return;
+    }
+
+    let icsContent = `BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//TrackSIM//Agenda//ES
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+`;
+
+    globalReservas.forEach(reserva => {
+        // Formatear fechas YYYYMMDD (Quitar guiones)
+        const start = reserva.data.fechaInicio.replace(/-/g, '');
+        
+        // iCal requiere que la fecha final sea exclusiva (día siguiente), así que sumamos 1 día
+        let endDateObj = new Date(reserva.data.fechaFin + 'T00:00:00');
+        endDateObj.setDate(endDateObj.getDate() + 1);
+        const end = endDateObj.toISOString().split('T')[0].replace(/-/g, '');
+
+        const ciudad = reserva.data.ciudad || "Sin ciudad";
+        const cliente = reserva.data.cliente || "Cliente";
+        const direccion = reserva.data.direccion || "";
+
+        icsContent += `BEGIN:VEVENT
+`;
+        icsContent += `DTSTART;VALUE=DATE:${start}
+        `;
+        icsContent += `DTEND;VALUE=DATE:${end}
+        `;
+        icsContent += `SUMMARY:${cliente} - ${ciudad}
+        `;
+        icsContent += `LOCATION:${ciudad}, ${direccion}
+        `;
+        icsContent += `DESCRIPTION:Gestionado desde Agenda TrackSIM. https://agendaservicios.web.app/index.html
+        `;
+        icsContent += `STATUS:CONFIRMED
+        `;
+        icsContent += `END:VEVENT
+        `;
+    });
+
+    icsContent += "END:VCALENDAR";
+
+    // Crear enlace de descarga virtual
+    const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `agenda_tracksim_${new Date().toISOString().split('T')[0]}.ics`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+};
+
+window.compartirApp = async function() {
+    const shareData = {
+        title: 'Agenda TrackSIM',
+        text: 'Consulta la gestión de itinerarios y servicios TrackSIM.',
+        url: window.location.href
+    };
+    try {
+        if (navigator.share) {
+            await navigator.share(shareData);
+        } else {
+            await navigator.clipboard.writeText(window.location.href);
+            alert("🔗 Vínculo copiado al portapapeles.");
+        }
+    } catch (err) { console.log('Error al compartir:', err); }
+}
+
+window.verQR = function() {
+    const url = window.location.href;
+    const qrImg = document.getElementById('imagenQR');
+    qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(url)}`;
+    document.getElementById('qrModal').style.display = 'block';
+}
+
+window.abrirModalCrear = function(fecha) {
+    // Resetear variables
+    modoEdicion = false;
+    idGrupoEdicion = null;
+    urlEdicion = null; // <--- LIMPIAMOS LA VARIABLE AQUÍ
+
+    // Limpiar campos
+    document.getElementById('fechaInicio').value = fecha;
+    document.getElementById('fechaFin').value = fecha;
+    document.getElementById('ciudadInput').value = ""; 
+    document.getElementById('ciudadInput').readOnly = true;
+    document.getElementById('nombreInput').value = "";
+    document.getElementById('direccionInput').value = "";
+    document.getElementById('latTemp').value = ""; 
+    document.getElementById('lonTemp').value = "";
+    document.getElementById('eventoEspecialCheck').checked = false;
+
+    // Resetear botón
+    const btn = document.querySelector('#reservaModal .btn-save');
+    btn.textContent = "💾 Guardar Reserva";
+    btn.style.background = "#28a745";
+    btn.style.color = "white";
+
+    document.getElementById('reservaModal').style.display = "block";
+}
+
+window.prepararEdicion = function() {
+    if (!eventoSeleccionadoID) return;
+    const evento = calendar.getEventById(eventoSeleccionadoID);
+    if (!evento) return;
+
+    // Guardar el estado actual
+    modoEdicion = true;
+    idGrupoEdicion = evento.extendedProps.groupId;
+    urlEdicion = evento.extendedProps.pdfUrl || null; // <--- CAPTURAMOS EL LINK AQUÍ
+
+    // Llenar el formulario
+    document.getElementById('fechaInicio').value = evento.start.toISOString().split('T')[0];
+    document.getElementById('fechaFin').value = evento.extendedProps.fechaFinReal;
+    document.getElementById('nombreInput').value = evento.extendedProps.cliente;
+    document.getElementById('direccionInput').value = evento.extendedProps.direccion || "";
+    document.getElementById('ciudadInput').value = evento.extendedProps.ciudadCompleta || "";
+
+    document.getElementById('eventoEspecialCheck').checked = evento.extendedProps.esEspecial || false;
+    const originalLat = evento.extendedProps.lat || "";
+    const originalLng = evento.extendedProps.lng || "";
+
+    const reservaOriginal = globalReservas.find(r => r.id === eventoSeleccionadoID);
+    if (reservaOriginal) {
+        document.getElementById('latTemp').value = reservaOriginal.data.lat || "";
+        document.getElementById('lonTemp').value = reservaOriginal.data.lng || "";
+    }
+
+    // Cambiar texto del botón
+    const btnGuardar = document.querySelector('#reservaModal .btn-save');
+    btnGuardar.textContent = "📝 Actualizar Reserva";
+    btnGuardar.style.background = "#ffc107";
+    btnGuardar.style.color = "#333";
+
+    cerrarModal('detalleModal');
+    document.getElementById('reservaModal').style.display = "block";
+}
+
+// 1. Nueva función para eliminar el enlace
+window.eliminarEnlaceDrive = async function() {
+    if (!confirm("¿Estás seguro de que deseas eliminar este enlace?")) return;
+    if (!eventoSeleccionadoID) return;
+
+    try {
+        const docRef = doc(db, "reservas", eventoSeleccionadoID);
+        // Actualizamos el campo a null para borrarlo
+        await updateDoc(docRef, { pdfUrl: null });
+        
+        alert("🗑️ Enlace eliminado.");
+        await cargarReservas(true); 
+        cerrarModal('detalleModal');
+    } catch (error) {
+        console.error("Error al eliminar enlace:", error);
+        alert("Error al eliminar.");
+    }
+};
+
+// 2. Función actualizada para habilitar edición
+window.habilitarEdicionDrive = function() {
+    const input = document.getElementById('driveUrlInput');
+    const btnGuardar = document.getElementById('btnGuardarDrive');
+    const btnEliminar = document.getElementById('btnEliminarDrive');
+    
+    // Habilitar escritura
+    input.readOnly = false;
+    input.style.backgroundColor = "#ffffff";
+    input.focus();
+    
+    // Cambiar icono a guardar
+    btnGuardar.textContent = "💾";
+    btnGuardar.style.background = "#28a745"; 
+    btnGuardar.onclick = function() { window.guardarEnlaceDrive(); };
+
+    // Mantener visible el botón de eliminar
+    btnEliminar.style.display = "block";
+};
+// 3. Función actualizada mostrarDetalles (Controla qué botones se ven)
+window.mostrarDetalles = function(evento) {
+    eventoSeleccionadoID = evento.id; 
+    grupoSeleccionadoID = evento.extendedProps.groupId || null;
+    
+    const seccionPDF = document.getElementById('seccionPDF');
+    const pdfInfo = document.getElementById('pdfInfo');
+    const linkPDF = document.getElementById('linkPDF');
+    const adminPDFInput = document.getElementById('adminPDFInput');
+    const driveUrlInput = document.getElementById('driveUrlInput');
+    const btnGuardarDrive = document.getElementById('btnGuardarDrive');
+    const btnEliminarDrive = document.getElementById('btnEliminarDrive');
+    const btnEliminar = document.getElementById('btnEliminar');
+    const btnEditar = document.getElementById('btnEditar');
+
+    // 1. Llenar datos básicos
+    document.getElementById('detCliente').innerText = evento.extendedProps.cliente || "No especificado";
+    document.getElementById('detCiudad').innerText = evento.extendedProps.ciudadCompleta || evento.title;
+    
+    // --- INICIO CAMBIOS DIRECCIÓN E ICONOS ---
+    const direccionTexto = evento.extendedProps.direccion;
+    const lat = evento.extendedProps.lat;
+    const lng = evento.extendedProps.lng;
+    const spanDireccion = document.getElementById('detDireccion');
+
+    if (direccionTexto && direccionTexto.trim().length > 0) {
+        let urlMaps = "";
+        // Prioridad a coordenadas si existen
+        if (lat && lng) {
+            urlMaps = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+        } else {
+            // Respaldo por búsqueda de texto
+            const busqueda = encodeURIComponent(direccionTexto + ", " + (evento.extendedProps.ciudadCompleta || ""));
+            urlMaps = `https://www.google.com/maps/search/?api=1&query=${busqueda}`;
+        }
+
+        // Escapamos comillas simples por seguridad para la función onclick
+        const textoSeguroParaCopiar = direccionTexto.replace(/'/g, "'");
+
+        // NUEVA ESTRUCTURA HTML:
+        // Usamos un contenedor flex para alinear texto e iconos
+        spanDireccion.innerHTML = `
+            <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 10px;">
+                <span style="flex-grow: 1; word-break: break-word;">📍 ${direccionTexto}</span>
+                
+                <div style="display: flex; gap: 8px; align-items: center; flex-shrink: 0;">
+                    <span title="Copiar dirección al portapapeles" 
+                          style="cursor: pointer; font-size: 1.3em; transition: transform 0.1s;"
+                          onmouseover="this.style.transform='scale(1.2)'"
+                          onmouseout="this.style.transform='scale(1)'"
+                          onclick="copiarTextoAlPortapapeles('${textoSeguroParaCopiar}', this)">
+                        📋
+                    </span>
+                    
+                    <a href="${urlMaps}" target="_blank" title="Abrir ubicación en Google Maps" 
+                       style="text-decoration:none; font-size: 1.3em; color: #007bff; transition: transform 0.1s;"
+                       onmouseover="this.style.transform='scale(1.2)'"
+                       onmouseout="this.style.transform='scale(1)'">
+                        📌
+                    </a>
+                </div>
+            </div>`;
+    } else {
+        spanDireccion.innerText = "Sin dirección registrada";
+    }
+    // --- FIN CAMBIOS DIRECCIÓN ---
+
+    // Fechas
+    document.getElementById('detFechas').innerText = `${evento.start.toISOString().split('T')[0]} al ${evento.extendedProps.fechaFinReal}`;
+    
+    // ... (EL RESTO DE LA FUNCIÓN PERMANECE EXACTAMENTE IGUAL: Lógica de PDF, Admin, botones) ...
+    const urlExistente = evento.extendedProps.pdfUrl;
+    if (esAdmin) {
+        seccionPDF.style.display = 'block';
+        adminPDFInput.style.display = 'block';
+        btnEliminar.style.display = 'block';
+        btnEditar.style.display = 'block';
+
+        if (urlExistente) {
+            pdfInfo.style.display = 'flex';
+            linkPDF.href = urlExistente;
+            driveUrlInput.value = urlExistente;
+            driveUrlInput.readOnly = true;
+            driveUrlInput.style.backgroundColor = "#e9ecef"; 
+            btnGuardarDrive.textContent = "✏️";
+            btnGuardarDrive.style.background = "#ffc107";
+            btnGuardarDrive.style.color = "#333";
+            btnGuardarDrive.onclick = function() { window.habilitarEdicionDrive(); };
+            btnEliminarDrive.style.display = "block";
+        } else {
+            pdfInfo.style.display = 'none';
+            driveUrlInput.value = "";
+            driveUrlInput.readOnly = false;
+            driveUrlInput.style.backgroundColor = "#ffffff";
+            driveUrlInput.placeholder = "Pegar enlace de Google Drive";
+            btnGuardarDrive.textContent = "💾";
+            btnGuardarDrive.style.background = "#28a745";
+            btnGuardarDrive.style.color = "white";
+            btnGuardarDrive.onclick = function() { window.guardarEnlaceDrive(); };
+            btnEliminarDrive.style.display = "none";
+        }
+    } else {
+        if (urlExistente) {
+            pdfInfo.style.display = 'flex';
+            linkPDF.href = urlExistente;
+            driveUrlInput.value = urlExistente;
+            driveUrlInput.readOnly = true;
+            driveUrlInput.style.backgroundColor = "#e9ecef"; 
+            seccionPDF.style.display = 'block';
+            adminPDFInput.style.display = 'none';
+            btnEliminar.style.display = 'none';
+            btnEditar.style.display = 'none';
+        } else {
+            seccionPDF.style.display = 'none';
+        }
+    }
+    document.getElementById('detalleModal').style.display = "block";
+}
+
+window.cerrarModal = function(idModal) { document.getElementById(idModal).style.display = "none"; }
+
+window.borrarReserva = async function() {
+    if (!eventoSeleccionadoID) return;
+
+    // 1. Buscamos la reserva en nuestros datos locales para obtener su Group ID
+    const reservaActual = globalReservas.find(r => r.id === eventoSeleccionadoID);
+    const groupId = reservaActual ? reservaActual.data.groupId : null;
+
+    let mensajeConfirmacion = "⚠️ ¿Estás seguro de eliminar esta reserva? ⚠️";
+    
+    // Si detectamos que es parte de un grupo, avisamos al usuario
+    if (groupId) {
+        mensajeConfirmacion = "⚠️ ¿Deseas eliminar la reservación completa?";
+    }
+
+    if (!confirm(mensajeConfirmacion)) return;
+
+    try {
+        if (groupId) {
+            // OPCIÓN A: Borrar todo el grupo (Todas las semanas vinculadas)
+            
+            // 1. Buscamos todas las reservas con ese groupId
+            const q = query(collection(db, "reservas"), where("groupId", "==", groupId));
+            const querySnapshot = await getDocs(q);
+            
+            // 2. Preparamos un "batch" para borrar todas de golpe
+            const batch = writeBatch(db);
+            querySnapshot.forEach((doc) => {
+                batch.delete(doc.ref);
+            });
+            
+            // 3. Ejecutamos el borrado masivo
+            await batch.commit();
+            
+        } else {
+            // OPCIÓN B: Borrado simple (Por si es una reserva antigua sin groupId)
+            await deleteDoc(doc(db, "reservas", eventoSeleccionadoID));
+        }
+
+        cerrarModal('detalleModal');
+        await cargarReservas(true); // Recargar calendario y mapa
+        alert("🗑️ Reservación eliminada correctamente.");
+
+    } catch (error) {
+        console.error("Error al borrar:", error);
+        alert("Hubo un error al intentar borrar.");
+    }
+};
+
+// 1. Modificar iniciarSesion para abrir el modal en lugar del prompt
+window.iniciarSesion = async function() {
+    const provider = new GoogleAuthProvider();
+    provider.addScope('profile');
+    provider.addScope('email');
+
+    try {
+        const result = await signInWithPopup(auth, provider);
+        const user = result.user;
+        
+        if (ADMIN_EMAILS.includes(user.email)) {
+            console.log(`Login exitoso como administrador: ${user.email}`);
+            esAdmin = true; // Setear la variable global
+            actualizarUIConEstadoAdmin(); // Actualizar la UI
+            alert(`¡Bienvenido, ${user.displayName || user.email.split('@')[0]}! Has iniciado sesión como administrador.`);
+        } else {
+            // Si el correo no está en la lista de administradores, cerrar sesión inmediatamente
+            await signOut(auth);
+            alert("❌ Acceso denegado: Tu cuenta no tiene permisos de administrador.");
+            console.warn(`Intento de login fallido: ${user.email} no es un administrador autorizado.`);
+        }
+    } catch (error) {
+        console.error("Error durante el login con Google:", error);
+        alert(`Error al iniciar sesión: ${error.message}`);
+    }
+};
+
+// 2. Función actualizada para cerrar sesión
+window.cerrarSesion = async function() {
+    try {
+        await signOut(auth);
+        console.log("Cierre de sesión de administrador");
+        // onAuthStateChanged se encargará de setear esAdmin a false y actualizar la UI
+    } catch (error) {
+        console.error("Error al cerrar sesión:", error);
+        alert(`Error al cerrar sesión: ${error.message}`);
+    }
+};
+
+window.ajustarMapa = function() {
+    // Coordenadas originales utilizadas al cargar el mapa por primera vez
+    const latOriginal = 23.6345;
+    const lonOriginal = -102.5528;
+    const zoomOriginal = 5;
+
+    if (map) {
+        map.flyTo([latOriginal, lonOriginal], zoomOriginal, {
+            duration: 1.5
+        });
+        map.closePopup();
+    }
+}
+
+window.guardarEnlaceDrive = async function() {
+    const url = document.getElementById('driveUrlInput').value;
+    if (!url) return alert("Por favor, pega un enlace válido.");
+    if (!eventoSeleccionadoID) return;
+
+    try {
+        const docRef = doc(db, "reservas", eventoSeleccionadoID);
+        await updateDoc(docRef, { pdfUrl: url });
+        alert("✅ Enlace de Drive guardado.");
+        await cargarReservas(true); // Refresca el calendario
+        cerrarModal('detalleModal');
+    } catch (error) {
+        console.error("Error al guardar link:", error);
+        alert("Error al guardar en base de datos.");
+    }
+};
+// ---------------------------------------------------------
+// CIERRE DE MODALES: Tecla ESC y Clic fuera del contenido
+// ---------------------------------------------------------
+
+// 1. Cerrar con tecla Escape
+document.addEventListener('keydown', function(event) {
+    if (event.key === "Escape") {
+        const modales = document.querySelectorAll('.modal');
+        modales.forEach(modal => {
+            modal.style.display = "none";
+        });
+    }
+});
+
+// 2. Cerrar al hacer clic en el fondo oscuro (.modal)
+// Se usa 'window' para capturar clics globales
+window.addEventListener('click', function(event) {
+    // Verificamos si el elemento clickeado tiene la clase 'modal'
+    // (Esto significa que clickeó el fondo, no el 'modal-content')
+    if (event.target.classList.contains('modal')) {
+        event.target.style.display = "none";
+    }
+});
+
+// --- FUNCIONES DE IMPORTACIÓN CSV ---
+// Función para abrir el selector de archivos
+window.abrirSelectorCSV = function() {
+    const input = document.getElementById('fileInput'); // <--- Debe coincidir con el ID del HTML
+    if (input) {
+        input.click();
+    } else {
+        console.error("No se encontró el elemento <input type='file' id='fileInput'>");
+        alert("Error: No se encuentra el campo de carga de archivos. Recarga la página.");
+    }
+}
+
+window.procesarArchivoExcel = function(input) {
+    const archivo = input.files[0];
+    if (!archivo) return;
+
+    // 1. Referencias al Overlay (Spinner Pantalla Completa)
+    const overlay = document.getElementById('loading-overlay');
+    const textoOverlay = overlay.querySelector('p'); // El texto debajo del spinner
+    const textoOriginalOverlay = textoOverlay.innerText; // Guardamos "Cargando Agenda..." para restaurarlo luego
+
+    // Referencias al botón (para evitar doble clic de fondo)
+    const btnImport = document.getElementById('btnImport');
+    btnImport.disabled = true;
+
+    const reader = new FileReader();
+
+    reader.onload = async function(e) {
+        try {
+            // 2. ACTIVAR SPINNER
+            overlay.style.display = 'flex';
+            textoOverlay.innerText = "📂 Analizando Excel...";
+
+            // --- LECTURA DEL ARCHIVO ---
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, {type: 'array', cellDates: true, dateNF: 'yyyy-mm-dd'}); 
+            const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+            const lineas = XLSX.utils.sheet_to_json(worksheet, {header: 1, defval: "", raw: false});
+
+            if (lineas.length < 2) {
+                alert("El archivo Excel parece estar vacío.");
+                return;
+            }
+
+            // Pausa momentánea para ocultar spinner y mostrar confirmación (el confirm bloquea el render)
+            overlay.style.display = 'none'; 
+            
+            if(!confirm(`Procesando Excel (${lineas.length - 1} filas).
+
+MODO DE PRECISIÓN:
+1. Si hay Coordenadas (Col F y G) -> Se usan directo.
+2. Si no -> Se busca la Dirección en el mapa.
+
+¿Continuar?`)) {
+                input.value = ''; 
+                btnImport.disabled = false;
+                textoOverlay.innerText = textoOriginalOverlay;
+                return;
+            }
+
+            // 3. REACTIVAR SPINNER PARA EL PROCESO
+            overlay.style.display = 'flex';
+            textoOverlay.innerText = "🚀 Iniciando motor de importación...";
+
+            let contExito = 0;
+            let contError = 0;
+            let contCoordsDirectas = 0; 
+
+            // Batch config
+            const BATCH_SIZE = 400; 
+            let batch = writeBatch(db);
+            let operationCounter = 0;
+
+            const formatearFecha = (val) => {
+                if (!val) return null;
+                if (val instanceof Date) return val.toISOString().split('T')[0];
+                let str = val.toString().trim();
+                if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+                if (str.includes('/')) {
+                    const partes = str.split('/');
+                    if (partes.length === 3) {
+                        let dia = partes[0].padStart(2, '0');
+                        let mes = partes[1].padStart(2, '0');
+                        let ano = partes[2];
+                        if (ano.length === 2) ano = "20" + ano; 
+                        return `${ano}-${mes}-${dia}`;
+                    }
+                }
+                return null;
+            };
+
+            const obtenerCoordenadasDeAPI = async (direccion, ciudad) => {
+                if (!direccion || direccion.length < 2) return { lat: "", lng: "" };
+                try {
+                    let url = `https://geocode.search.hereapi.com/v1/geocode?q=${encodeURIComponent(direccion)}&apiKey=${API_KEY_HERE}&lang=es&limit=1`;
+                    if (ciudad && ciudad.length > 2 && ciudad !== "Sin Ciudad") url += `&qq=city=${encodeURIComponent(ciudad)};country=MEX`;
+                    else url += `&qq=country=MEX`;
+
+                    const res = await fetch(url);
+                    const data = await res.json();
+
+                    if (data.items && data.items.length > 0) {
+                        return { lat: data.items[0].position.lat, lng: data.items[0].position.lng };
+                    }
+                } catch (e) { console.error("Error Geo", e); }
+                return { lat: "", lng: "" };
+            };
+
+            const esperar = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+            // --- BUCLE PRINCIPAL ---
+            for (let i = 1; i < lineas.length; i++) {
+                const fila = lineas[i];
+                if (!fila || fila.length === 0) continue;
+
+                // 4. ACTUALIZAR TEXTO DEL SPINNER CON EL PROGRESO
+                textoOverlay.innerText = `⏳ Importando fila ${i} de ${lineas.length - 1}...`;
+
+                // --- MAPEO DE COLUMNAS ---
+                const rawInicio = fila[0];
+                const rawFin = fila[1];
+                const cliente = fila[2] ? fila[2].toString().trim() : "Cliente";
+                const ciudad = fila[3] ? fila[3].toString().trim() : "Sin Ciudad";
+                const direccionTexto = fila[4] ? fila[4].toString().trim() : "";
+                const rawLat = fila[5]; 
+                const rawLng = fila[6];
+
+                const fInicio = formatearFecha(rawInicio);
+                const fFin = formatearFecha(rawFin);
+
+                if (!fInicio || !fFin) { contError++; continue; }
+
+                // --- LÓGICA DE UBICACIÓN ---
+                let latFinal = "";
+                let lngFinal = "";
+
+                if (rawLat && rawLng && !isNaN(parseFloat(rawLat)) && !isNaN(parseFloat(rawLng))) {
+                    latFinal = parseFloat(rawLat);
+                    lngFinal = parseFloat(rawLng);
+                    contCoordsDirectas++;
+                } else {
+                    const coordsAPI = await obtenerCoordenadasDeAPI(direccionTexto, ciudad);
+                    latFinal = coordsAPI.lat;
+                    lngFinal = coordsAPI.lng;
+                    await esperar(150); 
+                }
+
+                const rangos = calcularRangosSinDomingo(fInicio, fFin);
+                if (rangos.length === 0) { contError++; continue; }
+
+                const cleanClient = cliente.replace(/[^a-zA-Z0-9]/g, '');
+                const groupId = `GRP_${fInicio}_${cleanClient}`;
+
+                for (let r of rangos) {
+                    let startStr = r.start.toISOString().split('T')[0];
+                    let endStr = r.end.toISOString().split('T')[0];
+                    const docId = `${startStr}_${cleanClient}`;
+                    const docRef = doc(db, "reservas", docId);
+                    
+                    batch.set(docRef, {
+                        fechaInicio: startStr,
+                        fechaFin: endStr,
+                        cliente: cliente,
+                        ciudad: ciudad,
+                        direccion: direccionTexto,
+                        lat: latFinal,           
+                        lng: lngFinal,           
+                        groupId: groupId,
+                        creado: new Date()
+                        // pdfUrl: null  <-- Mantenemos comentada esta línea para no borrar adjuntos
+                    }, { merge: true });
+
+                    operationCounter++;
+                    contExito++; 
+
+                    if (operationCounter >= BATCH_SIZE) {
+                        await batch.commit();
+                        batch = writeBatch(db); 
+                        operationCounter = 0;
+                    }
+                }
+            }
+
+            if (operationCounter > 0) await batch.commit();
+
+            // 5. MENSAJE FINAL
+            textoOverlay.innerText = "✅ Finalizando...";
+            
+            alert(`Importación Completada.
+✅ Total Registros: ${contExito}
+🎯 Usaron Coordenadas Exactas: ${contCoordsDirectas}
+🗺️ Buscados en Mapa: ${contExito - contCoordsDirectas}`);
+            
+            await cargarReservas(true); // Recarga forzada
+
+        } catch (error) {
+            console.error(error);
+            alert("Error crítico en el archivo Excel: " + error.message);
+        } finally {
+            // 6. LIMPIEZA FINAL: OCULTAR SPINNER Y RESTAURAR TEXTO
+            overlay.style.display = 'none';
+            textoOverlay.innerText = textoOriginalOverlay; // "Cargando Agenda..."
+            
+            btnImport.disabled = false;
+            input.value = '';
+        }
+    };
+    reader.readAsArrayBuffer(archivo);
+}
+
+// --- Función auxiliar para copiar texto al portapapeles ---
+window.copiarTextoAlPortapapeles = function(texto, elementoIcono) {
+    if (!texto) return;
+
+    // API moderna de portapapeles
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+         navigator.clipboard.writeText(texto)
+            .then(() => {
+                // Feedback visual: cambiar icono temporalmente
+                const iconoOriginal = elementoIcono.innerText;
+                elementoIcono.innerText = "✅";
+                // Restaurar el icono original después de 1.5 segundos
+                setTimeout(() => {
+                    elementoIcono.innerText = iconoOriginal;
+                }, 1500);
+            })
+            .catch(err => {
+                console.error('Error al copiar: ', err);
+                alert("Hubo un problema al intentar copiar automáticamente.");
+            });
+    } else {
+        // Método de respaldo (fallback) para navegadores muy viejos
+        const textArea = document.createElement("textarea");
+        textArea.value = texto;
+        document.body.appendChild(textArea);
+        textArea.select();
+        try {
+            document.execCommand('copy');
+            alert("Dirección copiada.");
+        } catch (err) {
+            alert("No se pudo copiar la dirección.");
+        }
+        document.body.removeChild(textArea);
+    }
+};
+
+window.toggleItinerary = function() {
+    const sidebar = document.getElementById('map-sidebar');
+    const icon = document.getElementById('itinerary-toggle-icon');
+    
+    // Solo actuar si estamos en modo móvil (verificando si el header está colapsado o tiene la clase)
+    // Aunque la clase .open solo afecta en móvil por el CSS media query, es seguro alternarla siempre.
+    
+    if (sidebar.classList.contains('open')) {
+        sidebar.classList.remove('open');
+        if(icon) icon.style.transform = 'rotate(0deg)'; // Flecha arriba
+    } else {
+        sidebar.classList.add('open');
+        if(icon) icon.style.transform = 'rotate(180deg)'; // Flecha abajo
+    }
+};
+
+// --- SISTEMA DE AUTO-ACTUALIZACIÓN ---
+async function verificarNuevaVersion() {
+    try {
+        // 1. Obtener la versión que tiene el HTML cargado actualmente
+        // Nota: Esto depende del span que ya tienes: <span id="app-version">1.0.X</span>
+        const elementoVersion = document.getElementById('app-version');
+        if (!elementoVersion) return;
+        
+        // Limpiamos el texto para obtener solo el número "1.0.XXXX"
+        // Asume formato "1.0.1234 (Fecha)" -> split toma la primera parte
+        const versionLocal = elementoVersion.innerText.split(' ')[0].trim();
+
+        // 2. Consultar al servidor la versión real (usamos timestamp para evitar caché)
+        const respuesta = await fetch(`version.json?t=${new Date().getTime()}`, { cache: "no-store" });
+        if (!respuesta.ok) return;
+        
+        const datosServidor = await respuesta.json();
+        const versionServidor = datosServidor.version;
+
+        console.log(`Versión Local: ${versionLocal} | Versión Servidor: ${versionServidor}`);
+
+        // 3. Comparar y recargar si es necesario
+        if (versionServidor && versionLocal !== versionServidor) {
+            console.log("🔄 Nueva versión detectada. Actualizando...");
+            
+            // Opción A: Recarga silenciosa (puede perder datos no guardados)
+            // window.location.reload(true);
+            
+            // Opción B (Recomendada): Preguntar al usuario o mostrar un aviso discreto
+            if(confirm(`¡Nueva actualización disponible!
+
+Se recargará la página para obtener las mejoras.`)) {
+                // El 'true' fuerza la recarga desde el servidor, ignorando caché
+                window.location.reload(true);
+            }
+        }
+    } catch (error) {
+        console.log("No se pudo verificar actualizaciones:", error);
+    }
+}
+
+// Ejecutar verificación al cargar
+window.addEventListener('load', () => {
+    setTimeout(verificarNuevaVersion, 3000); // Espera 3 seg para no alentar el inicio
+});
+
+// Ejecutar verificación cada vez que la app vuelve a primer plano (común en celulares)
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+        verificarNuevaVersion();
+    }
+});
+
+document.addEventListener('click', function(event) {
+    const menu = document.getElementById('mobile-menu');
+    const hamburger = document.querySelector('.hamburger-btn');
+    
+    // Verificamos si el menú existe y si está abierto
+    if (menu && menu.classList.contains('open')) {
+        // Si el clic NO fue dentro del menú Y TAMPOCO en el botón de hamburguesa
+        if (!menu.contains(event.target) && !hamburger.contains(event.target)) {
+            menu.classList.remove('open');
+        }
+    }
+});
+        
+        // Función de ayuda para depuración desde la consola del navegador.
+        // Se define en un script no-módulo para ser accesible globalmente.
+        function testNotificaciones() {
+            console.log("🧪 Forzando la verificación de notificaciones...");
+            // La función verificarEventosProximos() está en el módulo, por lo que no podemos llamarla directamente.
+            // En su lugar, disparamos un evento personalizado que el módulo escuchará.
+            window.dispatchEvent(new CustomEvent('test-notificaciones'));
+        }
+    
+    // 1. Registrar Service Worker
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('sw.js') // Ruta corregida
+                .then(reg => console.log('Service Worker registrado: ', reg.scope))
+                .catch(err => console.log('Service Worker falló: ', err));
+        });
+    }
+
+    // 2. Lógica del Botón de Instalación (Opcional pero recomendado)
+    let deferredPrompt;
+    // Escuchar el evento que indica que la app es instalable
+    window.addEventListener('beforeinstallprompt', (e) => {
+        // Prevenir que Chrome muestre el banner automáticamente (opcional, si quieres control total)
+        // e.preventDefault(); 
+        
+        // Guardar el evento para dispararlo cuando quieras
+        deferredPrompt = e;
+        
+        // Mostrar un botón "Instalar" en tu menú (si tienes uno oculto)
+        // Ejemplo: document.getElementById('btnInstallApp').style.display = 'block';
+        console.log("App lista para instalar");
+    });
+
+    // Función para llamar desde un botón: <button onclick="instalarApp()">Instalar</button>
+    async function instalarApp() {
+        if (deferredPrompt) {
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            console.log(`Usuario eligió: ${outcome}`);
+            deferredPrompt = null;
+        }
+    }

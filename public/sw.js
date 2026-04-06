@@ -3,7 +3,7 @@ const ASSETS = [
   '/public/', // Caché del ámbito principal
   '/public/index.html',
   '/public/manifest.json',
-  '/public/admin-config.js', // Nuevo archivo de configuración
+  'admin-config.js', // Nuevo archivo de configuración
   '/public/favicon.ico',
   '/public/icon-192.png',
   '/public/icon-512.png',
