@@ -490,7 +490,7 @@ function actualizarUIConEstadoAdmin() {
     if (esAdmin) {
         btnLogin.style.display = 'none';
         btnLogout.style.display = 'inline-block';
-        if(adminStatus && auth.currentUser) adminStatus.innerText = `🟢 ${auth.currentUser.displayName || auth.currentUser.email.split('@')[0]}`;
+        if(adminStatus && auth.currentUser) adminStatus.innerText = `🔰`;
         if(adminStatus) adminStatus.style.display = 'inline-block';
         if(mobileLogin) mobileLogin.style.display = 'none';
         if(mobileLogout) mobileLogout.style.display = 'block';
