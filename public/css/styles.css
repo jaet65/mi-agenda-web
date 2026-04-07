@@ -12,6 +12,8 @@
             --shadow-color: rgba(0,0,0,0.05);
             --input-bg: #f9f9f9;
             --input-focus-bg: white;
+            --input-readonly-bg: #e9ecef;
+            --input-readonly-color: #6c757d;
             --hover-bg: #e3effd;
             --glass-bg: rgba(255, 255, 255, 0.50);
             --glass-border: rgba(255, 255, 255, 0.15);
@@ -33,6 +35,8 @@
             --shadow-color: rgba(0,0,0,0.2);
             --input-bg: #2f333a;
             --input-focus-bg: #3a3f48;
+            --input-readonly-bg: var(--input-focus-bg);
+            --input-readonly-color: var(--text-color-muted);
             --hover-bg: rgba(90, 150, 255, 0.15); /* Accent color hover */
             --glass-bg: rgba(36, 40, 47, 0.6); /* Adjusted glass */
             --glass-border: rgba(255, 255, 255, 0.08);
@@ -91,6 +95,11 @@
             margin-right: 10px;
             vertical-align: middle;
         }
+        
+        /* Lógica para cambiar el logo en modo oscuro */
+        .dark-logo { display: none; }
+        body.dark-mode .light-logo { display: none; }
+        body.dark-mode .dark-logo { display: inline; }
         
         /* BUSCADOR GLOBAL */
         .search-container {
@@ -526,7 +535,7 @@
         .form-group { margin-bottom: 15px; position: relative; } 
         label { display: block; margin-bottom: 5px; font-weight: 600; font-size: 0.9rem; color: var(--text-color); }
         input { width: 100%; padding: 10px; box-sizing: border-box; border: 1px solid var(--border-color); border-radius: 6px; font-size: 1rem; background-color: var(--input-bg); color: var(--text-color); }
-        input[readonly] { background-color: #e9ecef; color: #6c757d; cursor: not-allowed; } 
+        input[readonly] { background-color: var(--input-readonly-bg); color: var(--input-readonly-color); cursor: not-allowed; } 
         
         .btn-save { background: #28a745; color: white; border: none; padding: 12px; width: 100%; border-radius: 6px; margin-top: 5px; font-weight: bold;}
         .btn-delete { background: #dc3545; color: white; border: none; padding: 12px; width: 100%; border-radius: 6px; margin-top: 15px; font-weight: bold;}
@@ -547,6 +556,32 @@
         .btn-omitir { background: #ffc107; color: #333; border: none; font-weight: 500; }
         .btn-manual { background: #17a2b8; color: white; border: none; font-weight: 500; }
         .btn-retry { background: #6c757d; color: white; border: none; }
+
+        /* Contenedor de información del PDF en el modal de detalles */
+        #pdfInfo {
+            padding: 1px;
+            background-color: transparent;
+            border: 1px solid transparent;
+            border-radius: 1px;
+        }
+
+        /* Estilos para botones de Guardar/Editar en sección de Documentación */
+        .btn-drive-edit {
+            background-color: var(--input-bg);
+            color: var(--text-color-light);
+            border: 1px solid var(--border-color);
+        }
+        .btn-drive-edit:hover {
+            background-color: var(--hover-bg);
+        }
+        .btn-drive-save {
+            background-color: #28a745; /* Verde para guardar */
+            color: white;
+            border: 1px solid transparent;
+        }
+        .btn-drive-save:hover {
+            background-color: #218838; /* Verde más oscuro al pasar el mouse */
+        }
 
         .fc-header-toolbar { font-size: 0.85em; }
         .fc-multimonth-header { background: var(--fc-multimonth-header-bg); padding: 5px 0; }
@@ -614,7 +649,6 @@
         body.dark-mode .ruta-item.activa { background-color: #05a83b30; }
         body.dark-mode .ruta-item.destacada { background-color: #f1c40f30; }
         body.dark-mode #map-canvas { background: var(--bg-color); }
-        body.dark-mode input[readonly] { background-color: #3a3a3a; color: #888; }
         body.dark-mode .match-item:hover { background-color: var(--hover-bg); }
         body.dark-mode .match-item strong { color: var(--text-color); }
         body.dark-mode .match-item small { color: var(--text-color-light); }

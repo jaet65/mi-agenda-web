@@ -1769,12 +1769,12 @@ window.habilitarEdicionDrive = function() {
     
     // Habilitar escritura
     input.readOnly = false;
-    input.style.backgroundColor = "#ffffff";
     input.focus();
     
     // Cambiar icono a guardar
     btnGuardar.textContent = "💾";
-    btnGuardar.style.background = "#28a745"; 
+    btnGuardar.classList.remove('btn-drive-edit');
+    btnGuardar.classList.add('btn-drive-save');
     btnGuardar.onclick = function() { window.guardarEnlaceDrive(); };
 
     // Mantener visible el botón de eliminar
@@ -1863,21 +1863,19 @@ window.mostrarDetalles = function(evento) {
             linkPDF.href = urlExistente;
             driveUrlInput.value = urlExistente;
             driveUrlInput.readOnly = true;
-            driveUrlInput.style.backgroundColor = "#e9ecef"; 
             btnGuardarDrive.textContent = "✏️";
-            btnGuardarDrive.style.background = "#ffc107";
-            btnGuardarDrive.style.color = "#333";
+            btnGuardarDrive.classList.remove('btn-drive-save');
+            btnGuardarDrive.classList.add('btn-drive-edit');
             btnGuardarDrive.onclick = function() { window.habilitarEdicionDrive(); };
             btnEliminarDrive.style.display = "block";
         } else {
             pdfInfo.style.display = 'none';
             driveUrlInput.value = "";
             driveUrlInput.readOnly = false;
-            driveUrlInput.style.backgroundColor = "#ffffff";
             driveUrlInput.placeholder = "Pegar enlace de Google Drive";
             btnGuardarDrive.textContent = "💾";
-            btnGuardarDrive.style.background = "#28a745";
-            btnGuardarDrive.style.color = "white";
+            btnGuardarDrive.classList.remove('btn-drive-edit');
+            btnGuardarDrive.classList.add('btn-drive-save');
             btnGuardarDrive.onclick = function() { window.guardarEnlaceDrive(); };
             btnEliminarDrive.style.display = "none";
         }
@@ -1887,7 +1885,6 @@ window.mostrarDetalles = function(evento) {
             linkPDF.href = urlExistente;
             driveUrlInput.value = urlExistente;
             driveUrlInput.readOnly = true;
-            driveUrlInput.style.backgroundColor = "#e9ecef"; 
             seccionPDF.style.display = 'block';
             adminPDFInput.style.display = 'none';
             btnEliminar.style.display = 'none';
