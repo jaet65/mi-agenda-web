@@ -246,6 +246,12 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             return { domNodes: [container] };
         },
+        // Nuevo: Permite añadir atributos personalizados al DOM del evento para fácil selección
+        eventDidMount: function(info) {
+            if (info.el) {
+                info.el.setAttribute('data-event-id', info.event.id);
+            }
+        },
         height: '100%',
         initialView: 'multiMonthYear', 
         locale: 'es',
@@ -290,7 +296,7 @@ document.addEventListener('DOMContentLoaded', function() {
         eventClick: function(info) { 
             if (info.event.display === 'background') return;
             if (info.event.start.getDay() === 0) { alert("⛔ Servicio no disponible los domingos."); return; }
-            mostrarDetalles(info.event); 
+            mostrarDetalles(info.event);
         }
     });
     
@@ -516,11 +522,43 @@ window.seleccionarResultado = function(reserva) {
         if(document.getElementById('agenda-view').style.display === 'block') {
             mostrarCalendario();
         }
-        calendar.gotoDate(reserva.start);
-        const eventoCal = calendar.getEventById(reserva.id);
-        if (eventoCal) mostrarDetalles(eventoCal);
-        else calendar.select(reserva.start);
+        resaltarEventoEnCalendario(reserva.id);
     }
+}
+
+// Nueva función para resaltar un evento en el calendario
+function resaltarEventoEnCalendario(reservaId) {
+    // Asegurarse de que la vista de calendario esté activa
+    if (document.getElementById('calendar-container').style.display === 'none') {
+        mostrarCalendario();
+    }
+
+    const evento = calendar.getEventById(reservaId);
+    if (!evento) {
+        console.warn(`Evento con ID ${reservaId} no encontrado en el calendario.`);
+        return;
+    }
+
+    // Navegar a la fecha del evento
+    calendar.gotoDate(evento.start);
+
+    // Pequeño retraso para asegurar que FullCalendar ha renderizado el evento
+    setTimeout(() => {
+        // Seleccionar el elemento DOM del evento
+        // Usamos el atributo data-event-id que añadimos en eventDidMount
+        const eventEl = document.querySelector(`.fc-event[data-event-id='${reservaId}']`);
+
+        if (eventEl) {
+            eventEl.classList.add('event-blink');
+            // Quitar la animación después de unos segundos
+            setTimeout(() => {
+                eventEl.classList.remove('event-blink');
+            }, 3000); // Parpadea por 3 segundos
+
+            // Opcional: Hacer scroll al evento si está fuera de la vista
+            eventEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }, 300); // Esperar 300ms para el renderizado
 }
 
 // --- AUTOCOMPLETE DE DIRECCIÓN (MEJORADO PARA DIRECCIONES COMPLEJAS) ---
@@ -1436,8 +1474,14 @@ window.actualizarMapaYLista = function(centrarHoy = false) {
                 }
                 ciudadesMap[nombreCiudad].clientes.add(r.data.cliente);
                 
-                let current = new Date(r.start);
-                while (current <= r.end) {
+                // Corrección: Usar el método de 'T12:00:00' para evitar problemas de zona horaria
+                // al contar los días, igual que en la función de estadísticas.
+                const fechaStringInicio = r.data.fechaInicio;
+                const fechaStringFin = r.data.fechaFin;
+                let current = new Date(fechaStringInicio + 'T12:00:00');
+                const fechaLimite = new Date(fechaStringFin + 'T12:00:00');
+
+                while (current <= fechaLimite) {
                     if (current.getDay() !== 0) ciudadesMap[nombreCiudad].diasTotales++;
                     current.setDate(current.getDate() + 1);
                 }

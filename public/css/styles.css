@@ -530,4 +530,25 @@
         .dot.blue { background: #007bff; }   /* Futuro */
         .dot.gold { background: #f1c40f; }   /* Siguiente */
         .dot.red { background: #35dc6d; }    /* Hoy */
+
+        /* --- ANIMACIÓN DE PARPADEO PARA EVENTOS DEL CALENDARIO --- */
+        .event-blink {
+            animation: blink 0.5s linear infinite alternate; /* Animación de parpadeo */
+            box-shadow: 0 0 10px 5px rgba(255, 255, 0, 0.7); /* Sombra luminosa (amarilla) */
+            z-index: 1000; /* Asegurar que esté por encima de otros eventos */
+            position: relative; /* Necesario para que z-index funcione */
+        }
+        
+        @keyframes blink {
+            0% { 
+                background-color: var(--fc-event-bg-color, #3788d8); /* Color original del evento */
+                box-shadow: 0 0 5px 2px rgba(255, 255, 0, 0.4);
+                transform: scale(1);
+            }
+            100% { 
+                background-color: #ffc107; /* Amarillo para resaltar */
+                box-shadow: 0 0 15px 8px rgba(255, 255, 0, 0.9);
+                transform: scale(1.05);
+            }
+        }
     
