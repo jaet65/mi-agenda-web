@@ -165,6 +165,10 @@ let calendar;
 let map; 
 let markers = []; 
 let esAdmin = false;
+let currentTileLayer; // Para poder cambiar el tema del mapa
+const HERE_STYLE_LIGHT = 'explore.day';
+const HERE_STYLE_DARK = 'lite.night'; // Estilo oscuro de HERE Maps
+
 let eventoSeleccionadoID = null;
 let grupoSeleccionadoID = null; 
 let statsPorAno = {}; 
@@ -213,6 +217,11 @@ const greyIcon = new L.Icon({
 });
 
 document.addEventListener('DOMContentLoaded', function() {
+    // --- GESTIÓN DE TEMA (MODO OSCURO) ---
+    // Inyectamos los botones y aplicamos el tema guardado.
+    inyectarBotonesTema();
+    applyTheme(localStorage.getItem('agenda_theme') || 'light');
+
     var calendarEl = document.getElementById('calendar');
     const esMovil = window.innerWidth < 768; 
 
@@ -305,12 +314,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // 3. Inicializar Mapa (Ligero si no agregamos pines aún)
     map = L.map('map-canvas').setView([23.6345, -102.5528], 5);
-    const HERE_STYLE = 'explore.day'; 
-    L.tileLayer(`https://maps.hereapi.com/v3/base/mc/{z}/{x}/{y}/png8?style=${HERE_STYLE}&apiKey=${API_KEY_HERE}`, {
-        attribution: '© 2024 HERE',
-        maxZoom: 20
-    }).addTo(map);
-
+    setMapTileLayer(); // Usar la nueva función para establecer el mapa base
     document.getElementById('map-year-display').textContent = currentMapYear;
 
     // 4. CARGA DE DATOS DIFERIDA (EL TRUCO FINAL)
@@ -327,6 +331,72 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }, 100);
 });
+
+function inyectarBotonesTema() {
+    // Botón para escritorio
+    const desktopContainer = document.querySelector('.desktop-buttons');
+    if (desktopContainer) {
+        const themeBtn = document.createElement('button');
+        themeBtn.id = 'btn-theme-toggle';
+        themeBtn.className = 'theme-toggle-btn';
+        themeBtn.title = 'Cambiar tema';
+        themeBtn.addEventListener('click', toggleTheme);
+        
+        // Insertarlo como primer elemento de los controles para que quede al lado del buscador
+        desktopContainer.insertBefore(themeBtn, desktopContainer.firstChild);
+    }
+
+    // Botón para menú móvil
+    const mobileMenu = document.getElementById('mobile-menu');
+    if (mobileMenu) {
+        const mobileThemeBtn = document.createElement('button');
+        mobileThemeBtn.id = 'mobile-btn-theme-toggle';
+        mobileThemeBtn.innerHTML = '🌓 Cambiar Tema';
+        mobileThemeBtn.addEventListener('click', toggleTheme);
+        
+        // Añadir una sección de "Apariencia" para el botón
+        const appearanceTitle = document.createElement('div');
+        appearanceTitle.className = 'mobile-section-title';
+        appearanceTitle.innerText = 'APARIENCIA';
+
+        // Insertar el título y el botón al principio del menú móvil
+        mobileMenu.insertBefore(mobileThemeBtn, mobileMenu.firstChild);
+        mobileMenu.insertBefore(appearanceTitle, mobileThemeBtn);
+    }
+}
+
+function applyTheme(theme) {
+    if (theme === 'dark') {
+        document.body.classList.add('dark-mode');
+    } else {
+        document.body.classList.remove('dark-mode');
+    }
+    // Actualizar el mapa si ya está inicializado
+    if (map) {
+        setMapTileLayer();
+    }
+}
+
+function toggleTheme() {
+    const currentTheme = document.body.classList.contains('dark-mode') ? 'light' : 'dark';
+    localStorage.setItem('agenda_theme', currentTheme);
+    applyTheme(currentTheme);
+}
+
+function setMapTileLayer() {
+    if (!map) return;
+
+    if (currentTileLayer) {
+        map.removeLayer(currentTileLayer);
+    }
+    const isDark = document.body.classList.contains('dark-mode');
+    const style = isDark ? HERE_STYLE_DARK : HERE_STYLE_LIGHT;
+
+    currentTileLayer = L.tileLayer(`https://maps.hereapi.com/v3/base/mc/{z}/{x}/{y}/png8?style=${style}&apiKey=${API_KEY_HERE}`, {
+        attribution: '© 2024 HERE',
+        maxZoom: 20
+    }).addTo(map);
+}
 
 // --- NOTIFICACIONES DE ESCRITORIO (CLIENT-SIDE) ---
 
