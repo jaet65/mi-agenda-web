@@ -969,34 +969,21 @@ function calcularEstadisticas() {
     statsPorAno = {};
 
     globalReservas.forEach(item => {
-        // TRUCO FINAL: No usamos item.start (que tiene Timezone problemático).
-        // Usamos el texto original "YYYY-MM-DD" que viene de la base de datos.
-        const fechaStringInicio = item.data.fechaInicio; // Ej: "2026-01-12"
-        const fechaStringFin = item.data.fechaFin;       // Ej: "2026-01-16"
-
-        // Construimos la fecha forzando las 12:00:00 (Mediodía Local)
-        // Al unirlo con 'T12:00:00', el navegador crea un Lunes a las 12pm TUYA.
-        let current = new Date(fechaStringInicio + 'T12:00:00');
-        const fechaLimite = new Date(fechaStringFin + 'T12:00:00');
-
-        let diasLaborales = 0;
-
-        // Bucle de conteo
-        while (current <= fechaLimite) {
-            // Si el día NO es domingo (0), cuenta como laboral
-            if (current.getDay() !== 0) {
-                diasLaborales++;
-            }
-            // Avanzamos un día
-            current.setDate(current.getDate() + 1);
+        if (item.data.esEspecial === true) {
+            return; // Excluir eventos especiales del cálculo
         }
 
-        // Cálculo: 5 días = 1 semana
-        const semanas = diasLaborales / 5;
+        const fechaStringInicio = item.data.fechaInicio;
+        const fechaStringFin = item.data.fechaFin;
 
-        const year = current.getFullYear(); // Usamos el año de la fecha procesada
-        // Nota: usamos current (que al final del bucle está cerca de la fecha) 
-        // o mejor volvemos a sacar el año del inicio para ser consistentes:
+        const current = new Date(fechaStringInicio + 'T12:00:00');
+        const fechaLimite = new Date(fechaStringFin + 'T12:00:00');
+
+        let diasTotales = Math.floor((fechaLimite - current) / (1000 * 60 * 60 * 24)) + 1;
+        if (diasTotales < 1) diasTotales = 1;
+
+        const semanas = diasTotales / 5;
+
         const yearInicio = new Date(fechaStringInicio + 'T12:00:00').getFullYear();
 
         if (!statsPorAno[yearInicio]) {
@@ -2501,15 +2488,25 @@ window.generarReporte = function () {
 
     // Agrupar reservaciones consecutivas del mismo cliente (brecha <= 4 días)
     let reservasAgrupadas = [];
+    
+    const calcDias = (res) => {
+        const startObj = new Date(res.data.fechaInicio + 'T12:00:00');
+        const endObj = new Date(res.data.fechaFin + 'T12:00:00');
+        let d = Math.floor((endObj - startObj) / (1000 * 60 * 60 * 24)) + 1;
+        return d < 1 ? 1 : d;
+    };
+
     if (reservasFiltradas.length > 0) {
         let current = JSON.parse(JSON.stringify(reservasFiltradas[0])); // Deep copy simple
         current.start = new Date(current.start);
         current.end = new Date(current.end);
+        current.diasReales = calcDias(current);
 
         for (let i = 1; i < reservasFiltradas.length; i++) {
             let next = JSON.parse(JSON.stringify(reservasFiltradas[i]));
             next.start = new Date(next.start);
             next.end = new Date(next.end);
+            next.diasReales = calcDias(next);
 
             const currentC = (current.data.cliente || "").toLowerCase().trim();
             const nextC = (next.data.cliente || "").toLowerCase().trim();
@@ -2525,6 +2522,7 @@ window.generarReporte = function () {
                         current.data.fechaFin = next.data.fechaFin;
                         current.end = next.end;
                     }
+                    current.diasReales += next.diasReales; // Acumular días sin inflarlos
                     continue;
                 }
             }
@@ -2562,10 +2560,7 @@ window.generarReporte = function () {
     reservasAgrupadas.forEach(r => {
         if (r.data.cliente) clientesSet.add(r.data.cliente.trim().toLowerCase());
 
-        const startObj = new Date(r.start);
-        const endObj = new Date(r.end);
-        let numDias = Math.floor((endObj - startObj) / (1000 * 60 * 60 * 24)) + 1;
-        if (numDias < 1) numDias = 1;
+        let numDias = r.diasReales || 1; // Usar los días puros consolidados
         totalDiasGlobales += numDias;
 
         let ciudadDisplay = 'N/A';
