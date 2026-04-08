@@ -2576,9 +2576,11 @@ window.generarReporte = function () {
 
         const tr = document.createElement('tr');
 
-        const fechaInicio = window.formatearFecha ? window.formatearFecha(r.data.fechaInicio) : r.data.fechaInicio;
-        const fechaFin = window.formatearFecha ? window.formatearFecha(r.data.fechaFin) : r.data.fechaFin;
-        const fechaDisplay = (fechaInicio === fechaFin) ? fechaInicio : `${fechaInicio} - ${fechaFin}`;
+        const fI = r.data.fechaInicio ? r.data.fechaInicio.split('-') : [];
+        const fF = r.data.fechaFin ? r.data.fechaFin.split('-') : [];
+        const fechaInicioStr = fI.length === 3 ? `${fI[2]}/${fI[1]}/${fI[0]}` : r.data.fechaInicio;
+        const fechaFinStr = fF.length === 3 ? `${fF[2]}/${fF[1]}/${fF[0]}` : r.data.fechaFin;
+        const fechaDisplay = `${fechaInicioStr} - ${fechaFinStr}`;
 
         tr.innerHTML = `
             <td>${r.data.cliente || 'N/A'}</td>
