@@ -1952,6 +1952,11 @@ window.iniciarSesion = async function() {
     provider.addScope('profile');
     provider.addScope('email');
 
+    // Forzar que siempre se muestre el selector de cuentas de Google. [1, 3, 6]
+    provider.setCustomParameters({
+        prompt: 'select_account'
+    });
+
     try {
         const result = await signInWithPopup(auth, provider);
         const user = result.user;
@@ -1960,7 +1965,6 @@ window.iniciarSesion = async function() {
             console.log(`Login exitoso como administrador: ${user.email}`);
             esAdmin = true; // Setear la variable global
             actualizarUIConEstadoAdmin(); // Actualizar la UI
-            alert(`¡Bienvenido, ${user.displayName || user.email.split('@')[0]}! Has iniciado sesión como administrador.`);
         } else {
             // Si el correo no está en la lista de administradores, cerrar sesión inmediatamente
             await signOut(auth);
