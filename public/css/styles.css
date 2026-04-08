@@ -1,5 +1,7 @@
         /* --- VARIABLES DE TEMA (MODO CLARO Y OSCURO) --- */
-        :root {
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap');
+
+:root {
             --bg-color: #f0f2f5;
             --header-bg: white;
             --card-bg: white;
@@ -707,4 +709,53 @@
             content: '🌙';
             transform: translateX(20px);
         }
-    
+
+        /* --- DASHBOARD EJECUTIVO --- */
+        .dashboard-kpis {
+            display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap;
+        }
+        .kpi-card {
+            flex: 1; min-width: 120px;
+            background: linear-gradient(135deg, var(--card-bg) 0%, var(--hover-bg) 100%);
+            border-radius: 12px;
+            padding: 15px;
+            text-align: center;
+            box-shadow: 0 4px 6px var(--shadow-color);
+            border: 1px solid var(--border-color-light);
+        }
+        .kpi-card h3 {
+            margin: 0; font-size: 0.75rem; color: var(--text-color-muted); text-transform: uppercase; letter-spacing: 1px;
+        }
+        .kpi-card p {
+            margin: 10px 0 0 0; font-size: 1.6rem; font-weight: bold; color: var(--accent-color);
+        }
+        .dashboard-table-container {
+            background: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: 0 4px 6px var(--shadow-color);
+            overflow: hidden;
+            border: 1px solid var(--border-color-light);
+            margin-bottom: 20px;
+        }
+        .dashboard-table {
+            width: 100%; border-collapse: collapse; font-size: 0.85rem;
+        }
+        .dashboard-table th {
+            background-color: var(--hover-bg); padding: 12px 15px; text-align: left; font-weight: 600; color: var(--text-color); border-bottom: 2px solid var(--border-color);
+        }
+        .dashboard-table td {
+            padding: 12px 15px; border-bottom: 1px solid var(--border-color-light); color: var(--text-color); font-weight: 500;
+        }
+        .dashboard-table tbody tr:hover {
+            background-color: var(--hover-bg);
+        }
+
+        /* Utilidad para forzar transparencia total y estilos al exportar PDF */
+        .pdf-export-mode,
+        .pdf-export-mode * {
+            background-color: transparent !important;
+            background: transparent !important;
+            background-image: none !important;
+            font-family: 'Montserrat', sans-serif !important;
+            color: #000 !important;
+        }

@@ -1,34 +1,41 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
     <title>Agenda TrackSIM</title>
-    
+
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#ffffff">
     <link rel="apple-touch-icon" href="favicon.ico">
     <link rel="icon" type="image/png" href="favicon.ico">
-    
+
     <meta property="og:title" content="Agenda TrackSIM">
     <meta property="og:description" content="Gestión de itinerarios y servicios TrackSIM.">
     <meta property="og:image" content="favicon.ico">
 
     <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js' defer></script>
-    
+
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
 
     <link rel="stylesheet" href="css/styles.css">
 
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js" defer></script>
+
 
 </head>
+
 <body>
-    <div id="loading-overlay" style="position:fixed; top:0; left:0; width:100%; height:100%; background:white; z-index:9999; display:flex; justify-content:center; align-items:center; flex-direction:column;">
-    <div class="loader" style="width: 50px; height: 50px; border-width: 5px;"></div>
-    <p style="margin-top:15px; color:#555; font-weight:bold;">Cargando Agenda...</p>
+    <div id="loading-overlay"
+        style="position:fixed; top:0; left:0; width:100%; height:100%; background:white; z-index:9999; display:flex; justify-content:center; align-items:center; flex-direction:column;">
+        <div class="loader" style="width: 50px; height: 50px; border-width: 5px;"></div>
+        <p style="margin-top:15px; color:#555; font-weight:bold;">Cargando Agenda...</p>
     </div>
 
     <div class="header">
@@ -47,7 +54,7 @@
 
         <div class="header-controls">
             <span id="admin-stats"></span>
-            
+
             <div class="desktop-buttons">
                 <div class="dropdown-share">
                     <button class="btn-share">📤 Share</button>
@@ -59,8 +66,12 @@
                 </div>
 
                 <button id="btn-go-map" class="btn-action btn-map-toggle" onclick="mostrarMapa()">🗺️ Mapa</button>
-                <button id="btnImport" class="btn-share" onclick="abrirSelectorCSV()" style="display:none; background-color: #6f42c1; margin-right: 5px;">📥 Import</button>
-                    <input type="file" id="fileInput" accept=".xlsx, .xls" style="display: none;" onchange="procesarArchivoExcel(this)">
+                <button id="btnReporte" class="btn-action" onclick="abrirReporteModal()"
+                    style="display:none; background-color: #17a2b8; margin-right: 5px;">📊 Reporte</button>
+                <button id="btnImport" class="btn-share" onclick="abrirSelectorCSV()"
+                    style="display:none; background-color: #6f42c1; margin-right: 5px;">📥 Import</button>
+                <input type="file" id="fileInput" accept=".xlsx, .xls" style="display: none;"
+                    onchange="procesarArchivoExcel(this)">
                 <button id="btnLogin" class="btn-action" onclick="iniciarSesion()">🔐</button>
                 <button id="btnLogout" class="btn-action" onclick="cerrarSesion()" style="display:none;">➜🚪</button>
             </div>
@@ -73,16 +84,19 @@
             <button onclick="compartirApp(); toggleMenu()">🔗 Enviar Vínculo</button>
             <button onclick="verQR(); toggleMenu()">📱 Ver Código QR</button>
             <button id="mobile-btn-export" onclick="exportarCalendario(); toggleMenu()">📅 Exportar Calendario</button>
-            
+
             <div class="mobile-section-title">Navegación</div>
             <button id="mobile-btn-map" onclick="mostrarMapa(); toggleMenu()">🗺️ Mapa</button>
-            
-            <button id="mobile-btn-import" onclick="abrirSelectorCSV(); toggleMenu()" style="display:none; background-color: #6f42c1; color: white;">📥 Import</button>
-            
+            <button id="mobile-btn-reporte" onclick="abrirReporteModal(); toggleMenu()"
+                style="display:none; background-color: #17a2b8; color: white;">📊 Reporte</button>
+            <button id="mobile-btn-import" onclick="abrirSelectorCSV(); toggleMenu()"
+                style="display:none; background-color: #6f42c1; color: white;">📥 Import</button>
+
             <hr style="width:100%; border:0; border-top:1px solid #eee; margin:5px 0;">
-            
+
             <button id="mobile-btn-login" onclick="iniciarSesion(); toggleMenu()">🔐 Entrar</button>
-            <button id="mobile-btn-logout" style="display:none;" onclick="cerrarSesion(); toggleMenu()">➜🚪 Salir</button>
+            <button id="mobile-btn-logout" style="display:none;" onclick="cerrarSesion(); toggleMenu()">➜🚪
+                Salir</button>
         </div>
     </div>
 
@@ -90,7 +104,7 @@
         <div id="calendar-container">
             <div id='calendar'></div>
         </div>
-        
+
         <div id="agenda-view">
             <div style="text-align:center; padding-top: 20px; padding-bottom: 0;">
                 <h2 style="color:#2c3e50; margin: 0;">Agenda de Servicios</h2>
@@ -105,8 +119,8 @@
                 text-align: center;
                 pointer-events: none; /* Permite hacer clic a través del espacio vacío */
             ">
-                <button class="btn-secondary" onclick="mostrarCalendario()" 
-                        style="box-shadow: 0 4px 15px rgba(0,0,0,0.3); pointer-events: auto;border-radius: 30px;background-color: white; color: #333;">
+                <button class="btn-secondary" onclick="mostrarCalendario()"
+                    style="box-shadow: 0 4px 15px rgba(0,0,0,0.3); pointer-events: auto;border-radius: 30px;background-color: white; color: #333;">
                     📅 Volver al Calendario
                 </button>
             </div>
@@ -121,16 +135,16 @@
                         <span>📍 Itinerario</span>
                         <span id="header-year-label" style="color:#007bff; font-weight:bold;"></span>
                     </div>
-                    
+
                     <span id="itinerary-toggle-icon">▲</span>
                 </h3>
-                
+
                 <div class="map-year-controls">
                     <button class="map-year-btn" onclick="cambiarAnoMapa(-1)">&lt;</button>
                     <span id="map-year-display"></span>
                     <button class="map-year-btn" onclick="cambiarAnoMapa(1)">&gt;</button>
                 </div>
-                
+
                 <div class="legend-container">
                     <span class="legend-item"><span class="dot grey"></span> Pasado</span>
                     <span class="legend-item"><span class="dot red"></span> Hoy</span>
@@ -158,7 +172,7 @@
             <p style="text-align:center; font-size:0.9rem; color:#666; margin-bottom:15px;">
                 Desglose histórico de reservación:
             </p>
-            
+
             <ul id="listaStats" class="match-list"></ul>
 
             <button onclick="cerrarModal('statsModal')" class="btn-secondary" style="margin-top:15px; width:100%;">
@@ -171,7 +185,7 @@
         <div class="modal-content">
             <span class="close-x" onclick="cerrarModal('reservaModal')">×</span>
             <h2 style="margin-top:0;">Nueva Reserva</h2>
-            
+
             <div class="form-group">
                 <label>Desde: <span style="color:red">*</span></label>
                 <input type="date" id="fechaInicio">
@@ -180,7 +194,7 @@
                 <label>Hasta: <span style="color:red">*</span></label>
                 <input type="date" id="fechaFin">
             </div>
-            
+
             <div class="form-group">
                 <label>Cliente: <span style="color:red">*</span></label>
                 <input type="text" id="nombreInput" placeholder="Nombre completo">
@@ -188,20 +202,24 @@
 
             <div class="form-group">
                 <label>Dirección / Ubicación (Opcional):</label>
-                <input type="text" id="direccionInput" placeholder="Escribe dirección para buscar..." autocomplete="off">
+                <input type="text" id="direccionInput" placeholder="Escribe dirección para buscar..."
+                    autocomplete="off">
                 <ul id="listaSugerencias" class="suggestions-list"></ul>
             </div>
 
             <div class="form-group">
                 <label>Ciudad (Opcional):</label>
                 <input type="text" id="ciudadInput" placeholder="Se llenará sola o escribe para buscar..." readonly>
-                <ul id="listaSugerenciasCiudad" class="suggestions-list" style="bottom:100%; top:auto; border-radius:6px 6px 0 0; border-bottom:none;"></ul>
+                <ul id="listaSugerenciasCiudad" class="suggestions-list"
+                    style="bottom:100%; top:auto; border-radius:6px 6px 0 0; border-bottom:none;"></ul>
                 <input type="hidden" id="latTemp">
                 <input type="hidden" id="lonTemp">
             </div>
 
-            <div class="form-group" style="display: flex; align-items: center; gap: 10px; margin-top: 15px; user-select: none;">
-                <input type="checkbox" id="eventoEspecialCheck" style="width: auto; height: 18px; margin: 0; cursor: pointer;">
+            <div class="form-group"
+                style="display: flex; align-items: center; gap: 10px; margin-top: 15px; user-select: none;">
+                <input type="checkbox" id="eventoEspecialCheck"
+                    style="width: auto; height: 18px; margin: 0; cursor: pointer;">
                 <label for="eventoEspecialCheck" style="margin: 0; font-weight: normal; cursor: pointer;">
                     🎉 Evento especial (resaltar)
                 </label>
@@ -217,7 +235,7 @@
             <h3 style="margin-top:0;">Selecciona una ubicación</h3>
             <p style="font-size:0.9rem; color:#555; text-align:left;">Hemos encontrado estas coincidencias:</p>
             <ul id="listaCoincidencias" class="match-list" style="text-align:left;"></ul>
-            
+
             <div class="modal-buttons-row">
                 <button class="btn-omitir" onclick="usarSinCiudad()">🚫 Omitir (Sin Ciudad)</button>
                 <button class="btn-manual" onclick="habilitarManual()">✍️ Ingresar Manualmente</button>
@@ -231,7 +249,8 @@
             <span class="close-x" onclick="cerrarModal('successModal')">×</span>
             <h2 style="color:#28a745; margin-top:0;">✅ ¡Reserva Guardada!</h2>
             <p>La reserva se ha registrado correctamente.</p>
-            <button onclick="cerrarModal('successModal')" class="btn-secondary" style="margin-top:15px; width:100%;">Cerrar</button>
+            <button onclick="cerrarModal('successModal')" class="btn-secondary"
+                style="margin-top:15px; width:100%;">Cerrar</button>
         </div>
     </div>
 
@@ -243,35 +262,44 @@
             <p><strong>Ciudad:</strong> <span id="detCiudad"></span></p>
             <p><strong>Dirección:</strong> <span id="detDireccion"></span></p>
             <p><strong>Fechas:</strong> <span id="detFechas"></span></p>
-            
-            <div id="seccionPDF" style="margin-top: 15px; padding: 10px; background: #f8f9fa18; border-radius: 8px; display: none;">
+
+            <div id="seccionPDF"
+                style="margin-top: 15px; padding: 10px; background: #f8f9fa18; border-radius: 8px; display: none;">
                 <p style="margin:0 0 10px 0;"><strong>Documentación:</strong></p>
-                
-                <div id="pdfInfo" style="display: none; align-items: center; justify-content: space-between; margin-bottom: 10px;">
-                    <a id="linkPDF" href="#" target="_blank" style="color: #3300ff; text-decoration: none; font-weight: bold;">
+
+                <div id="pdfInfo"
+                    style="display: none; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+                    <a id="linkPDF" href="#" target="_blank"
+                        style="color: #3300ff; text-decoration: none; font-weight: bold;">
                         📄 Abrir en Drive
                     </a>
                 </div>
 
                 <div id="adminPDFInput" style="display: none;">
                     <div style="display: flex; gap: 5px;">
-                        <input type="text" id="driveUrlInput" placeholder="Pegar enlace de Google Drive" 
+                        <input type="text" id="driveUrlInput" placeholder="Pegar enlace de Google Drive"
                             style="flex-grow: 1; padding: 5px; font-size: 0.8rem; border: 1px solid #ccc; border-radius: 4px;">
-                        
-                        <button id="btnGuardarDrive" onclick="guardarEnlaceDrive()" style="padding: 5px 10px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;" title="Guardar">
+
+                        <button id="btnGuardarDrive" onclick="guardarEnlaceDrive()"
+                            style="padding: 5px 10px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;"
+                            title="Guardar">
                             💾
                         </button>
-                        
-                        <button id="btnEliminarDrive" onclick="eliminarEnlaceDrive()" style="display:none; padding: 5px 10px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;" title="Eliminar enlace">
+
+                        <button id="btnEliminarDrive" onclick="eliminarEnlaceDrive()"
+                            style="display:none; padding: 5px 10px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;"
+                            title="Eliminar enlace">
                             🗑️
                         </button>
                     </div>
                 </div>
             </div>
-            
+
             <div style="display: flex; gap: 10px; margin-top: 15px;">
-                <button id="btnEditar" class="btn-edit" style="display:none; margin-top:0;" onclick="prepararEdicion()">✏️</button>
-                <button id="btnEliminar" class="btn-delete" style="display:none; margin-top:0;" onclick="borrarReserva()">🗑️</button>
+                <button id="btnEditar" class="btn-edit" style="display:none; margin-top:0;"
+                    onclick="prepararEdicion()">✏️</button>
+                <button id="btnEliminar" class="btn-delete" style="display:none; margin-top:0;"
+                    onclick="borrarReserva()">🗑️</button>
             </div>
         </div>
     </div>
@@ -283,7 +311,86 @@
             <p>Comparte la agenda escaneando este código:</p>
             <img id="imagenQR" src="" alt="QR Code" style="width: 200px; height: 200px; margin: 10px auto;">
             <p style="font-size:0.8rem; color:#666;">Agenda TrackSIM</p>
-            <button onclick="cerrarModal('qrModal')" class="btn-secondary" style="width:100%; margin-top:10px;">Cerrar</button>
+            <button onclick="cerrarModal('qrModal')" class="btn-secondary"
+                style="width:100%; margin-top:10px;">Cerrar</button>
+        </div>
+    </div>
+
+    <!-- Modal para Reporte Ejecutivo -->
+    <div id="reporteModal" class="modal">
+        <div class="modal-content"
+            style="max-width: 650px; max-height: 80vh; display: flex; flex-direction: column; overflow: hidden !important;">
+            <span class="close-x" onclick="cerrarModal('reporteModal')">×</span>
+            <h2 style="margin-top:0; color:#2c3e50; text-align: center;">📊 Reporte Ejecutivo</h2>
+
+            <div style="display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap;">
+                <div style="flex: 1; min-width: 120px;">
+                    <label>Año:</label>
+                    <select id="filtroAnoReporte" onchange="generarReporte()"
+                        style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ccc;">
+                        <option value="todos">Todos</option>
+                    </select>
+                </div>
+                <div style="flex: 2; min-width: 200px;">
+                    <label>Cliente (opcional):</label>
+                    <input type="text" id="filtroClienteReporte" placeholder="Buscar cliente..."
+                        oninput="generarReporte()"
+                        style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ccc;">
+                </div>
+            </div>
+
+            <div id="contenidoReporte"
+                style="flex: 1; overflow-y: auto; background: var(--bg-color); padding: 15px; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 15px;">
+                <div id="reporteParaPdf" style="padding: 15px; color: var(--text-color);">
+                    <!-- Margen superior extra para el membrete -->
+                    <div style="height: 40px;" class="margin-membrete"></div>
+                    <h3 style="text-align: center; margin-top: 0; font-size: 1.5rem; margin-bottom: 5px;"
+                        id="tituloDocumentoReporte">Reporte Ejecutivo</h3>
+                    <p style="text-align: center; color: var(--text-color-muted); font-size: 0.9em; margin-bottom: 20px;"
+                        id="subtituloReporte"></p>
+
+                    <div class="dashboard-kpis">
+                        <div class="kpi-card">
+                            <h3>Total Reservas</h3>
+                            <p id="kpiTotal">0</p>
+                        </div>
+                        <div class="kpi-card">
+                            <h3>Clientes Únicos</h3>
+                            <p id="kpiClientes">0</p>
+                        </div>
+                        <div class="kpi-card">
+                            <h3>Destino Principal</h3>
+                            <p id="kpiCiudad" style="font-size: 1.1rem; margin-top: 15px;">-</p>
+                        </div>
+                        <div class="kpi-card">
+                            <h3>Semanas Totales</h3>
+                            <p id="kpiSemanas">0</p>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-table-container">
+                        <table class="dashboard-table">
+                            <thead>
+                                <tr>
+                                    <th>Cliente</th>
+                                    <th>Ciudad</th>
+                                    <th>Fechas</th>
+                                    <th style="text-align: center;">Días</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tablaReporteCuerpo">
+                                <!-- Filas generadas por JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 10px; flex-shrink: 0;">
+                <button onclick="exportarReportePDF()" class="btn-action" style="flex: 1; background-color: #e74c3c;">📄
+                    Exportar a PDF</button>
+                <button onclick="cerrarModal('reporteModal')" class="btn-secondary" style="flex: 1;">Cerrar</button>
+            </div>
         </div>
     </div>
 
@@ -292,9 +399,11 @@
 
 
 
-    <footer style="flex-shrink: 0; background: #fff; padding: 5px; text-align: center; font-size: 0.75rem; color: #888; border-top: 1px solid #ddd;">
+    <footer
+        style="flex-shrink: 0; background: #fff; padding: 5px; text-align: center; font-size: 0.75rem; color: #888; border-top: 1px solid #ddd;">
         TrackSIM vLOCAL ()</span>
     </footer>
 
 </body>
+
 </html>

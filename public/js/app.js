@@ -1,6 +1,6 @@
 
 // Cache para evitar recargas
-const aniosCargados = new Set(); 
+const aniosCargados = new Set();
 let cargandoDatos = false; // Semáforo para no llamar dos veces seguidas
 
 const API_KEY_HERE = 'vtP_Ocp9-jUl3SG6HpMHLSaRQoumNPiDV7SyOYmNkZA'; // Reemplaza con tu llave de HERE
@@ -13,18 +13,18 @@ let touchEndX = 0;
 // 1. Detectar dónde empieza el toque
 sidebarSwipe.addEventListener('touchstart', (e) => {
     touchStartX = e.changedTouches[0].screenX;
-}, {passive: true});
+}, { passive: true });
 
 // 2. Detectar dónde termina el toque
 sidebarSwipe.addEventListener('touchend', (e) => {
     touchEndX = e.changedTouches[0].screenX;
     manejarSwipe();
-}, {passive: true});
+}, { passive: true });
 
 function manejarSwipe() {
     if (!sidebarSwipe.classList.contains('open')) return;
     // Mínima distancia para considerar que fue un deslizamiento intencional (50px)
-    const umbral = 50; 
+    const umbral = 50;
     const distancia = touchEndX - touchStartX;
 
     if (Math.abs(distancia) < umbral) return; // Fue un toque accidental o muy corto
@@ -46,12 +46,12 @@ function manejarSwipe() {
 function animarCambioAno(direccion) {
     const display = document.getElementById('map-year-display');
     display.style.transition = 'transform 0.2s, opacity 0.2s';
-    
+
     // Efecto de salida
     const x = direccion === 'derecha' ? '-20px' : '20px';
     display.style.transform = `translateX(${x})`;
     display.style.opacity = '0.5';
-    
+
     setTimeout(() => {
         // Restaurar
         display.style.transform = 'translateX(0)';
@@ -78,7 +78,7 @@ calendarElement.addEventListener('touchstart', (e) => {
         isPinching = false;
         touchStartXCal = e.changedTouches[0].screenX;
     }
-}, {passive: true});
+}, { passive: true });
 
 calendarElement.addEventListener('touchmove', (e) => {
     if (isPinching && e.touches.length === 2) {
@@ -86,7 +86,7 @@ calendarElement.addEventListener('touchmove', (e) => {
             e.touches[0].pageX - e.touches[1].pageX,
             e.touches[0].pageY - e.touches[1].pageY
         );
-        
+
         // Sensibilidad 20px
         if (Math.abs(distanciaActual - distanciaInicioPinch) > 20) {
             if (distanciaActual > distanciaInicioPinch) {
@@ -94,10 +94,10 @@ calendarElement.addEventListener('touchmove', (e) => {
             } else {
                 ajustarZoom(1);  // Zoom Out (Más columnas)
             }
-            distanciaInicioPinch = distanciaActual; 
+            distanciaInicioPinch = distanciaActual;
         }
     }
-}, {passive: true});
+}, { passive: true });
 
 calendarElement.addEventListener('touchend', (e) => {
     if (!isPinching && e.changedTouches.length > 0) {
@@ -105,14 +105,14 @@ calendarElement.addEventListener('touchend', (e) => {
         manejarSwipeCalendario();
     }
     if (e.touches.length < 2) isPinching = false;
-}, {passive: true});
+}, { passive: true });
 
 function manejarSwipeCalendario() {
     if (isPinching || !calendar) return;
     const diff = touchEndXCal - touchStartXCal;
     if (Math.abs(diff) < 150) return; // Aumentado a 150 para reducir la sensibilidad
-    
-    if (diff < 0) calendar.next(); 
+
+    if (diff < 0) calendar.next();
     else calendar.prev();
 }
 
@@ -121,12 +121,12 @@ function ajustarZoom(delta) {
 
     // Detectar límites
     const esCelular = window.innerWidth < 768;
-    const limiteMax = esCelular ? 2 : 4; 
+    const limiteMax = esCelular ? 2 : 4;
 
     // Leer valor actual (ahora sí funciona leerlo directo)
     let colsActuales = calendar.getOption('multiMonthMaxColumns') || (esCelular ? 1 : 4);
     let nuevasCols = colsActuales + delta;
-    
+
     if (nuevasCols < 1) nuevasCols = 1;
     if (nuevasCols > limiteMax) nuevasCols = limiteMax;
 
@@ -138,10 +138,10 @@ function ajustarZoom(delta) {
 }
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, where, writeBatch, updateDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";        
+import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, where, writeBatch, updateDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import { ADMIN_EMAILS } from '../admin-config.js'; // Importar ADMIN_EMAILS
-window.toggleMenu = function() {
+window.toggleMenu = function () {
     const menu = document.getElementById('mobile-menu');
     if (menu) {
         menu.classList.toggle('open');
@@ -149,12 +149,12 @@ window.toggleMenu = function() {
 };
 
 const firebaseConfig = {
-  apiKey: "AIzaSyCN7AD2GO_Ks4tcMxLMkG6jODKUaTPwlIk",
-  authDomain: "agendaservicios.firebaseapp.com",
-  projectId: "agendaservicios",
-  storageBucket: "agendaservicios.firebasestorage.app",
-  messagingSenderId: "1068275517204",
-  appId: "1:1068275517204:web:9bdd41c8233bc1fda06401"
+    apiKey: "AIzaSyCN7AD2GO_Ks4tcMxLMkG6jODKUaTPwlIk",
+    authDomain: "agendaservicios.firebaseapp.com",
+    projectId: "agendaservicios",
+    storageBucket: "agendaservicios.firebasestorage.app",
+    messagingSenderId: "1068275517204",
+    appId: "1:1068275517204:web:9bdd41c8233bc1fda06401"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -162,22 +162,22 @@ const auth = getAuth(app); // Inicializar Firebase Auth
 const db = getFirestore(app);
 
 let calendar;
-let map; 
-let markers = []; 
+let map;
+let markers = [];
 let esAdmin = false;
 let currentTileLayer; // Para poder cambiar el tema del mapa
 const HERE_STYLE_LIGHT = 'explore.day';
 const HERE_STYLE_DARK = 'lite.night'; // Estilo oscuro de HERE Maps
 
 let eventoSeleccionadoID = null;
-let grupoSeleccionadoID = null; 
-let statsPorAno = {}; 
+let grupoSeleccionadoID = null;
+let statsPorAno = {};
 
 let modoEdicion = false;
 let idGrupoEdicion = null;
 let urlEdicion = null;
 let globalReservas = []; // Inicializar como array vacío
-let currentMapYear = new Date().getFullYear(); 
+let currentMapYear = new Date().getFullYear();
 
 // Icono para la reserva más próxima (Gold)
 const goldIcon = new L.Icon({
@@ -216,28 +216,28 @@ const greyIcon = new L.Icon({
     shadowSize: [41, 41]
 });
 
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     // --- GESTIÓN DE TEMA (MODO OSCURO) ---
     // Inyectamos los botones y aplicamos el tema guardado.
     inyectarBotonesTema();
     applyTheme(localStorage.getItem('agenda_theme') || 'light');
 
     var calendarEl = document.getElementById('calendar');
-    const esMovil = window.innerWidth < 768; 
+    const esMovil = window.innerWidth < 768;
 
     const headerYearLabel = document.getElementById('header-year-label');
-    if(headerYearLabel) headerYearLabel.textContent = currentMapYear;
+    if (headerYearLabel) headerYearLabel.textContent = currentMapYear;
 
     // 1. Configuración del Calendario (Esto es ligero)
     calendar = new FullCalendar.Calendar(calendarEl, {
-        eventContent: function(arg) {
+        eventContent: function (arg) {
             let container = document.createElement('div');
             container.style.display = 'flex';
             container.style.justifyContent = 'space-between';
             container.style.alignItems = 'center';
             container.style.width = '100%';
-            container.style.padding = '0 2px';                    
-            
+            container.style.padding = '0 2px';
+
             let titleEl = document.createElement('div');
             titleEl.innerHTML = arg.event.title;
             titleEl.style.overflow = 'hidden';
@@ -247,68 +247,68 @@ document.addEventListener('DOMContentLoaded', function() {
 
             if (arg.event.extendedProps.pdfUrl) {
                 let iconEl = document.createElement('span');
-                iconEl.innerHTML = ' 📎'; 
+                iconEl.innerHTML = ' 📎';
                 iconEl.style.fontSize = '1.0em';
                 iconEl.style.marginLeft = '4px';
-                iconEl.style.color='white';
+                iconEl.style.color = 'white';
                 container.appendChild(iconEl);
             }
             return { domNodes: [container] };
         },
         // Nuevo: Permite añadir atributos personalizados al DOM del evento para fácil selección
-        eventDidMount: function(info) {
+        eventDidMount: function (info) {
             if (info.el) {
                 info.el.setAttribute('data-event-id', info.event.id);
             }
         },
         height: '100%',
-        initialView: 'multiMonthYear', 
+        initialView: 'multiMonthYear',
         locale: 'es',
-        
+
         customButtons: {
             // CAMBIO 1: Al hacer clic en HOY, forzamos la vista de AÑO y vamos a la fecha
-            btnHoy: { 
-                text: 'Hoy', 
-                click: function() { 
-                    calendar.changeView('multiMonthYear'); 
-                    calendar.today(); 
-                } 
+            btnHoy: {
+                text: 'Hoy',
+                click: function () {
+                    calendar.changeView('multiMonthYear');
+                    calendar.today();
+                }
             },
             btnCustomAgenda: {
                 text: 'Agenda',
-                click: function() { mostrarVistaAgenda(); }
+                click: function () { mostrarVistaAgenda(); }
             }
         },
-        
+
         headerToolbar: {
-            left: 'prev,next btnHoy', 
+            left: 'prev,next btnHoy',
             center: 'title',
             // CAMBIO 2: Quitamos 'dayGridMonth' de la barra derecha
-            right: 'btnCustomAgenda' 
+            right: 'btnCustomAgenda'
         },
-        
+
         views: {
             // CAMBIO 3: Eliminamos la configuración de dayGridMonth
-            multiMonthYear: { buttonText: 'Año' } 
+            multiMonthYear: { buttonText: 'Año' }
         },
-        
-        dateClick: function(info) { 
+
+        dateClick: function (info) {
             if (!esAdmin) return;
             const parts = info.dateStr.split('-');
-            const localDate = new Date(parts[0], parts[1]-1, parts[2]);
+            const localDate = new Date(parts[0], parts[1] - 1, parts[2]);
             if (localDate.getDay() === 0) { alert("⛔ Servicio no disponible los domingos."); return; }
             const fechaClickeada = info.dateStr;
             const ocupado = globalReservas.some(r => fechaClickeada >= r.data.fechaInicio && fechaClickeada <= r.data.fechaFin);
             if (ocupado) alert("⚠️ Fecha no disponible.");
-            else abrirModalCrear(info.dateStr); 
+            else abrirModalCrear(info.dateStr);
         },
-        eventClick: function(info) { 
+        eventClick: function (info) {
             if (info.event.display === 'background') return;
             if (info.event.start.getDay() === 0) { alert("⛔ Servicio no disponible los domingos."); return; }
             mostrarDetalles(info.event);
         }
     });
-    
+
     // 2. Renderizar el calendario vacío (Instantáneo)
     calendar.render();
 
@@ -322,7 +322,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Esto saca la carga de datos del proceso de arranque (DOMContentLoaded).
     setTimeout(() => {
         cargarReservas();
-        
+
         // --- NOTIFICACIONES ---
         // 1. Solicitar permiso al cargar la app
         solicitarPermisoNotificaciones().then(permissionGranted => {
@@ -341,7 +341,7 @@ function inyectarBotonesTema() {
         themeBtn.className = 'theme-toggle-btn';
         themeBtn.title = 'Cambiar tema';
         themeBtn.addEventListener('click', toggleTheme);
-        
+
         // Insertarlo como primer elemento de los controles para que quede al lado del buscador
         desktopContainer.insertBefore(themeBtn, desktopContainer.firstChild);
     }
@@ -353,7 +353,7 @@ function inyectarBotonesTema() {
         mobileThemeBtn.id = 'mobile-btn-theme-toggle';
         mobileThemeBtn.innerHTML = '🌓 Cambiar Tema';
         mobileThemeBtn.addEventListener('click', toggleTheme);
-        
+
         // Añadir una sección de "Apariencia" para el botón
         const appearanceTitle = document.createElement('div');
         appearanceTitle.className = 'mobile-section-title';
@@ -411,7 +411,7 @@ async function verificarEventosProximos() {
 
     // Obtenemos las fechas clave para las notificaciones
     const hoy = new Date();
-    hoy.setHours(0,0,0,0); // Normalizar a inicio del día
+    hoy.setHours(0, 0, 0, 0); // Normalizar a inicio del día
     const manana = new Date(hoy);
     manana.setDate(hoy.getDate() + 1);
     const semana = new Date(hoy);
@@ -486,24 +486,30 @@ function actualizarUIConEstadoAdmin() {
     const mobileLogout = document.getElementById('mobile-btn-logout');
     const btnImport = document.getElementById('btnImport');
     const mobileImport = document.getElementById('mobile-btn-import');
+    const btnReporte = document.getElementById('btnReporte');
+    const mobileReporte = document.getElementById('mobile-btn-reporte');
 
     if (esAdmin) {
         btnLogin.style.display = 'none';
         btnLogout.style.display = 'inline-block';
-        if(adminStatus && auth.currentUser) adminStatus.innerText = `🔰`;
-        if(adminStatus) adminStatus.style.display = 'inline-block';
-        if(mobileLogin) mobileLogin.style.display = 'none';
-        if(mobileLogout) mobileLogout.style.display = 'block';
+        if (adminStatus && auth.currentUser) adminStatus.innerText = `🔰`;
+        if (adminStatus) adminStatus.style.display = 'inline-block';
+        if (mobileLogin) mobileLogin.style.display = 'none';
+        if (mobileLogout) mobileLogout.style.display = 'block';
         if (btnImport) btnImport.style.display = 'inline-block';
         if (mobileImport) mobileImport.style.display = 'block';
+        if (btnReporte) btnReporte.style.display = 'inline-block';
+        if (mobileReporte) mobileReporte.style.display = 'block';
     } else {
         btnLogin.style.display = 'inline-block';
         btnLogout.style.display = 'none';
-        if(adminStatus) adminStatus.style.display = 'none';
-        if(mobileLogin) mobileLogin.style.display = 'block';
-        if(mobileLogout) mobileLogout.style.display = 'none';
+        if (adminStatus) adminStatus.style.display = 'none';
+        if (mobileLogin) mobileLogin.style.display = 'block';
+        if (mobileLogout) mobileLogout.style.display = 'none';
         if (btnImport) btnImport.style.display = 'none';
         if (mobileImport) mobileImport.style.display = 'none';
+        if (btnReporte) btnReporte.style.display = 'none';
+        if (mobileReporte) mobileReporte.style.display = 'none';
     }
     actualizarHeaderAdmin(); // Esto gestiona las estadísticas del admin.
 }
@@ -532,7 +538,7 @@ onAuthStateChanged(auth, (user) => {
 const searchInput = document.getElementById('globalSearch');
 const resultsList = document.getElementById('globalSearchResults');
 
-searchInput.addEventListener('input', function() {
+searchInput.addEventListener('input', function () {
     const texto = this.value.toLowerCase().trim();
     resultsList.innerHTML = '';
     if (texto.length < 2) { resultsList.style.display = 'none'; return; }
@@ -541,7 +547,7 @@ searchInput.addEventListener('input', function() {
         const cliente = (r.data.cliente || "").toLowerCase();
         const ciudad = (r.data.ciudad || "").toLowerCase();
         return cliente.includes(texto) || ciudad.includes(texto);
-    }).sort((a, b) => a.start - b.start).slice(0, 8); 
+    }).sort((a, b) => a.start - b.start).slice(0, 8);
 
     if (encontrados.length === 0) { resultsList.style.display = 'none'; return; }
     resultsList.style.display = 'block';
@@ -566,9 +572,9 @@ document.addEventListener('click', (e) => {
     if (!searchInput.contains(e.target) && !resultsList.contains(e.target)) { resultsList.style.display = 'none'; }
 });
 
-window.seleccionarResultado = function(reserva) {
+window.seleccionarResultado = function (reserva) {
     resultsList.style.display = 'none';
-    searchInput.value = ''; 
+    searchInput.value = '';
     const mapaVisible = document.getElementById('map-view').style.display !== 'none';
 
     if (mapaVisible) {
@@ -576,7 +582,7 @@ window.seleccionarResultado = function(reserva) {
         if (yearReserva !== currentMapYear) {
             currentMapYear = yearReserva;
             document.getElementById('map-year-display').textContent = currentMapYear;
-            actualizarMapaYLista(); 
+            actualizarMapaYLista();
         }
         if (reserva.data.lat && reserva.data.lng) {
             map.flyTo([reserva.data.lat, reserva.data.lng], 12);
@@ -589,7 +595,7 @@ window.seleccionarResultado = function(reserva) {
             }, 500);
         } else { alert("Esta reserva no tiene coordenadas."); }
     } else {
-        if(document.getElementById('agenda-view').style.display === 'block') {
+        if (document.getElementById('agenda-view').style.display === 'block') {
             mostrarCalendario();
         }
         resaltarEventoEnCalendario(reserva.id);
@@ -636,16 +642,16 @@ const inputDireccion = document.getElementById('direccionInput');
 const listaSugerencias = document.getElementById('listaSugerencias');
 let timeoutBuscador = null;
 
-inputDireccion.addEventListener('input', function() {
+inputDireccion.addEventListener('input', function () {
     const texto = this.value;
-    
+
     document.getElementById('latTemp').value = "";
     document.getElementById('lonTemp').value = "";
-    
-    listaSugerencias.innerHTML = ''; 
+
+    listaSugerencias.innerHTML = '';
     listaSugerencias.style.display = 'none';
-    
-    if (texto.length < 3) return; 
+
+    if (texto.length < 3) return;
 
     clearTimeout(timeoutBuscador);
     timeoutBuscador = setTimeout(async () => {
@@ -653,10 +659,10 @@ inputDireccion.addEventListener('input', function() {
             // Detectar si el usuario escribió un CP (5 dígitos)
             const matchCP = texto.match(/\b\d{5}\b/);
             const cpEncontrado = matchCP ? matchCP[0] : null;
-            
+
             // URL base con búsqueda libre
             let url = `https://geocode.search.hereapi.com/v1/geocode?q=${encodeURIComponent(texto)}&apiKey=${API_KEY_HERE}&lang=es&limit=8`;
-            
+
             // Si hay CP, usamos el parámetro qq (Qualified Query) para filtrar por código postal
             if (cpEncontrado) {
                 url += `&qq=postalCode=${cpEncontrado}`;
@@ -670,46 +676,46 @@ inputDireccion.addEventListener('input', function() {
                 data.items.forEach(item => {
                     const li = document.createElement('li');
                     li.className = 'suggestion-item';
-                    
+
                     // Extraer ciudad/localidad de la jerarquía de HERE
                     const ciudad = item.address.city || item.address.locality || item.address.district || "";
-                    
+
                     li.innerHTML = `<strong>📍 ${item.title}</strong><br><small>${item.address.label}</small>`;
-                    
-                    li.onclick = function() {
+
+                    li.onclick = function () {
                         inputDireccion.value = item.address.label;
                         document.getElementById('latTemp').value = item.position.lat;
                         document.getElementById('lonTemp').value = item.position.lng;
                         document.getElementById('ciudadInput').value = ciudad;
-                        listaSugerencias.style.display = 'none'; 
+                        listaSugerencias.style.display = 'none';
                     };
                     listaSugerencias.appendChild(li);
                 });
             }
         } catch (e) { console.error("Error en HERE Maps:", e); }
-    }, 600); 
+    }, 600);
 });
 
 const inputCiudad = document.getElementById('ciudadInput');
 const listaSugerenciasCiudad = document.getElementById('listaSugerenciasCiudad');
 let timeoutCiudad = null;
 
-inputCiudad.addEventListener('input', function() {
-    if(this.readOnly) return;
+inputCiudad.addEventListener('input', function () {
+    if (this.readOnly) return;
     const texto = this.value.trim();
     const API_KEY_HERE = 'vtP_Ocp9-jUl3SG6HpMHLSaRQoumNPiDV7SyOYmNkZA';
-    
-    listaSugerenciasCiudad.innerHTML = ''; 
+
+    listaSugerenciasCiudad.innerHTML = '';
     listaSugerenciasCiudad.style.display = 'none';
 
-    if (texto.length < 3) return; 
+    if (texto.length < 3) return;
 
     clearTimeout(timeoutCiudad);
     timeoutCiudad = setTimeout(async () => {
         try {
             const matchCP = texto.match(/\b\d{5}\b/);
             let url = `https://geocode.search.hereapi.com/v1/geocode?apiKey=${API_KEY_HERE}&lang=es&limit=5`;
-            
+
             if (matchCP) {
                 // Si el texto es un CP, busca la ciudad vinculada a él
                 url += `&qq=postalCode=${matchCP[0]}`;
@@ -726,40 +732,40 @@ inputCiudad.addEventListener('input', function() {
                 data.items.forEach(item => {
                     const li = document.createElement('li');
                     li.className = 'suggestion-item';
-                    
+
                     const nombreCiudad = item.address.city || item.address.locality || item.title;
                     const estado = item.address.state || "";
 
                     li.innerHTML = `<strong>🏙️ ${nombreCiudad}</strong><br><small>${estado}, CP: ${item.address.postalCode || ''}</small>`;
-                    
-                    li.onclick = function() {
+
+                    li.onclick = function () {
                         inputCiudad.value = nombreCiudad;
-                        if(!document.getElementById('latTemp').value) {
+                        if (!document.getElementById('latTemp').value) {
                             document.getElementById('latTemp').value = item.position.lat;
                             document.getElementById('lonTemp').value = item.position.lng;
                         }
-                        listaSugerenciasCiudad.style.display = 'none'; 
+                        listaSugerenciasCiudad.style.display = 'none';
                     };
                     listaSugerenciasCiudad.appendChild(li);
                 });
             }
         } catch (e) { console.error("Error ciudad CP:", e); }
-    }, 400); 
+    }, 400);
 });
-document.addEventListener('click', function(e) { 
-    if (e.target !== inputDireccion) listaSugerencias.style.display = 'none'; 
-    if (e.target !== inputCiudad) listaSugerenciasCiudad.style.display = 'none'; 
+document.addEventListener('click', function (e) {
+    if (e.target !== inputDireccion) listaSugerencias.style.display = 'none';
+    if (e.target !== inputCiudad) listaSugerenciasCiudad.style.display = 'none';
 });
 
 // --- GUARDAR RESERVA ---
-window.guardarReserva = async function() {
+window.guardarReserva = async function () {
     // 1. Obtener valores del formulario
     const fechaInicioStr = document.getElementById('fechaInicio').value;
     const fechaFinStr = document.getElementById('fechaFin').value;
     const ciudad = document.getElementById('ciudadInput').value;
     const nombre = document.getElementById('nombreInput').value;
     const direccion = document.getElementById('direccionInput').value;
-    
+
     const esEspecial = document.getElementById('eventoEspecialCheck').checked;
     // Coordenadas (pueden venir de un Plus Code previo o estar vacías)
     let lat = document.getElementById('latTemp').value;
@@ -776,28 +782,28 @@ window.guardarReserva = async function() {
     if ((lat === "" || lon === "") && direccion.length > 2) {
         const btn = document.querySelector('#reservaModal .btn-save');
         const textoOriginal = btn.innerHTML; // Guardamos el texto actual del botón
-        
+
         // Feedback visual de carga
         btn.innerHTML = `<span class="loader"></span> Buscando en Mapa...`;
         btn.disabled = true;
-        
+
         try {
             const matchCP = direccion.match(/\b\d{5}\b/);
             const cpEncontrado = matchCP ? matchCP[0] : null;
-            
+
             let url = `https://geocode.search.hereapi.com/v1/geocode?q=${encodeURIComponent(direccion)}&apiKey=${API_KEY_HERE}&lang=es&limit=5`;
-            
+
             if (cpEncontrado) {
-                url += `&qq=postalCode=${cpEncontrado}`; 
+                url += `&qq=postalCode=${cpEncontrado}`;
             }
 
             const resp = await fetch(url);
             const data = await resp.json();
-            
+
             // Restauramos el botón antes de decidir qué hacer
             btn.innerHTML = textoOriginal;
             btn.disabled = false;
-            
+
             if (data.items && data.items.length > 0) {
                 // CASO A: Encontramos ubicación
                 // Llamamos al selector, el cual llenará lat/lon y CERRARÁ el proceso.
@@ -809,13 +815,13 @@ window.guardarReserva = async function() {
                 mostrarModalSinResultados();
                 return; // <--- IMPORTANTE: DETENEMOS AQUÍ
             }
-        } catch(e) {
+        } catch (e) {
             console.error(e);
             alert("Error de conexión con HERE Maps.");
             btn.innerHTML = textoOriginal;
             btn.disabled = false;
             habilitarManual();
-            return; 
+            return;
         }
     }
 
@@ -828,7 +834,7 @@ window.guardarReserva = async function() {
     if (ciudadFinal === "" || ciudadFinal === "Desconocida" || ciudadFinal === "Ubicación") {
         const partes = direccion.split(',');
         if (partes.length >= 2) {
-            ciudadFinal = partes[partes.length - 2].replace(/\d+/g, '').trim(); 
+            ciudadFinal = partes[partes.length - 2].replace(/\d+/g, '').trim();
         } else {
             ciudadFinal = "Sin Ciudad";
         }
@@ -840,7 +846,7 @@ window.guardarReserva = async function() {
         return;
     }
 
-    const grupoId = modoEdicion ? idGrupoEdicion : Date.now().toString(); 
+    const grupoId = modoEdicion ? idGrupoEdicion : Date.now().toString();
 
     // UI Guardando
     const btnFinal = document.querySelector('#reservaModal .btn-save');
@@ -852,7 +858,7 @@ window.guardarReserva = async function() {
         if (modoEdicion && idGrupoEdicion) {
             const q = query(collection(db, "reservas"), where("groupId", "==", idGrupoEdicion));
             const querySnapshot = await getDocs(q);
-            const batch = writeBatch(db); 
+            const batch = writeBatch(db);
             querySnapshot.forEach((doc) => { batch.delete(doc.ref); });
             await batch.commit();
         }
@@ -861,7 +867,7 @@ window.guardarReserva = async function() {
         for (let r of rangos) {
             let fInicio = r.start.toISOString().split('T')[0];
             let fFin = r.end.toISOString().split('T')[0];
-            
+
             await addDoc(collection(db, "reservas"), {
                 fechaInicio: fInicio,
                 fechaFin: fFin,
@@ -869,8 +875,8 @@ window.guardarReserva = async function() {
                 cliente: nombre,
                 direccion: direccion, // <--- Aquí se guarda el texto que tú editaste (ej. "Parque Industrial")
                 lat: lat,             // <--- Aquí se guardan las coordenadas del Plus Code (ej. RVJV+VQ)
-                lng: lon,             
-                groupId: grupoId, 
+                lng: lon,
+                groupId: grupoId,
                 creado: new Date(),
                 pdfUrl: urlEdicion,
                 esEspecial: esEspecial
@@ -886,30 +892,30 @@ window.guardarReserva = async function() {
     } finally {
         // Restauramos el botón a su estado original para la próxima vez
         btnFinal.innerHTML = "💾 Guardar Reserva";
-        btnFinal.style.background = "#28a745"; 
+        btnFinal.style.background = "#28a745";
         btnFinal.disabled = false;
     }
 };
 
-window.mostrarSelectorUbicacion = function(items) {
+window.mostrarSelectorUbicacion = function (items) {
     const lista = document.getElementById('listaCoincidencias');
     lista.innerHTML = "";
-    
+
     items.forEach(item => {
         const li = document.createElement('li');
         li.className = 'match-item';
-        
+
         // Extraemos datos de HERE
         const ciudad = item.address.city || item.address.locality || item.address.district || "Ubicación";
         const direccionDetectada = item.address.label;
 
         li.innerHTML = `<strong>${ciudad}</strong><br><small>${direccionDetectada}</small>`;
-        
-        li.onclick = function() {
+
+        li.onclick = function () {
             // 1. Llenamos las coordenadas (Lo más importante)
             document.getElementById('latTemp').value = item.position.lat;
             document.getElementById('lonTemp').value = item.position.lng;
-            
+
             // 2. Llenamos ciudad y dirección sugerida
             document.getElementById('ciudadInput').value = ciudad;
             document.getElementById('direccionInput').value = direccionDetectada;
@@ -918,12 +924,12 @@ window.mostrarSelectorUbicacion = function(items) {
             // Ya NO guardamos automáticamente. 
             // Cerramos el modal y avisamos al usuario que puede editar.
             cerrarModal('selectionModal');
-            
+
             // 4. Enfocamos el campo de dirección para que puedas editarlo si salió genérico
             const inputDir = document.getElementById('direccionInput');
             inputDir.focus();
             inputDir.select(); // Selecciona el texto para borrarlo fácil si quieres
-            
+
             // Cambiamos el texto del botón para indicar que ya tenemos ubicación
             const btnSave = document.querySelector('#reservaModal .btn-save');
             btnSave.innerHTML = "✅ Ubicación fijada. Clic para Guardar.";
@@ -934,13 +940,13 @@ window.mostrarSelectorUbicacion = function(items) {
     document.getElementById('selectionModal').style.display = 'block';
 }
 
-window.mostrarModalSinResultados = function() {
-     const lista = document.getElementById('listaCoincidencias');
-     lista.innerHTML = "<li style='padding:15px; color:#666;'>No se encontraron coincidencias exactas.</li>";
-     document.getElementById('selectionModal').style.display = 'block';
+window.mostrarModalSinResultados = function () {
+    const lista = document.getElementById('listaCoincidencias');
+    lista.innerHTML = "<li style='padding:15px; color:#666;'>No se encontraron coincidencias exactas.</li>";
+    document.getElementById('selectionModal').style.display = 'block';
 }
 
-window.habilitarManual = function() {
+window.habilitarManual = function () {
     const inputC = document.getElementById('ciudadInput');
     inputC.readOnly = false;
     inputC.placeholder = "Escribe ciudad para buscar...";
@@ -948,20 +954,20 @@ window.habilitarManual = function() {
     cerrarModal('selectionModal');
 }
 
-window.usarSinCiudad = function() {
+window.usarSinCiudad = function () {
     document.getElementById('ciudadInput').value = "Sin Ciudad";
     cerrarModal('selectionModal');
     guardarReserva();
 }
 
-window.reintentarDireccion = function() {
+window.reintentarDireccion = function () {
     cerrarModal('selectionModal');
     document.getElementById('direccionInput').focus();
 }
 
 function calcularEstadisticas() {
-    statsPorAno = {}; 
-    
+    statsPorAno = {};
+
     globalReservas.forEach(item => {
         // TRUCO FINAL: No usamos item.start (que tiene Timezone problemático).
         // Usamos el texto original "YYYY-MM-DD" que viene de la base de datos.
@@ -984,9 +990,9 @@ function calcularEstadisticas() {
             // Avanzamos un día
             current.setDate(current.getDate() + 1);
         }
-        
+
         // Cálculo: 5 días = 1 semana
-        const semanas = diasLaborales / 5; 
+        const semanas = diasLaborales / 5;
 
         const year = current.getFullYear(); // Usamos el año de la fecha procesada
         // Nota: usamos current (que al final del bucle está cerca de la fecha) 
@@ -1004,25 +1010,25 @@ function calcularEstadisticas() {
 
 function actualizarHeaderAdmin() {
     const statsDiv = document.getElementById('admin-stats');
-    
+
     if (esAdmin) {
         const years = Object.keys(statsPorAno).sort(); // Ordenar años (ascendente)
-        
+
         if (years.length === 0) {
             statsDiv.textContent = "0 Semanas";
-            statsDiv.onclick = null; 
+            statsDiv.onclick = null;
         } else {
             // 1. Mostrar resumen corto en el encabezado (Último año)
             const ultimoAno = years[years.length - 1];
             const semanasUltimo = statsPorAno[ultimoAno].toFixed(1);
-            
+
             statsDiv.innerHTML = `📊 ${ultimoAno}: ${semanasUltimo} Sem <span style="font-size:0.8em">ℹ️</span>`;
-            
+
             // 2. Evento Click: Abrir Modal
-            statsDiv.onclick = function() {
+            statsDiv.onclick = function () {
                 const listaUl = document.getElementById('listaStats');
                 listaUl.innerHTML = ''; // Limpiar lista anterior
-                
+
                 // Recorremos los años (invertimos para ver el más reciente arriba)
                 years.slice().reverse().forEach(y => {
                     const li = document.createElement('li');
@@ -1030,7 +1036,7 @@ function actualizarHeaderAdmin() {
                     li.style.display = 'flex';
                     li.style.justifyContent = 'space-between';
                     li.style.cursor = 'default'; // No es clicable
-                    
+
                     // Contenido de la fila
                     li.innerHTML = `
                         <strong style="color:#2c3e50;">Año ${y}</strong>
@@ -1038,49 +1044,49 @@ function actualizarHeaderAdmin() {
                     `;
                     listaUl.appendChild(li);
                 });
-                
+
                 // Mostrar el modal
                 document.getElementById('statsModal').style.display = 'block';
             };
         }
         statsDiv.style.display = 'inline-block';
-    } else { 
-        statsDiv.style.display = 'none'; 
+    } else {
+        statsDiv.style.display = 'none';
     }
 }
 
-window.cambiarAnoMapa = function(delta) {
+window.cambiarAnoMapa = function (delta) {
     currentMapYear += delta;
     document.getElementById('map-year-display').textContent = currentMapYear;
     const headerYearLabel = document.getElementById('header-year-label');
-    if(headerYearLabel) headerYearLabel.textContent = currentMapYear;
-    actualizarMapaYLista(); 
+    if (headerYearLabel) headerYearLabel.textContent = currentMapYear;
+    actualizarMapaYLista();
 }
 
 // --- SISTEMA DE VISTAS ---
-window.mostrarMapa = function() {
+window.mostrarMapa = function () {
     document.getElementById('calendar-container').style.display = 'none';
     document.getElementById('agenda-view').style.display = 'none';
     document.getElementById('map-view').style.display = 'flex';
-    document.getElementById('btn-go-map').style.display = 'none'; 
+    document.getElementById('btn-go-map').style.display = 'none';
     document.getElementById('mobile-btn-map').style.display = 'none';
     setTimeout(() => { map.invalidateSize(); }, 200);
 }
 
-window.mostrarCalendario = function() {
+window.mostrarCalendario = function () {
     document.getElementById('map-view').style.display = 'none';
     document.getElementById('agenda-view').style.display = 'none';
     document.getElementById('calendar-container').style.display = 'block';
-    document.getElementById('btn-go-map').style.display = 'inline-block'; 
+    document.getElementById('btn-go-map').style.display = 'inline-block';
     document.getElementById('mobile-btn-map').style.display = 'block';
-    calendar.updateSize(); 
+    calendar.updateSize();
 }
 
-window.mostrarVistaAgenda = function() {
+window.mostrarVistaAgenda = function () {
     document.getElementById('calendar-container').style.display = 'none';
     document.getElementById('map-view').style.display = 'none';
     document.getElementById('agenda-view').style.display = 'block';
-    document.getElementById('btn-go-map').style.display = 'inline-block'; 
+    document.getElementById('btn-go-map').style.display = 'inline-block';
     renderizarAgendaCustom();
 }
 
@@ -1097,10 +1103,10 @@ function renderizarAgendaCustom() {
     }
 
     const hoy = new Date();
-    hoy.setHours(0,0,0,0);
+    hoy.setHours(0, 0, 0, 0);
 
     const gruposAgenda = [];
-    
+
     // 1. Agrupación de reservas (Lógica existente)
     listaOrdenada.forEach((reserva, index) => {
         if (index === 0) {
@@ -1116,9 +1122,9 @@ function renderizarAgendaCustom() {
         }
 
         const ultimo = gruposAgenda[gruposAgenda.length - 1];
-        
+
         if (ultimo.reservaObj.data.groupId === reserva.data.groupId) {
-            ultimo.fin = reserva.data.fechaFin; 
+            ultimo.fin = reserva.data.fechaFin;
         } else {
             gruposAgenda.push({
                 ciudad: reserva.data.ciudad,
@@ -1139,13 +1145,13 @@ function renderizarAgendaCustom() {
         // Convertir fecha fin a objeto Date para comparar
         // (Sumamos 1 día a la fecha fin para que el evento de "hoy" no cuente como pasado hasta mañana)
         const fechaFinObj = new Date(grupo.fin + 'T00:00:00');
-        fechaFinObj.setDate(fechaFinObj.getDate() + 1); 
+        fechaFinObj.setDate(fechaFinObj.getDate() + 1);
 
         const esPasado = fechaFinObj < hoy;
-        
+
         const card = document.createElement('li');
         card.className = 'agenda-card' + (esPasado ? ' pasada' : '');
-        
+
         // NUEVO: Detectar el elemento objetivo para el Scroll
         // Si NO es pasado y aun no hemos encontrado el "próximo", este es el ganador.
         if (!esPasado && !proximoEncontrado) {
@@ -1157,12 +1163,12 @@ function renderizarAgendaCustom() {
         let direccionHtml = grupo.direccion ? `<small>📍 ${grupo.direccion}</small>` : '';
 
         const tieneDoc = grupo.reservaObj.data.pdfUrl;
-        const enlaceDocHtml = (tieneDoc) 
+        const enlaceDocHtml = (tieneDoc)
             ? `<div style="margin-top:6px; border-top:1px solid #eee; padding-top:4px;">
                  <a href="${tieneDoc}" target="_blank" style="color:#007bff; text-decoration:none; font-size:0.85rem; font-weight:bold;">
                    📄 Ver Documentación (Drive)
                  </a>
-               </div>` 
+               </div>`
             : '';
 
         card.innerHTML = `
@@ -1171,12 +1177,12 @@ function renderizarAgendaCustom() {
             <div class="ruta-fechas">📅 ${formatearFecha(grupo.inicio)} ➝ ${formatearFecha(grupo.fin)}</div>
             ${enlaceDocHtml}
         `;
-        
+
         card.onclick = () => {
             mostrarCalendario();
             calendar.gotoDate(grupo.inicio);
             const evento = calendar.getEventById(grupo.reservaObj.id);
-            if(evento) mostrarDetalles(evento);
+            if (evento) mostrarDetalles(evento);
         };
 
         agendaContainer.appendChild(card);
@@ -1212,7 +1218,7 @@ function calcularRangosSinDomingo(fechaInicioStr, fechaFinStr) {
     if (diasHabiles.length === 0) return rangos;
     let rangoActual = { start: new Date(diasHabiles[0]), end: new Date(diasHabiles[0]) };
     for (let i = 1; i < diasHabiles.length; i++) {
-        let diff = (diasHabiles[i] - diasHabiles[i-1]) / (1000 * 60 * 60 * 24);
+        let diff = (diasHabiles[i] - diasHabiles[i - 1]) / (1000 * 60 * 60 * 24);
         if (diff === 1) rangoActual.end = new Date(diasHabiles[i]);
         else { rangos.push(rangoActual); rangoActual = { start: new Date(diasHabiles[i]), end: new Date(diasHabiles[i]) }; }
     }
@@ -1221,7 +1227,7 @@ function calcularRangosSinDomingo(fechaInicioStr, fechaFinStr) {
 }
 
 function formatearFecha(fechaStr) {
-    if(!fechaStr) return "";
+    if (!fechaStr) return "";
     const partes = fechaStr.split('-');
     const meses = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
     return `${partes[2]}/${meses[parseInt(partes[1]) - 1]}/${partes[0]}`;
@@ -1230,8 +1236,8 @@ function formatearFecha(fechaStr) {
 async function cargarReservas(forzarRecarga = false) {
     const calendarEl = document.getElementById('calendar');
     const loadingOverlay = document.getElementById('loading-overlay');
-    
-    if(loadingOverlay) loadingOverlay.style.display = 'flex';
+
+    if (loadingOverlay) loadingOverlay.style.display = 'flex';
     calendarEl.style.opacity = "0.5";
     document.body.style.cursor = "wait";
 
@@ -1239,7 +1245,7 @@ async function cargarReservas(forzarRecarga = false) {
         // --- 1. CACHÉ LOCAL CON TIEMPO DE EXPIRACIÓN ---
         const cacheGuardado = localStorage.getItem('agenda_reservas_cache');
         const cacheTimestamp = localStorage.getItem('agenda_reservas_timestamp'); // Leemos la hora guardada
-        
+
         let datosParaProcesar = [];
         let origenDatos = "";
 
@@ -1274,7 +1280,7 @@ async function cargarReservas(forzarRecarga = false) {
                 where("fechaInicio", "<=", "2030-12-31")
             );
             const querySnapshot = await getDocs(q);
-            
+
             querySnapshot.forEach((documento) => {
                 const data = documento.data();
                 if (data.fechaInicio && data.fechaFin) {
@@ -1295,24 +1301,24 @@ async function cargarReservas(forzarRecarga = false) {
         }
 
         // --- 3. PROCESAMIENTO MASIVO (OPTIMIZACIÓN CLAVE) ---
-        
+
         // A. Limpiamos memoria
         calendar.removeAllEvents();
         globalReservas = [];
-        
+
         // B. Preparamos el arreglo para FullCalendar (Batch)
         const eventosFullCalendar = [];
 
         datosParaProcesar.forEach(item => {
             // Reconvertir strings a Objetos Date
-            const startObj = new Date(item.start); 
+            const startObj = new Date(item.start);
             const endObj = new Date(item.end);
 
             // Memoria Global
             globalReservas.push({
                 id: item.id,
                 data: item.data,
-                start: startObj, 
+                start: startObj,
                 end: endObj
             });
 
@@ -1356,12 +1362,12 @@ async function cargarReservas(forzarRecarga = false) {
             actualizarMapaYLista(); // Actualiza la lista lateral y mapa
         }, 50);
 
-    } catch (error) { 
-        console.error("Error crítico:", error); 
+    } catch (error) {
+        console.error("Error crítico:", error);
     } finally {
         calendarEl.style.opacity = "1";
         document.body.style.cursor = "default";
-        if(loadingOverlay) loadingOverlay.style.display = 'none';
+        if (loadingOverlay) loadingOverlay.style.display = 'none';
     }
 }
 
@@ -1371,7 +1377,7 @@ function agregarEventoAlCalendario(data, id) {
     let fechaFinObj = new Date(data.fechaFin + 'T00:00:00');
     let fechaFinVisual = new Date(fechaFinObj);
     fechaFinVisual.setDate(fechaFinVisual.getDate() + 1);
-    
+
     const esEspecial = data.esEspecial || false;
     const colorEvento = esEspecial ? '#e67e22' : '#FF5733';
 
@@ -1379,7 +1385,7 @@ function agregarEventoAlCalendario(data, id) {
         id: id,
         title: '📍 ' + (data.ciudad ? data.ciudad.split(",")[0] : "Sin ciudad") + ' - ' + data.cliente,
         start: data.fechaInicio,
-        end: fechaFinVisual.toISOString().split('T')[0], 
+        end: fechaFinVisual.toISOString().split('T')[0],
         allDay: true,
         backgroundColor: colorEvento,
         borderColor: colorEvento,
@@ -1397,14 +1403,14 @@ function agregarEventoAlCalendario(data, id) {
     });
 }
 
-window.actualizarMapaYLista = function(centrarHoy = false) {
+window.actualizarMapaYLista = function (centrarHoy = false) {
     if (!globalReservas) return;
 
     // Diferir la ejecución para que no bloquee la interfaz inmediata
     requestAnimationFrame(() => {
         const listaDelAnio = globalReservas.filter(r => r.start.getFullYear() === currentMapYear || r.end.getFullYear() === currentMapYear);
         const hoy = new Date();
-        hoy.setHours(0,0,0,0);
+        hoy.setHours(0, 0, 0, 0);
 
         // 1. Ordenar
         let listaVisualizar = [...listaDelAnio].sort((a, b) => a.start - b.start);
@@ -1418,7 +1424,7 @@ window.actualizarMapaYLista = function(centrarHoy = false) {
         };
 
         const getNombreEstado = (prioridad) => {
-            switch(prioridad) {
+            switch (prioridad) {
                 case 3: return 'activo';
                 case 2: return 'destacado';
                 case 0: return 'pasado';
@@ -1428,7 +1434,7 @@ window.actualizarMapaYLista = function(centrarHoy = false) {
 
         // --- PASO 1: CALCULAR Y AGRUPAR ---
         const rutasAgrupadas = [];
-        
+
         listaVisualizar.forEach((reserva, index) => {
             const ciudadActual = reserva.data.ciudad ? reserva.data.ciudad.split(",")[0].trim() : "Desconocida";
             const prioridadActual = getPrioridad(reserva);
@@ -1439,9 +1445,9 @@ window.actualizarMapaYLista = function(centrarHoy = false) {
                     inicio: reserva.data.fechaInicio,
                     fin: reserva.data.fechaFin,
                     clientes: [reserva.data.cliente],
-                    lat: reserva.data.lat, 
+                    lat: reserva.data.lat,
                     lng: reserva.data.lng,
-                    prioridadGrupo: prioridadActual 
+                    prioridadGrupo: prioridadActual
                 });
                 return;
             }
@@ -1453,7 +1459,7 @@ window.actualizarMapaYLista = function(centrarHoy = false) {
             const diasDiferencia = Math.ceil(diferenciaTiempo / (1000 * 60 * 60 * 24));
 
             if (ultimoGrupo.ciudad === ciudadActual && diasDiferencia <= 3) {
-                ultimoGrupo.fin = reserva.data.fechaFin; 
+                ultimoGrupo.fin = reserva.data.fechaFin;
                 if (prioridadActual > ultimoGrupo.prioridadGrupo) ultimoGrupo.prioridadGrupo = prioridadActual;
                 if (!ultimoGrupo.clientes.includes(reserva.data.cliente)) ultimoGrupo.clientes.push(reserva.data.cliente);
             } else {
@@ -1484,7 +1490,7 @@ window.actualizarMapaYLista = function(centrarHoy = false) {
                     if (estadoTexto === 'pasado') claseEstado = ' pasada';
                     else if (estadoTexto === 'activo') claseEstado = ' activa';
                     else if (estadoTexto === 'destacado') claseEstado = ' destacada';
-                    
+
                     li.className = 'ruta-item' + claseEstado;
                     const clientesHTML = grupo.clientes.map(c => `<div style="padding-left:10px; margin-bottom:2px;">• ${c}</div>`).join('');
 
@@ -1493,8 +1499,8 @@ window.actualizarMapaYLista = function(centrarHoy = false) {
                         <div class="ruta-fechas">📅 ${formatearFecha(grupo.inicio)} ➝ ${formatearFecha(grupo.fin)}</div>
                         <div class="ruta-cliente" style="margin-top:8px; border-top:1px dashed #dedede; padding-top:4px;">${clientesHTML}</div>
                     `;
-                    
-                    li.onclick = () => { 
+
+                    li.onclick = () => {
                         if (typeof map !== 'undefined' && map && grupo.lat && grupo.lng) {
                             map.flyTo([grupo.lat, grupo.lng], 13);
                             // Búsqueda optimizada de marcador en el grupo
@@ -1511,26 +1517,26 @@ window.actualizarMapaYLista = function(centrarHoy = false) {
                     fragmento.appendChild(li);
                 });
                 ulLista.appendChild(fragmento);
-                
+
                 // Scroll diferido para evitar Forced Reflow
                 setTimeout(() => {
                     const destacado = ulLista.querySelector('.ruta-item.destacada, .ruta-item.activa');
-                    if(destacado) destacado.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    if (destacado) destacado.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 }, 100);
             }
         }
 
         // --- PASO 3: RENDERIZAR MAPA (OPTIMIZACIÓN LAYER GROUP) ---
         if (typeof map !== 'undefined' && map) {
-            
+
             // 1. Crear el grupo de capas si no existe
             if (!window.markersLayer) {
                 window.markersLayer = L.layerGroup().addTo(map);
             }
-            
+
             // 2. Limpiar el grupo de golpe (Mucho más rápido que un bucle removeLayer)
             window.markersLayer.clearLayers();
-            
+
             const ciudadesMap = {};
 
             listaVisualizar.forEach(r => {
@@ -1539,11 +1545,11 @@ window.actualizarMapaYLista = function(centrarHoy = false) {
 
                 if (!ciudadesMap[nombreCiudad]) {
                     ciudadesMap[nombreCiudad] = {
-                        lat: r.data.lat, lng: r.data.lng, clientes: new Set(), diasTotales: 0, prioridadVisual: 0 
+                        lat: r.data.lat, lng: r.data.lng, clientes: new Set(), diasTotales: 0, prioridadVisual: 0
                     };
                 }
                 ciudadesMap[nombreCiudad].clientes.add(r.data.cliente);
-                
+
                 // Corrección: Usar el método de 'T12:00:00' para evitar problemas de zona horaria
                 // al contar los días, igual que en la función de estadísticas.
                 const fechaStringInicio = r.data.fechaInicio;
@@ -1562,10 +1568,10 @@ window.actualizarMapaYLista = function(centrarHoy = false) {
 
             // 3. Crear marcadores y agregarlos AL GRUPO (no al mapa directamente)
             const nuevosMarcadores = [];
-            
+
             Object.keys(ciudadesMap).forEach(ciudadKey => {
                 const datos = ciudadesMap[ciudadKey];
-                let icono = blueIcon; 
+                let icono = blueIcon;
                 let zIndex = 500;
 
                 if (datos.prioridadVisual === 0) { icono = greyIcon; zIndex = 100; }
@@ -1591,7 +1597,7 @@ window.actualizarMapaYLista = function(centrarHoy = false) {
                         </div>
                     </div>
                 `);
-                
+
                 // Agregar al grupo
                 window.markersLayer.addLayer(marker);
             });
@@ -1600,7 +1606,7 @@ window.actualizarMapaYLista = function(centrarHoy = false) {
 }
 
 // --- FUNCIÓN RECUPERADA: EXPORTAR CALENDARIO ---
-window.exportarCalendario = function() {
+window.exportarCalendario = function () {
     if (globalReservas.length === 0) {
         alert("⚠️ No hay eventos para exportar.");
         return;
@@ -1616,7 +1622,7 @@ METHOD:PUBLISH
     globalReservas.forEach(reserva => {
         // Formatear fechas YYYYMMDD (Quitar guiones)
         const start = reserva.data.fechaInicio.replace(/-/g, '');
-        
+
         // iCal requiere que la fecha final sea exclusiva (día siguiente), así que sumamos 1 día
         let endDateObj = new Date(reserva.data.fechaFin + 'T00:00:00');
         endDateObj.setDate(endDateObj.getDate() + 1);
@@ -1656,7 +1662,7 @@ METHOD:PUBLISH
     document.body.removeChild(link);
 };
 
-window.compartirApp = async function() {
+window.compartirApp = async function () {
     const shareData = {
         title: 'Agenda TrackSIM',
         text: 'Consulta la gestión de itinerarios y servicios TrackSIM.',
@@ -1672,14 +1678,14 @@ window.compartirApp = async function() {
     } catch (err) { console.log('Error al compartir:', err); }
 }
 
-window.verQR = function() {
+window.verQR = function () {
     const url = window.location.href;
     const qrImg = document.getElementById('imagenQR');
     qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(url)}`;
     document.getElementById('qrModal').style.display = 'block';
 }
 
-window.abrirModalCrear = function(fecha) {
+window.abrirModalCrear = function (fecha) {
     // Resetear variables
     modoEdicion = false;
     idGrupoEdicion = null;
@@ -1688,11 +1694,11 @@ window.abrirModalCrear = function(fecha) {
     // Limpiar campos
     document.getElementById('fechaInicio').value = fecha;
     document.getElementById('fechaFin').value = fecha;
-    document.getElementById('ciudadInput').value = ""; 
+    document.getElementById('ciudadInput').value = "";
     document.getElementById('ciudadInput').readOnly = true;
     document.getElementById('nombreInput').value = "";
     document.getElementById('direccionInput').value = "";
-    document.getElementById('latTemp').value = ""; 
+    document.getElementById('latTemp').value = "";
     document.getElementById('lonTemp').value = "";
     document.getElementById('eventoEspecialCheck').checked = false;
 
@@ -1705,7 +1711,7 @@ window.abrirModalCrear = function(fecha) {
     document.getElementById('reservaModal').style.display = "block";
 }
 
-window.prepararEdicion = function() {
+window.prepararEdicion = function () {
     if (!eventoSeleccionadoID) return;
     const evento = calendar.getEventById(eventoSeleccionadoID);
     if (!evento) return;
@@ -1743,7 +1749,7 @@ window.prepararEdicion = function() {
 }
 
 // 1. Nueva función para eliminar el enlace
-window.eliminarEnlaceDrive = async function() {
+window.eliminarEnlaceDrive = async function () {
     if (!confirm("¿Estás seguro de que deseas eliminar este enlace?")) return;
     if (!eventoSeleccionadoID) return;
 
@@ -1751,9 +1757,9 @@ window.eliminarEnlaceDrive = async function() {
         const docRef = doc(db, "reservas", eventoSeleccionadoID);
         // Actualizamos el campo a null para borrarlo
         await updateDoc(docRef, { pdfUrl: null });
-        
+
         alert("🗑️ Enlace eliminado.");
-        await cargarReservas(true); 
+        await cargarReservas(true);
         cerrarModal('detalleModal');
     } catch (error) {
         console.error("Error al eliminar enlace:", error);
@@ -1762,29 +1768,29 @@ window.eliminarEnlaceDrive = async function() {
 };
 
 // 2. Función actualizada para habilitar edición
-window.habilitarEdicionDrive = function() {
+window.habilitarEdicionDrive = function () {
     const input = document.getElementById('driveUrlInput');
     const btnGuardar = document.getElementById('btnGuardarDrive');
     const btnEliminar = document.getElementById('btnEliminarDrive');
-    
+
     // Habilitar escritura
     input.readOnly = false;
     input.focus();
-    
+
     // Cambiar icono a guardar
     btnGuardar.textContent = "💾";
     btnGuardar.classList.remove('btn-drive-edit');
     btnGuardar.classList.add('btn-drive-save');
-    btnGuardar.onclick = function() { window.guardarEnlaceDrive(); };
+    btnGuardar.onclick = function () { window.guardarEnlaceDrive(); };
 
     // Mantener visible el botón de eliminar
     btnEliminar.style.display = "block";
 };
 // 3. Función actualizada mostrarDetalles (Controla qué botones se ven)
-window.mostrarDetalles = function(evento) {
-    eventoSeleccionadoID = evento.id; 
+window.mostrarDetalles = function (evento) {
+    eventoSeleccionadoID = evento.id;
     grupoSeleccionadoID = evento.extendedProps.groupId || null;
-    
+
     const seccionPDF = document.getElementById('seccionPDF');
     const pdfInfo = document.getElementById('pdfInfo');
     const linkPDF = document.getElementById('linkPDF');
@@ -1798,7 +1804,7 @@ window.mostrarDetalles = function(evento) {
     // 1. Llenar datos básicos
     document.getElementById('detCliente').innerText = evento.extendedProps.cliente || "No especificado";
     document.getElementById('detCiudad').innerText = evento.extendedProps.ciudadCompleta || evento.title;
-    
+
     // --- INICIO CAMBIOS DIRECCIÓN E ICONOS ---
     const direccionTexto = evento.extendedProps.direccion;
     const lat = evento.extendedProps.lat;
@@ -1849,7 +1855,7 @@ window.mostrarDetalles = function(evento) {
 
     // Fechas
     document.getElementById('detFechas').innerText = `${evento.start.toISOString().split('T')[0]} al ${evento.extendedProps.fechaFinReal}`;
-    
+
     // ... (EL RESTO DE LA FUNCIÓN PERMANECE EXACTAMENTE IGUAL: Lógica de PDF, Admin, botones) ...
     const urlExistente = evento.extendedProps.pdfUrl;
     if (esAdmin) {
@@ -1866,7 +1872,7 @@ window.mostrarDetalles = function(evento) {
             btnGuardarDrive.textContent = "✏️";
             btnGuardarDrive.classList.remove('btn-drive-save');
             btnGuardarDrive.classList.add('btn-drive-edit');
-            btnGuardarDrive.onclick = function() { window.habilitarEdicionDrive(); };
+            btnGuardarDrive.onclick = function () { window.habilitarEdicionDrive(); };
             btnEliminarDrive.style.display = "block";
         } else {
             pdfInfo.style.display = 'none';
@@ -1876,7 +1882,7 @@ window.mostrarDetalles = function(evento) {
             btnGuardarDrive.textContent = "💾";
             btnGuardarDrive.classList.remove('btn-drive-edit');
             btnGuardarDrive.classList.add('btn-drive-save');
-            btnGuardarDrive.onclick = function() { window.guardarEnlaceDrive(); };
+            btnGuardarDrive.onclick = function () { window.guardarEnlaceDrive(); };
             btnEliminarDrive.style.display = "none";
         }
     } else {
@@ -1896,9 +1902,9 @@ window.mostrarDetalles = function(evento) {
     document.getElementById('detalleModal').style.display = "block";
 }
 
-window.cerrarModal = function(idModal) { document.getElementById(idModal).style.display = "none"; }
+window.cerrarModal = function (idModal) { document.getElementById(idModal).style.display = "none"; }
 
-window.borrarReserva = async function() {
+window.borrarReserva = async function () {
     if (!eventoSeleccionadoID) return;
 
     // 1. Buscamos la reserva en nuestros datos locales para obtener su Group ID
@@ -1906,7 +1912,7 @@ window.borrarReserva = async function() {
     const groupId = reservaActual ? reservaActual.data.groupId : null;
 
     let mensajeConfirmacion = "⚠️ ¿Estás seguro de eliminar esta reserva? ⚠️";
-    
+
     // Si detectamos que es parte de un grupo, avisamos al usuario
     if (groupId) {
         mensajeConfirmacion = "⚠️ ¿Deseas eliminar la reservación completa?";
@@ -1917,20 +1923,20 @@ window.borrarReserva = async function() {
     try {
         if (groupId) {
             // OPCIÓN A: Borrar todo el grupo (Todas las semanas vinculadas)
-            
+
             // 1. Buscamos todas las reservas con ese groupId
             const q = query(collection(db, "reservas"), where("groupId", "==", groupId));
             const querySnapshot = await getDocs(q);
-            
+
             // 2. Preparamos un "batch" para borrar todas de golpe
             const batch = writeBatch(db);
             querySnapshot.forEach((doc) => {
                 batch.delete(doc.ref);
             });
-            
+
             // 3. Ejecutamos el borrado masivo
             await batch.commit();
-            
+
         } else {
             // OPCIÓN B: Borrado simple (Por si es una reserva antigua sin groupId)
             await deleteDoc(doc(db, "reservas", eventoSeleccionadoID));
@@ -1947,7 +1953,7 @@ window.borrarReserva = async function() {
 };
 
 // 1. Modificar iniciarSesion para abrir el modal en lugar del prompt
-window.iniciarSesion = async function() {
+window.iniciarSesion = async function () {
     const provider = new GoogleAuthProvider();
     provider.addScope('profile');
     provider.addScope('email');
@@ -1960,7 +1966,7 @@ window.iniciarSesion = async function() {
     try {
         const result = await signInWithPopup(auth, provider);
         const user = result.user;
-        
+
         if (ADMIN_EMAILS.includes(user.email)) {
             console.log(`Login exitoso como administrador: ${user.email}`);
             esAdmin = true; // Setear la variable global
@@ -1978,7 +1984,7 @@ window.iniciarSesion = async function() {
 };
 
 // 2. Función actualizada para cerrar sesión
-window.cerrarSesion = async function() {
+window.cerrarSesion = async function () {
     try {
         await signOut(auth);
         console.log("Cierre de sesión de administrador");
@@ -1989,7 +1995,7 @@ window.cerrarSesion = async function() {
     }
 };
 
-window.ajustarMapa = function() {
+window.ajustarMapa = function () {
     // Coordenadas originales utilizadas al cargar el mapa por primera vez
     const latOriginal = 23.6345;
     const lonOriginal = -102.5528;
@@ -2003,7 +2009,7 @@ window.ajustarMapa = function() {
     }
 }
 
-window.guardarEnlaceDrive = async function() {
+window.guardarEnlaceDrive = async function () {
     const url = document.getElementById('driveUrlInput').value;
     if (!url) return alert("Por favor, pega un enlace válido.");
     if (!eventoSeleccionadoID) return;
@@ -2024,7 +2030,7 @@ window.guardarEnlaceDrive = async function() {
 // ---------------------------------------------------------
 
 // 1. Cerrar con tecla Escape
-document.addEventListener('keydown', function(event) {
+document.addEventListener('keydown', function (event) {
     if (event.key === "Escape") {
         const modales = document.querySelectorAll('.modal');
         modales.forEach(modal => {
@@ -2035,7 +2041,7 @@ document.addEventListener('keydown', function(event) {
 
 // 2. Cerrar al hacer clic en el fondo oscuro (.modal)
 // Se usa 'window' para capturar clics globales
-window.addEventListener('click', function(event) {
+window.addEventListener('click', function (event) {
     // Verificamos si el elemento clickeado tiene la clase 'modal'
     // (Esto significa que clickeó el fondo, no el 'modal-content')
     if (event.target.classList.contains('modal')) {
@@ -2045,7 +2051,7 @@ window.addEventListener('click', function(event) {
 
 // --- FUNCIONES DE IMPORTACIÓN CSV ---
 // Función para abrir el selector de archivos
-window.abrirSelectorCSV = function() {
+window.abrirSelectorCSV = function () {
     const input = document.getElementById('fileInput'); // <--- Debe coincidir con el ID del HTML
     if (input) {
         input.click();
@@ -2055,7 +2061,7 @@ window.abrirSelectorCSV = function() {
     }
 }
 
-window.procesarArchivoExcel = function(input) {
+window.procesarArchivoExcel = function (input) {
     const archivo = input.files[0];
     if (!archivo) return;
 
@@ -2070,7 +2076,7 @@ window.procesarArchivoExcel = function(input) {
 
     const reader = new FileReader();
 
-    reader.onload = async function(e) {
+    reader.onload = async function (e) {
         try {
             // 2. ACTIVAR SPINNER
             overlay.style.display = 'flex';
@@ -2078,9 +2084,9 @@ window.procesarArchivoExcel = function(input) {
 
             // --- LECTURA DEL ARCHIVO ---
             const data = new Uint8Array(e.target.result);
-            const workbook = XLSX.read(data, {type: 'array', cellDates: true, dateNF: 'yyyy-mm-dd'}); 
+            const workbook = XLSX.read(data, { type: 'array', cellDates: true, dateNF: 'yyyy-mm-dd' });
             const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-            const lineas = XLSX.utils.sheet_to_json(worksheet, {header: 1, defval: "", raw: false});
+            const lineas = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "", raw: false });
 
             if (lineas.length < 2) {
                 alert("El archivo Excel parece estar vacío.");
@@ -2088,16 +2094,16 @@ window.procesarArchivoExcel = function(input) {
             }
 
             // Pausa momentánea para ocultar spinner y mostrar confirmación (el confirm bloquea el render)
-            overlay.style.display = 'none'; 
-            
-            if(!confirm(`Procesando Excel (${lineas.length - 1} filas).
+            overlay.style.display = 'none';
+
+            if (!confirm(`Procesando Excel (${lineas.length - 1} filas).
 
 MODO DE PRECISIÓN:
 1. Si hay Coordenadas (Col F y G) -> Se usan directo.
 2. Si no -> Se busca la Dirección en el mapa.
 
 ¿Continuar?`)) {
-                input.value = ''; 
+                input.value = '';
                 btnImport.disabled = false;
                 textoOverlay.innerText = textoOriginalOverlay;
                 return;
@@ -2109,10 +2115,10 @@ MODO DE PRECISIÓN:
 
             let contExito = 0;
             let contError = 0;
-            let contCoordsDirectas = 0; 
+            let contCoordsDirectas = 0;
 
             // Batch config
-            const BATCH_SIZE = 400; 
+            const BATCH_SIZE = 400;
             let batch = writeBatch(db);
             let operationCounter = 0;
 
@@ -2127,7 +2133,7 @@ MODO DE PRECISIÓN:
                         let dia = partes[0].padStart(2, '0');
                         let mes = partes[1].padStart(2, '0');
                         let ano = partes[2];
-                        if (ano.length === 2) ano = "20" + ano; 
+                        if (ano.length === 2) ano = "20" + ano;
                         return `${ano}-${mes}-${dia}`;
                     }
                 }
@@ -2167,7 +2173,7 @@ MODO DE PRECISIÓN:
                 const cliente = fila[2] ? fila[2].toString().trim() : "Cliente";
                 const ciudad = fila[3] ? fila[3].toString().trim() : "Sin Ciudad";
                 const direccionTexto = fila[4] ? fila[4].toString().trim() : "";
-                const rawLat = fila[5]; 
+                const rawLat = fila[5];
                 const rawLng = fila[6];
 
                 const fInicio = formatearFecha(rawInicio);
@@ -2187,7 +2193,7 @@ MODO DE PRECISIÓN:
                     const coordsAPI = await obtenerCoordenadasDeAPI(direccionTexto, ciudad);
                     latFinal = coordsAPI.lat;
                     lngFinal = coordsAPI.lng;
-                    await esperar(150); 
+                    await esperar(150);
                 }
 
                 const rangos = calcularRangosSinDomingo(fInicio, fFin);
@@ -2201,26 +2207,26 @@ MODO DE PRECISIÓN:
                     let endStr = r.end.toISOString().split('T')[0];
                     const docId = `${startStr}_${cleanClient}`;
                     const docRef = doc(db, "reservas", docId);
-                    
+
                     batch.set(docRef, {
                         fechaInicio: startStr,
                         fechaFin: endStr,
                         cliente: cliente,
                         ciudad: ciudad,
                         direccion: direccionTexto,
-                        lat: latFinal,           
-                        lng: lngFinal,           
+                        lat: latFinal,
+                        lng: lngFinal,
                         groupId: groupId,
                         creado: new Date()
                         // pdfUrl: null  <-- Mantenemos comentada esta línea para no borrar adjuntos
                     }, { merge: true });
 
                     operationCounter++;
-                    contExito++; 
+                    contExito++;
 
                     if (operationCounter >= BATCH_SIZE) {
                         await batch.commit();
-                        batch = writeBatch(db); 
+                        batch = writeBatch(db);
                         operationCounter = 0;
                     }
                 }
@@ -2230,12 +2236,12 @@ MODO DE PRECISIÓN:
 
             // 5. MENSAJE FINAL
             textoOverlay.innerText = "✅ Finalizando...";
-            
+
             alert(`Importación Completada.
 ✅ Total Registros: ${contExito}
 🎯 Usaron Coordenadas Exactas: ${contCoordsDirectas}
 🗺️ Buscados en Mapa: ${contExito - contCoordsDirectas}`);
-            
+
             await cargarReservas(true); // Recarga forzada
 
         } catch (error) {
@@ -2245,7 +2251,7 @@ MODO DE PRECISIÓN:
             // 6. LIMPIEZA FINAL: OCULTAR SPINNER Y RESTAURAR TEXTO
             overlay.style.display = 'none';
             textoOverlay.innerText = textoOriginalOverlay; // "Cargando Agenda..."
-            
+
             btnImport.disabled = false;
             input.value = '';
         }
@@ -2254,12 +2260,12 @@ MODO DE PRECISIÓN:
 }
 
 // --- Función auxiliar para copiar texto al portapapeles ---
-window.copiarTextoAlPortapapeles = function(texto, elementoIcono) {
+window.copiarTextoAlPortapapeles = function (texto, elementoIcono) {
     if (!texto) return;
 
     // API moderna de portapapeles
     if (navigator.clipboard && navigator.clipboard.writeText) {
-         navigator.clipboard.writeText(texto)
+        navigator.clipboard.writeText(texto)
             .then(() => {
                 // Feedback visual: cambiar icono temporalmente
                 const iconoOriginal = elementoIcono.innerText;
@@ -2289,19 +2295,19 @@ window.copiarTextoAlPortapapeles = function(texto, elementoIcono) {
     }
 };
 
-window.toggleItinerary = function() {
+window.toggleItinerary = function () {
     const sidebar = document.getElementById('map-sidebar');
     const icon = document.getElementById('itinerary-toggle-icon');
-    
+
     // Solo actuar si estamos en modo móvil (verificando si el header está colapsado o tiene la clase)
     // Aunque la clase .open solo afecta en móvil por el CSS media query, es seguro alternarla siempre.
-    
+
     if (sidebar.classList.contains('open')) {
         sidebar.classList.remove('open');
-        if(icon) icon.style.transform = 'rotate(0deg)'; // Flecha arriba
+        if (icon) icon.style.transform = 'rotate(0deg)'; // Flecha arriba
     } else {
         sidebar.classList.add('open');
-        if(icon) icon.style.transform = 'rotate(180deg)'; // Flecha abajo
+        if (icon) icon.style.transform = 'rotate(180deg)'; // Flecha abajo
     }
 };
 
@@ -2312,7 +2318,7 @@ async function verificarNuevaVersion() {
         // Nota: Esto depende del span que ya tienes: <span id="app-version">1.0.X</span>
         const elementoVersion = document.getElementById('app-version');
         if (!elementoVersion) return;
-        
+
         // Limpiamos el texto para obtener solo el número "1.0.XXXX"
         // Asume formato "1.0.1234 (Fecha)" -> split toma la primera parte
         const versionLocal = elementoVersion.innerText.split(' ')[0].trim();
@@ -2320,7 +2326,7 @@ async function verificarNuevaVersion() {
         // 2. Consultar al servidor la versión real (usamos timestamp para evitar caché)
         const respuesta = await fetch(`version.json?t=${new Date().getTime()}`, { cache: "no-store" });
         if (!respuesta.ok) return;
-        
+
         const datosServidor = await respuesta.json();
         const versionServidor = datosServidor.version;
 
@@ -2329,12 +2335,12 @@ async function verificarNuevaVersion() {
         // 3. Comparar y recargar si es necesario
         if (versionServidor && versionLocal !== versionServidor) {
             console.log("🔄 Nueva versión detectada. Actualizando...");
-            
+
             // Opción A: Recarga silenciosa (puede perder datos no guardados)
             // window.location.reload(true);
-            
+
             // Opción B (Recomendada): Preguntar al usuario o mostrar un aviso discreto
-            if(confirm(`¡Nueva actualización disponible!
+            if (confirm(`¡Nueva actualización disponible!
 
 Se recargará la página para obtener las mejoras.`)) {
                 // El 'true' fuerza la recarga desde el servidor, ignorando caché
@@ -2358,10 +2364,10 @@ document.addEventListener('visibilitychange', () => {
     }
 });
 
-document.addEventListener('click', function(event) {
+document.addEventListener('click', function (event) {
     const menu = document.getElementById('mobile-menu');
     const hamburger = document.querySelector('.hamburger-btn');
-    
+
     // Verificamos si el menú existe y si está abierto
     if (menu && menu.classList.contains('open')) {
         // Si el clic NO fue dentro del menú Y TAMPOCO en el botón de hamburguesa
@@ -2370,46 +2376,396 @@ document.addEventListener('click', function(event) {
         }
     }
 });
-        
-        // Función de ayuda para depuración desde la consola del navegador.
-        // Se define en un script no-módulo para ser accesible globalmente.
-        function testNotificaciones() {
-            console.log("🧪 Forzando la verificación de notificaciones...");
-            // La función verificarEventosProximos() está en el módulo, por lo que no podemos llamarla directamente.
-            // En su lugar, disparamos un evento personalizado que el módulo escuchará.
-            window.dispatchEvent(new CustomEvent('test-notificaciones'));
-        }
-    
-    // 1. Registrar Service Worker
-    if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-            navigator.serviceWorker.register('sw.js') // Ruta corregida
-                .then(reg => console.log('Service Worker registrado: ', reg.scope))
-                .catch(err => console.log('Service Worker falló: ', err));
-        });
-    }
 
-    // 2. Lógica del Botón de Instalación (Opcional pero recomendado)
-    let deferredPrompt;
-    // Escuchar el evento que indica que la app es instalable
-    window.addEventListener('beforeinstallprompt', (e) => {
-        // Prevenir que Chrome muestre el banner automáticamente (opcional, si quieres control total)
-        // e.preventDefault(); 
-        
-        // Guardar el evento para dispararlo cuando quieras
-        deferredPrompt = e;
-        
-        // Mostrar un botón "Instalar" en tu menú (si tienes uno oculto)
-        // Ejemplo: document.getElementById('btnInstallApp').style.display = 'block';
-        console.log("App lista para instalar");
+// Función de ayuda para depuración desde la consola del navegador.
+// Se define en un script no-módulo para ser accesible globalmente.
+function testNotificaciones() {
+    console.log("🧪 Forzando la verificación de notificaciones...");
+    // La función verificarEventosProximos() está en el módulo, por lo que no podemos llamarla directamente.
+    // En su lugar, disparamos un evento personalizado que el módulo escuchará.
+    window.dispatchEvent(new CustomEvent('test-notificaciones'));
+}
+
+// 1. Registrar Service Worker
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js') // Ruta corregida
+            .then(reg => console.log('Service Worker registrado: ', reg.scope))
+            .catch(err => console.log('Service Worker falló: ', err));
+    });
+}
+
+// 2. Lógica del Botón de Instalación (Opcional pero recomendado)
+let deferredPrompt;
+// Escuchar el evento que indica que la app es instalable
+window.addEventListener('beforeinstallprompt', (e) => {
+    // Prevenir que Chrome muestre el banner automáticamente (opcional, si quieres control total)
+    // e.preventDefault(); 
+
+    // Guardar el evento para dispararlo cuando quieras
+    deferredPrompt = e;
+
+    // Mostrar un botón "Instalar" en tu menú (si tienes uno oculto)
+    // Ejemplo: document.getElementById('btnInstallApp').style.display = 'block';
+    console.log("App lista para instalar");
+});
+
+// Función para llamar desde un botón: <button onclick="instalarApp()">Instalar</button>
+async function instalarApp() {
+    if (deferredPrompt) {
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        console.log(`Usuario eligió: ${outcome}`);
+        deferredPrompt = null;
+    }
+}
+
+// --- REPORTES EJECUTIVOS ---
+
+window.abrirReporteModal = function () {
+    const modal = document.getElementById('reporteModal');
+    const selectAno = document.getElementById('filtroAnoReporte');
+    const inputCliente = document.getElementById('filtroClienteReporte');
+
+    // Resetear
+    inputCliente.value = '';
+
+    // Obtener años únicos de las reservas
+    const anos = new Set();
+    globalReservas.forEach(r => {
+        if (r.start) {
+            anos.add(r.start.getFullYear());
+        }
     });
 
-    // Función para llamar desde un botón: <button onclick="instalarApp()">Instalar</button>
-    async function instalarApp() {
-        if (deferredPrompt) {
-            deferredPrompt.prompt();
-            const { outcome } = await deferredPrompt.userChoice;
-            console.log(`Usuario eligió: ${outcome}`);
-            deferredPrompt = null;
+    // Llenar select
+    selectAno.innerHTML = '<option value="todos">Todos los años</option>';
+    Array.from(anos).sort((a, b) => b - a).forEach(ano => {
+        const option = document.createElement('option');
+        option.value = ano;
+        option.textContent = ano;
+        selectAno.appendChild(option);
+    });
+
+    // Seleccionar el año actual si está en la lista
+    const currentYear = new Date().getFullYear();
+    if (anos.has(currentYear)) {
+        selectAno.value = currentYear;
+    }
+
+    modal.style.display = 'block';
+
+    // Generar reporte inicial
+    generarReporte();
+};
+
+window.generarReporte = function () {
+    const selectAno = document.getElementById('filtroAnoReporte').value;
+    const inputCliente = document.getElementById('filtroClienteReporte').value.toLowerCase().trim();
+    const tbody = document.getElementById('tablaReporteCuerpo');
+    const subtitulo = document.getElementById('subtituloReporte');
+    const kpiTotal = document.getElementById('kpiTotal');
+    const kpiClientes = document.getElementById('kpiClientes');
+    const kpiCiudad = document.getElementById('kpiCiudad');
+
+    tbody.innerHTML = '';
+
+    // Filtrar globalReservas
+    let reservasFiltradas = globalReservas.filter(r => {
+        if (r.data.esEspecial === true) {
+            return false;
+        }
+
+        let matchAno = true;
+        if (selectAno !== 'todos' && r.start) {
+            matchAno = r.start.getFullYear() === parseInt(selectAno);
+        }
+
+        let matchCliente = true;
+        if (inputCliente !== '') {
+            const clienteStr = (r.data.cliente || "").toLowerCase();
+            matchCliente = clienteStr.includes(inputCliente);
+        }
+
+        return matchAno && matchCliente;
+    });
+
+    // Ordenar por cliente y luego fecha
+    reservasFiltradas.sort((a, b) => {
+        const cA = (a.data.cliente || "").toLowerCase().trim();
+        const cB = (b.data.cliente || "").toLowerCase().trim();
+        if (cA < cB) return -1;
+        if (cA > cB) return 1;
+        return a.start - b.start;
+    });
+
+    // Agrupar reservaciones consecutivas del mismo cliente (brecha <= 4 días)
+    let reservasAgrupadas = [];
+    if (reservasFiltradas.length > 0) {
+        let current = JSON.parse(JSON.stringify(reservasFiltradas[0])); // Deep copy simple
+        current.start = new Date(current.start);
+        current.end = new Date(current.end);
+
+        for (let i = 1; i < reservasFiltradas.length; i++) {
+            let next = JSON.parse(JSON.stringify(reservasFiltradas[i]));
+            next.start = new Date(next.start);
+            next.end = new Date(next.end);
+
+            const currentC = (current.data.cliente || "").toLowerCase().trim();
+            const nextC = (next.data.cliente || "").toLowerCase().trim();
+
+            if (currentC === nextC && currentC !== "") {
+                const currentEndObj = new Date(current.data.fechaFin + "T12:00:00");
+                const nextStartObj = new Date(next.data.fechaInicio + "T12:00:00");
+                const gapDays = (nextStartObj - currentEndObj) / (1000 * 60 * 60 * 24);
+
+                if (gapDays <= 4 && gapDays >= -400) {
+                    const nextEndObj = new Date(next.data.fechaFin + "T12:00:00");
+                    if (nextEndObj > currentEndObj) {
+                        current.data.fechaFin = next.data.fechaFin;
+                        current.end = next.end;
+                    }
+                    continue;
+                }
+            }
+            reservasAgrupadas.push(current);
+            current = next;
+        }
+        reservasAgrupadas.push(current);
+    }
+
+    // Ordenar las agupaciones por pura cronología
+    reservasAgrupadas.sort((a, b) => a.start - b.start);
+
+    // Preparar el subtítulo
+    let subtituloTexto = `Filtros aplicados - Año: ${selectAno === 'todos' ? 'Todos' : selectAno}`;
+    if (inputCliente) {
+        subtituloTexto += ` | Cliente: "${inputCliente}"`;
+    }
+    subtitulo.textContent = subtituloTexto;
+
+    // Actualizar Total KPI con cantidad agrupada
+    kpiTotal.textContent = reservasAgrupadas.length;
+
+    if (reservasAgrupadas.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; padding: 15px; color: var(--text-color-muted);">No hay reservaciones que coincidan con los filtros.</td></tr>';
+        kpiClientes.textContent = '0';
+        kpiCiudad.textContent = '-';
+        return;
+    }
+
+    const clientesSet = new Set();
+    const ciudadesCount = {};
+    let totalDiasGlobales = 0;
+
+    // Poblar la tabla
+    reservasAgrupadas.forEach(r => {
+        if (r.data.cliente) clientesSet.add(r.data.cliente.trim().toLowerCase());
+
+        const startObj = new Date(r.start);
+        const endObj = new Date(r.end);
+        let numDias = Math.floor((endObj - startObj) / (1000 * 60 * 60 * 24)) + 1;
+        if (numDias < 1) numDias = 1;
+        totalDiasGlobales += numDias;
+
+        let ciudadDisplay = 'N/A';
+        if (r.data.ciudad) {
+            ciudadDisplay = r.data.ciudad.split(',')[0].trim();
+            ciudadesCount[ciudadDisplay] = (ciudadesCount[ciudadDisplay] || 0) + numDias; // Sumar dias
+        }
+
+        const tr = document.createElement('tr');
+
+        const fechaInicio = window.formatearFecha ? window.formatearFecha(r.data.fechaInicio) : r.data.fechaInicio;
+        const fechaFin = window.formatearFecha ? window.formatearFecha(r.data.fechaFin) : r.data.fechaFin;
+        const fechaDisplay = (fechaInicio === fechaFin) ? fechaInicio : `${fechaInicio} - ${fechaFin}`;
+
+        tr.innerHTML = `
+            <td>${r.data.cliente || 'N/A'}</td>
+            <td>${ciudadDisplay}</td>
+            <td>${fechaDisplay}</td>
+            <td style="text-align: center; font-weight: 600;">${numDias}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+
+    // Actualizar otros KPIs
+    kpiClientes.textContent = clientesSet.size;
+
+    let maxCount = 0;
+    let ciudadMax = '-';
+    for (const [c, count] of Object.entries(ciudadesCount)) {
+        if (count > maxCount) {
+            maxCount = count;
+            ciudadMax = c;
         }
     }
+    kpiCiudad.textContent = ciudadMax;
+
+    let kpiSemanas = document.getElementById('kpiSemanas');
+    if (kpiSemanas) {
+        kpiSemanas.textContent = (totalDiasGlobales / 5).toFixed(1);
+    }
+};
+
+window.exportarReportePDF = async function () {
+    const elemento = document.getElementById('reporteParaPdf');
+    // Guardar estilos originales
+    const colorOriginal = elemento.style.color;
+    const bgOriginal = elemento.style.background;
+
+    elemento.classList.add('pdf-export-mode');
+
+    const bodyBgOrig = document.body.style.background;
+    const htmlBgOrig = document.documentElement.style.background;
+    document.body.style.background = 'transparent';
+    document.documentElement.style.background = 'transparent';
+
+    // Novedad: Remover el fondo de TODOS los ancestros para prevenir que html2canvas lo herede
+    let ancestor = elemento.parentElement;
+    const ancestorBgs = [];
+    while (ancestor && ancestor !== document.body && ancestor !== document.documentElement) {
+        ancestorBgs.push({ el: ancestor, bg: ancestor.style.background, bgC: ancestor.style.backgroundColor });
+        ancestor.style.setProperty('background', 'transparent', 'important');
+        ancestor.style.setProperty('background-color', 'transparent', 'important');
+        ancestor = ancestor.parentElement;
+    }
+
+    document.documentElement.style.setProperty('--text-color', '#000000');
+    document.documentElement.style.setProperty('--text-color-muted', '#333333');
+    document.documentElement.style.setProperty('--text-color-light', '#222222');
+    document.documentElement.style.setProperty('--bg-color', 'transparent');
+    document.documentElement.style.setProperty('--card-bg', 'transparent');
+    document.documentElement.style.setProperty('--hover-bg', 'rgba(0,0,0,0.03)');
+    document.documentElement.style.setProperty('--border-color', '#cccccc');
+
+    const opt = {
+        html2canvas: { scale: 2, backgroundColor: null } // Asegurar fondo totalmente nulo
+    };
+
+    if (typeof html2canvas !== 'undefined' && window.PDFLib) {
+        const btn = document.querySelector('#reporteModal .btn-action');
+        const textOrig = btn.innerHTML;
+        btn.innerHTML = '<span class="loader" style="width:16px;height:16px;margin-right:8px;border-width:2px;vertical-align:middle;display:inline-block; border-top-color: white;"></span> Generando PDF...';
+        btn.disabled = true;
+
+        try {
+            // Ceder el control al navegador para que dibuje el spinner antes del bloqueo
+            await new Promise(resolve => setTimeout(resolve, 50));
+            
+            // Obtenemos canvas saltandonos JS PDF y cualquier blanco por defecto
+            const canvas = await html2canvas(elemento, opt.html2canvas);
+
+            // Cargar la plantilla usando directamente pdf-lib
+            const resp = await fetch('template/TrackSIM Membretada.pdf');
+            if (!resp.ok) throw new Error("Plantilla no encontrada");
+
+            const templateBytes = await resp.arrayBuffer();
+            const { PDFDocument } = window.PDFLib;
+
+            const mergedDoc = await PDFDocument.load(templateBytes);
+            const templateDoc = await PDFDocument.load(templateBytes);
+
+            const [templatePage] = mergedDoc.getPages();
+            const { width, height } = templatePage.getSize();
+
+            const marginX = 36;
+            const marginYTop = 36;
+            const marginYBottom = 36;
+            const drawWidth = width - marginX * 2;
+            const pageMaxHeight = height - marginYTop - marginYBottom;
+
+            const pxToPtRatio = drawWidth / canvas.width;
+            const pagePxHeight = pageMaxHeight / pxToPtRatio;
+
+            let remainHeight = canvas.height;
+            let yPos = 0;
+            let pageIdx = 0;
+
+            while (remainHeight > 0) {
+                const chunkHeightPx = Math.min(pagePxHeight, remainHeight);
+                const chunkCanvas = document.createElement('canvas');
+                chunkCanvas.width = canvas.width;
+                chunkCanvas.height = chunkHeightPx;
+                const ctx = chunkCanvas.getContext('2d');
+
+                // Hack brutal si el fondo sigue blanco: Forzar alpha
+                ctx.drawImage(canvas, 0, yPos, canvas.width, chunkHeightPx, 0, 0, canvas.width, chunkHeightPx);
+
+                const imgData = ctx.getImageData(0, 0, chunkCanvas.width, chunkCanvas.height);
+                const data = imgData.data;
+                for (let i = 0; i < data.length; i += 4) {
+                    if (data[i] > 240 && data[i + 1] > 240 && data[i + 2] > 240) {
+                        data[i + 3] = 0; // Transparencia pura a los blancos
+                    }
+                }
+                ctx.putImageData(imgData, 0, 0);
+
+                const pngData = chunkCanvas.toDataURL('image/png');
+                const pngImage = await mergedDoc.embedPng(pngData);
+
+                const drawHeight = chunkHeightPx * pxToPtRatio;
+
+                let targetPage;
+                if (pageIdx === 0) {
+                    targetPage = templatePage;
+                } else {
+                    const [copiedPage] = await mergedDoc.copyPages(templateDoc, [0]);
+                    targetPage = mergedDoc.addPage(copiedPage);
+                }
+
+                targetPage.drawImage(pngImage, {
+                    x: marginX,
+                    y: height - marginYTop - drawHeight,
+                    width: drawWidth,
+                    height: drawHeight
+                });
+
+                remainHeight -= chunkHeightPx;
+                yPos += chunkHeightPx;
+                pageIdx++;
+            }
+
+            const finalPdfBytes = await mergedDoc.save();
+
+            const blob = new Blob([finalPdfBytes], { type: 'application/pdf' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Reporte_Reservaciones_${new Date().getTime()}.pdf`;
+            a.click();
+            URL.revokeObjectURL(url);
+
+        } catch (err) {
+            console.error("Error principal fusionando PDF exacto: ", err);
+            alert('Hubo un error crítico al procesar y montar el PNG en el membrete.');
+        } finally {
+            elemento.classList.remove('pdf-export-mode');
+            btn.textContent = textOrig;
+            btn.disabled = false;
+            elemento.style.color = colorOriginal;
+            elemento.style.background = bgOriginal;
+            elemento.style.backgroundColor = '';
+            document.body.style.background = bodyBgOrig;
+            document.documentElement.style.background = htmlBgOrig;
+
+            ancestorBgs.forEach(a => {
+                a.el.style.background = a.bg;
+                a.el.style.backgroundColor = a.bgC;
+            });
+
+            document.documentElement.style.removeProperty('--text-color');
+            document.documentElement.style.removeProperty('--text-color-muted');
+            document.documentElement.style.removeProperty('--text-color-light');
+            document.documentElement.style.removeProperty('--bg-color');
+            document.documentElement.style.removeProperty('--card-bg');
+            document.documentElement.style.removeProperty('--hover-bg');
+            document.documentElement.style.removeProperty('--border-color');
+            
+            btn.innerHTML = textOrig;
+            btn.disabled = false;
+        }
+    } else {
+        alert("Las dependencias para PDF no están disponibles.");
+    }
+};
