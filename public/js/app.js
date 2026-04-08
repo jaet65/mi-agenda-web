@@ -2615,34 +2615,36 @@ window.exportarReportePDF = async function () {
     // Guardar estilos originales
     const colorOriginal = elemento.style.color;
     const bgOriginal = elemento.style.background;
-
-    elemento.classList.add('pdf-export-mode');
-
-    const bodyBgOrig = document.body.style.background;
-    const htmlBgOrig = document.documentElement.style.background;
-    document.body.style.background = 'transparent';
-    document.documentElement.style.background = 'transparent';
-
-    // Novedad: Remover el fondo de TODOS los ancestros para prevenir que html2canvas lo herede
-    let ancestor = elemento.parentElement;
-    const ancestorBgs = [];
-    while (ancestor && ancestor !== document.body && ancestor !== document.documentElement) {
-        ancestorBgs.push({ el: ancestor, bg: ancestor.style.background, bgC: ancestor.style.backgroundColor });
-        ancestor.style.setProperty('background', 'transparent', 'important');
-        ancestor.style.setProperty('background-color', 'transparent', 'important');
-        ancestor = ancestor.parentElement;
-    }
-
-    document.documentElement.style.setProperty('--text-color', '#000000');
-    document.documentElement.style.setProperty('--text-color-muted', '#333333');
-    document.documentElement.style.setProperty('--text-color-light', '#222222');
-    document.documentElement.style.setProperty('--bg-color', 'transparent');
-    document.documentElement.style.setProperty('--card-bg', 'transparent');
-    document.documentElement.style.setProperty('--hover-bg', 'rgba(0,0,0,0.03)');
-    document.documentElement.style.setProperty('--border-color', '#cccccc');
-
     const opt = {
-        html2canvas: { scale: 2, backgroundColor: null } // Asegurar fondo totalmente nulo
+        html2canvas: { 
+            scale: 2, 
+            backgroundColor: null,
+            onclone: function (doc) {
+                // Set CSS variables only in the cloned document so the live UI doesn't flash transparent
+                const docRoot = doc.documentElement;
+                docRoot.style.setProperty('--text-color', '#000000');
+                docRoot.style.setProperty('--text-color-muted', '#333333');
+                docRoot.style.setProperty('--text-color-light', '#222222');
+                docRoot.style.setProperty('--bg-color', 'transparent');
+                docRoot.style.setProperty('--card-bg', 'transparent');
+                docRoot.style.setProperty('--hover-bg', 'rgba(0,0,0,0.03)');
+                docRoot.style.setProperty('--border-color', '#cccccc');
+
+                doc.body.style.setProperty('background', 'transparent', 'important');
+                docRoot.style.setProperty('background', 'transparent', 'important');
+                
+                const el = doc.getElementById('reporteParaPdf');
+                if (el) {
+                    el.classList.add('pdf-export-mode'); // Sólo en el clon
+                    let anc = el.parentElement;
+                    while (anc && anc !== doc.body && anc !== docRoot) {
+                        anc.style.setProperty('background', 'transparent', 'important');
+                        anc.style.setProperty('background-color', 'transparent', 'important');
+                        anc = anc.parentElement;
+                    }
+                }
+            }
+        } 
     };
 
     if (typeof html2canvas !== 'undefined' && window.PDFLib) {
@@ -2742,28 +2744,6 @@ window.exportarReportePDF = async function () {
             console.error("Error principal fusionando PDF exacto: ", err);
             alert('Hubo un error crítico al procesar y montar el PNG en el membrete.');
         } finally {
-            elemento.classList.remove('pdf-export-mode');
-            btn.textContent = textOrig;
-            btn.disabled = false;
-            elemento.style.color = colorOriginal;
-            elemento.style.background = bgOriginal;
-            elemento.style.backgroundColor = '';
-            document.body.style.background = bodyBgOrig;
-            document.documentElement.style.background = htmlBgOrig;
-
-            ancestorBgs.forEach(a => {
-                a.el.style.background = a.bg;
-                a.el.style.backgroundColor = a.bgC;
-            });
-
-            document.documentElement.style.removeProperty('--text-color');
-            document.documentElement.style.removeProperty('--text-color-muted');
-            document.documentElement.style.removeProperty('--text-color-light');
-            document.documentElement.style.removeProperty('--bg-color');
-            document.documentElement.style.removeProperty('--card-bg');
-            document.documentElement.style.removeProperty('--hover-bg');
-            document.documentElement.style.removeProperty('--border-color');
-            
             btn.innerHTML = textOrig;
             btn.disabled = false;
         }
