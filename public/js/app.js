@@ -1061,7 +1061,7 @@ window.mostrarMapa = function () {
     document.getElementById('calendar-container').style.display = 'none';
     document.getElementById('agenda-view').style.display = 'none';
     const hrView = document.getElementById('hoja-ruta-view');
-    if(hrView) hrView.style.display = 'none';
+    if (hrView) hrView.style.display = 'none';
     document.getElementById('map-view').style.display = 'flex';
     document.getElementById('btn-go-map').style.display = 'none';
     document.getElementById('mobile-btn-map').style.display = 'none';
@@ -1072,7 +1072,7 @@ window.mostrarCalendario = function () {
     document.getElementById('map-view').style.display = 'none';
     document.getElementById('agenda-view').style.display = 'none';
     const hrView = document.getElementById('hoja-ruta-view');
-    if(hrView) hrView.style.display = 'none';
+    if (hrView) hrView.style.display = 'none';
     document.getElementById('calendar-container').style.display = 'block';
     document.getElementById('btn-go-map').style.display = 'inline-block';
     document.getElementById('mobile-btn-map').style.display = 'block';
@@ -1083,7 +1083,7 @@ window.mostrarVistaAgenda = function () {
     document.getElementById('calendar-container').style.display = 'none';
     document.getElementById('map-view').style.display = 'none';
     const hrView = document.getElementById('hoja-ruta-view');
-    if(hrView) hrView.style.display = 'none';
+    if (hrView) hrView.style.display = 'none';
     document.getElementById('agenda-view').style.display = 'block';
     document.getElementById('btn-go-map').style.display = 'inline-block';
     renderizarAgendaCustom();
@@ -2790,7 +2790,7 @@ function getDiasHabiles(startDateStr, endDateStr) {
     // Ignorar si el fin es el mismo o anterior al inicio + 1 día
     while (curDate < end) {
         const dayOfWeek = curDate.getDay();
-        const isWeekend = (dayOfWeek === 6) || (dayOfWeek === 0);
+        const isWeekend = (dayOfWeek === 5) || (dayOfWeek === 0);
         if (!isWeekend) {
             count++;
         }
@@ -2811,7 +2811,7 @@ window.mostrarHojaRutaView = function () {
     document.getElementById('calendar-container').style.display = 'none';
     document.getElementById('map-view').style.display = 'none';
     document.getElementById('agenda-view').style.display = 'none';
-    
+
     const view = document.getElementById('hoja-ruta-view');
     if (view) view.style.display = 'block';
 
@@ -2831,7 +2831,7 @@ window.mostrarHojaRutaView = function () {
 
     // Filtramos pasadas (usaremos TODAS de todos los años disponibles para mayor precisión en ubicaciones)
     const pasadasBase = globalReservas.filter(r => (r.data.fechaInicio || '') < todayStr);
-    const pasadas = pasadasBase.filter(r => !clientesFuturos.has(normalizeStr(r.data.cliente)));
+    const pasadas = pasadasBase.filter(r => !clientesFuturos.has(normalizeStr(r.data.cliente)) && !r.data.esEspecial);
 
     if (futuras.length === 0) {
         tbody.innerHTML = '<tr><td colspan="2" style="text-align:center;">No hay reservas futuras para la Hoja de Ruta.</td></tr>';
@@ -2845,55 +2845,49 @@ window.mostrarHojaRutaView = function () {
 
         const trG = document.createElement('tr');
         trG.className = 'row-tiempo-muerto';
-        let sugerenciasHtml = '';
-        let sugerenciasMatch = [];
 
         const c1 = normalizeStr(ciudadRef1 || '');
         const c2 = normalizeStr(ciudadRef2 || '');
 
+        // --- Column 1: Match Exacto (City) ---
         let matchExacto = pasadas.filter(p => {
             const ciudadP = normalizeStr(p.data.ciudad);
             return (c1 && ciudadP === c1) || (c2 && ciudadP === c2);
         });
 
-        if (matchExacto.length > 0) {
-            sugerenciasMatch = matchExacto.map(p => ({ cliente: p, tipo: 'Exacto', color: 'badge-exacto' }));
-        } else if (ref1 || ref2) {
-            let match50 = pasadas.filter(p => {
+        // --- Column 2: Match Cercano (Distance < 100km) ---
+        let matchCercano = [];
+        if (ref1 || ref2) {
+            matchCercano = pasadas.filter(p => {
+                // Evitamos duplicar si ya está en matchExacto
+                if (matchExacto.some(m => m.id === p.id)) return false;
+
                 const d1 = ref1 ? calcularDistancia(ref1.lat, ref1.lng, p.data.lat, p.data.lng) : Infinity;
                 const d2 = ref2 ? calcularDistancia(ref2.lat, ref2.lng, p.data.lat, p.data.lng) : Infinity;
-                return d1 <= 50 || d2 <= 50;
+                return d1 <= 150 || d2 <= 150;
             });
-
-            if (match50.length > 0) {
-                sugerenciasMatch = match50.map(p => ({ cliente: p, tipo: '< 50km', color: 'badge-cerca' }));
-            } else {
-                let match100 = pasadas.filter(p => {
-                    const d1 = ref1 ? calcularDistancia(ref1.lat, ref1.lng, p.data.lat, p.data.lng) : Infinity;
-                    const d2 = ref2 ? calcularDistancia(ref2.lat, ref2.lng, p.data.lat, p.data.lng) : Infinity;
-                    return d1 <= 100 || d2 <= 100;
-                });
-                sugerenciasMatch = match100.map(p => ({ cliente: p, tipo: '< 100km', color: 'badge-cerca' }));
-            }
         }
 
-        if (sugerenciasMatch.length > 0) {
-            // Filtrar duplicados por cliente si viajó a múltiples ciudades cercanas
-            const uniqueSugs = new Map();
-            sugerenciasMatch.forEach(s => {
-                const nClient = normalizeStr(s.cliente.data.cliente);
-                if (!uniqueSugs.has(nClient)) uniqueSugs.set(nClient, s);
-            });
-            sugerenciasMatch = Array.from(uniqueSugs.values());
+        // Helper to format suggestion items
+        function renderSugs(list, type, color) {
+            if (list.length === 0) return `<div class="recomendacion-list"><small>No se encontraron.</small></div>`;
 
-            const mostrarSugs = sugerenciasMatch.slice(0, 3);
-            let listHTML = mostrarSugs.map(s => {
-                return `<div class="sugerencia-item">🤝 ${s.cliente.data.cliente} (<i>${s.cliente.data.ciudad}</i>) <span class="${s.color}">${s.tipo}</span></div>`;
-            }).join('');
-            sugerenciasHtml = `<div class="recomendacion-list"><strong>💡 Sugerencias:</strong>${listHTML}</div>`;
-        } else {
-            sugerenciasHtml = `<div class="recomendacion-list"><small>No se encontraron clientes anteriores cerca.</small></div>`;
+            // Limit to 3 and unique by client
+            const unique = new Map();
+            list.forEach(p => {
+                const n = normalizeStr(p.data.cliente);
+                if (!unique.has(n)) unique.set(n, p);
+            });
+            const uniqueList = Array.from(unique.values()).slice(0, 25);
+
+            let html = uniqueList.map(p => `
+                <div class="sugerencia-item">🤝 ${p.data.cliente} (<i>${p.data.ciudad}</i>) <span class="${color}">${type}</span></div>
+            `).join('');
+            return `<div class="recomendacion-list">${html}</div>`;
         }
+
+        const colCityHtml = renderSugs(matchExacto, 'Exacto', 'badge-exacto');
+        const colNearHtml = renderSugs(matchCercano, '< 150km', 'badge-cerca');
 
         let labelUbicacion = '';
         if (ciudadRef1 && ciudadRef2) labelUbicacion = `Entre ${ciudadRef1} y ${ciudadRef2}`;
@@ -2902,9 +2896,19 @@ window.mostrarHojaRutaView = function () {
 
         trG.innerHTML = `
             <td colspan="2">
-                <span class="text-tiempo-muerto">⚠️ Espacio Disponible (${gapDays} días hábiles)</span>
+                <span class="text-tiempo-muerto">⚠️ Espacio Disponible (${gapDays - 1} días hábiles)</span>
                 <div style="font-size: 0.85em; color: #555;">${labelUbicacion}</div>
-                ${sugerenciasHtml}
+                
+                <div class="sugerencias-columns">
+                    <div class="sugerencias-col">
+                        <h4>🏙️ Por Ciudades</h4>
+                        ${colCityHtml}
+                    </div>
+                    <div class="sugerencias-col">
+                        <h4>📍 Por Cercanía</h4>
+                        ${colNearHtml}
+                    </div>
+                </div>
             </td>
         `;
         tbody.appendChild(trG);
