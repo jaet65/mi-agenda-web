@@ -193,7 +193,7 @@
 
         /* HAMBURGUESA */
         .hamburger-btn {
-            display: none; 
+            display: block; 
             background: none;
             border: none;
             font-size: 1.5rem;
@@ -215,6 +215,8 @@
             flex-direction: column;
             padding: 10px;
             z-index: 3000; 
+            max-height: calc(100vh - 70px);
+            overflow-y: auto;
         }
         .mobile-menu.open { display: flex; }
         .mobile-menu button {
@@ -708,6 +710,12 @@
         body.dark-mode .theme-toggle-btn::after {
             content: '🌙';
             transform: translateX(20px);
+        }
+
+        /* --- Menú Hamburguesa Tema Oscuro --- */
+        body.dark-mode .mobile-menu button,
+        body.dark-mode .mobile-menu .mobile-section-title {
+            color: white !important;
         }
 
         /* --- DASHBOARD EJECUTIVO --- */

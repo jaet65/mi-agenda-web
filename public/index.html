@@ -56,26 +56,8 @@
             <span id="admin-stats"></span>
 
             <div class="desktop-buttons">
-                <div class="dropdown-share">
-                    <button class="btn-share">📤 Share</button>
-                    <div class="dropdown-content">
-                        <button onclick="compartirApp()">🔗 Enviar Vínculo</button>
-                        <button onclick="verQR()">📱 Ver Código QR</button>
-                        <button onclick="exportarCalendario()">📅 Exportar Calendario</button>
-                    </div>
-                </div>
-
-                <button id="btn-go-map" class="btn-action btn-map-toggle" onclick="mostrarMapa()">🗺️ Mapa</button>
-                <button id="btnReporte" class="btn-action" onclick="abrirReporteModal()"
-                    style="display:none; background-color: #17a2b8; margin-right: 5px;">📊 Reporte</button>
-                <button id="btnHojaRuta" class="btn-action" onclick="mostrarHojaRutaView()"
-                    style="display:none; background-color: #28a745; margin-right: 5px;">🗺️ Roadmap</button>
-                <button id="btnImport" class="btn-share" onclick="abrirSelectorCSV()"
-                    style="display:none; background-color: #6f42c1; margin-right: 5px;">📥 Import</button>
                 <input type="file" id="fileInput" accept=".xlsx, .xls" style="display: none;"
                     onchange="procesarArchivoExcel(this)">
-                <button id="btnLogin" class="btn-action" onclick="iniciarSesion()">🔐</button>
-                <button id="btnLogout" class="btn-action" onclick="cerrarSesion()" style="display:none;">➜🚪</button>
             </div>
 
             <button class="hamburger-btn" onclick="toggleMenu()">☰</button>

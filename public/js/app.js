@@ -333,35 +333,22 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 function inyectarBotonesTema() {
-    // Botón para escritorio
-    const desktopContainer = document.querySelector('.desktop-buttons');
-    if (desktopContainer) {
+    // Solo inyectamos en el menú (que ahora es el mismo para desktop y móvil)
+    const menuContainer = document.getElementById('mobile-menu');
+    if (menuContainer) {
         const themeBtn = document.createElement('button');
-        themeBtn.id = 'btn-theme-toggle';
-        themeBtn.className = 'theme-toggle-btn';
-        themeBtn.title = 'Cambiar tema';
+        themeBtn.id = 'menu-btn-theme-toggle';
+        themeBtn.innerHTML = '🌓 Cambiar Tema';
         themeBtn.addEventListener('click', toggleTheme);
-
-        // Insertarlo como primer elemento de los controles para que quede al lado del buscador
-        desktopContainer.insertBefore(themeBtn, desktopContainer.firstChild);
-    }
-
-    // Botón para menú móvil
-    const mobileMenu = document.getElementById('mobile-menu');
-    if (mobileMenu) {
-        const mobileThemeBtn = document.createElement('button');
-        mobileThemeBtn.id = 'mobile-btn-theme-toggle';
-        mobileThemeBtn.innerHTML = '🌓 Cambiar Tema';
-        mobileThemeBtn.addEventListener('click', toggleTheme);
 
         // Añadir una sección de "Apariencia" para el botón
         const appearanceTitle = document.createElement('div');
         appearanceTitle.className = 'mobile-section-title';
         appearanceTitle.innerText = 'APARIENCIA';
 
-        // Insertar el título y el botón al principio del menú móvil
-        mobileMenu.insertBefore(mobileThemeBtn, mobileMenu.firstChild);
-        mobileMenu.insertBefore(appearanceTitle, mobileThemeBtn);
+        // Insertar el título y el botón al principio del menú
+        menuContainer.insertBefore(themeBtn, menuContainer.firstChild);
+        menuContainer.insertBefore(appearanceTitle, themeBtn);
     }
 }
 
@@ -479,45 +466,36 @@ async function solicitarPermisoNotificaciones() {
 
 // Función centralizada para actualizar la UI en base al estado de 'esAdmin'
 function actualizarUIConEstadoAdmin() {
-    const btnLogin = document.getElementById('btnLogin');
-    const btnLogout = document.getElementById('btnLogout');
     const adminStatus = document.getElementById('admin-status');
-    const mobileLogin = document.getElementById('mobile-btn-login');
-    const mobileLogout = document.getElementById('mobile-btn-logout');
-    const btnImport = document.getElementById('btnImport');
-    const mobileImport = document.getElementById('mobile-btn-import');
-    const btnReporte = document.getElementById('btnReporte');
-    const mobileReporte = document.getElementById('mobile-btn-reporte');
-    const btnHojaRuta = document.getElementById('btnHojaRuta');
-    const mobileHojaRuta = document.getElementById('mobile-btn-hoja-ruta');
+    
+    // Elementos del menú unificado
+    const menuLogin = document.getElementById('mobile-btn-login');
+    const menuLogout = document.getElementById('mobile-btn-logout');
+    const menuReporte = document.getElementById('mobile-btn-reporte');
+    const menuHojaRuta = document.getElementById('mobile-btn-hoja-ruta');
+    const menuImport = document.getElementById('mobile-btn-import');
 
     if (esAdmin) {
-        btnLogin.style.display = 'none';
-        btnLogout.style.display = 'inline-block';
         if (adminStatus && auth.currentUser) adminStatus.innerText = `🔰`;
         if (adminStatus) adminStatus.style.display = 'inline-block';
-        if (mobileLogin) mobileLogin.style.display = 'none';
-        if (mobileLogout) mobileLogout.style.display = 'block';
-        if (btnImport) btnImport.style.display = 'inline-block';
-        if (mobileImport) mobileImport.style.display = 'block';
-        if (btnReporte) btnReporte.style.display = 'inline-block';
-        if (mobileReporte) mobileReporte.style.display = 'block';
-        if (btnHojaRuta) btnHojaRuta.style.display = 'inline-block';
-        if (mobileHojaRuta) mobileHojaRuta.style.display = 'block';
+        
+        // Items del menú
+        if (menuLogin) menuLogin.style.display = 'none';
+        if (menuLogout) menuLogout.style.display = 'block';
+        if (menuReporte) menuReporte.style.display = 'block';
+        if (menuHojaRuta) menuHojaRuta.style.display = 'block';
+        if (menuImport) menuImport.style.display = 'block';
     } else {
-        btnLogin.style.display = 'inline-block';
-        btnLogout.style.display = 'none';
         if (adminStatus) adminStatus.style.display = 'none';
-        if (mobileLogin) mobileLogin.style.display = 'block';
-        if (mobileLogout) mobileLogout.style.display = 'none';
-        if (btnImport) btnImport.style.display = 'none';
-        if (mobileImport) mobileImport.style.display = 'none';
-        if (btnReporte) btnReporte.style.display = 'none';
-        if (mobileReporte) mobileReporte.style.display = 'none';
-        if (btnHojaRuta) btnHojaRuta.style.display = 'none';
-        if (mobileHojaRuta) mobileHojaRuta.style.display = 'none';
+        
+        // Items del menú
+        if (menuLogin) menuLogin.style.display = 'block';
+        if (menuLogout) menuLogout.style.display = 'none';
+        if (menuReporte) menuReporte.style.display = 'none';
+        if (menuHojaRuta) menuHojaRuta.style.display = 'none';
+        if (menuImport) menuImport.style.display = 'none';
     }
-    actualizarHeaderAdmin(); // Esto gestiona las estadísticas del admin.
+    actualizarHeaderAdmin();
 }
 
 // --- Manejo del estado de autenticación (Mantener sesión activa si el usuario recarga) ---
@@ -1063,8 +1041,10 @@ window.mostrarMapa = function () {
     const hrView = document.getElementById('hoja-ruta-view');
     if (hrView) hrView.style.display = 'none';
     document.getElementById('map-view').style.display = 'flex';
-    document.getElementById('btn-go-map').style.display = 'none';
-    document.getElementById('mobile-btn-map').style.display = 'none';
+    
+    // Ocultamos el botón de mapa en el menú si ya estamos en el mapa (opcional)
+    const btnMap = document.getElementById('mobile-btn-map');
+    if (btnMap) btnMap.style.display = 'none';
     setTimeout(() => { map.invalidateSize(); }, 200);
 }
 
@@ -1074,8 +1054,10 @@ window.mostrarCalendario = function () {
     const hrView = document.getElementById('hoja-ruta-view');
     if (hrView) hrView.style.display = 'none';
     document.getElementById('calendar-container').style.display = 'block';
-    document.getElementById('btn-go-map').style.display = 'inline-block';
-    document.getElementById('mobile-btn-map').style.display = 'block';
+    
+    // Mostramos el botón de mapa en el menú si volvemos al calendario
+    const btnMap = document.getElementById('mobile-btn-map');
+    if (btnMap) btnMap.style.display = 'block';
     calendar.updateSize();
 }
 
@@ -1085,7 +1067,10 @@ window.mostrarVistaAgenda = function () {
     const hrView = document.getElementById('hoja-ruta-view');
     if (hrView) hrView.style.display = 'none';
     document.getElementById('agenda-view').style.display = 'block';
-    document.getElementById('btn-go-map').style.display = 'inline-block';
+    
+    // Mostramos el botón de mapa en el menú si volvemos a la agenda
+    const btnMap = document.getElementById('mobile-btn-map');
+    if (btnMap) btnMap.style.display = 'block';
     renderizarAgendaCustom();
 }
 
