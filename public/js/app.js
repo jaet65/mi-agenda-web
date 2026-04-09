@@ -2938,10 +2938,12 @@ window.mostrarHojaRutaView = function () {
                 doubleClickZoom: false,
                 touchZoom: false,
                 boxZoom: false,
-                keyboard: false
+                keyboard: false,
+                renderer: L.canvas() // Forzar renderizado Canvas para compatibilidad con PDF
             }).setView([23.6345, -102.5528], 5);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '© OpenStreetMap'
+                attribution: '© OpenStreetMap',
+                crossOrigin: true // Habilitar CORS para captura de imagen sin errores
             }).addTo(hojaRutaLeafletMap);
         } else {
             hojaRutaLeafletMap.invalidateSize(); // Fix modal rendering
@@ -2978,5 +2980,149 @@ window.mostrarHojaRutaView = function () {
             hojaRutaLeafletMap.fitBounds(polyline.getBounds(), { padding: [30, 30] });
         }
 
+
     }, 300);
+}
+
+// --- EXPORTACIÓN DE HOJA DE RUTA A PDF ---
+window.exportarHojaRutaPDF = async function () {
+    const elemento = document.getElementById('contenidoHojaRuta');
+    const btn = document.getElementById('btnExportRoadmap');
+    
+    if (!elemento) return;
+
+    if (typeof html2canvas !== 'undefined' && window.PDFLib) {
+        const textOrig = btn.innerHTML;
+        btn.innerHTML = '<span class="loader" style="width:16px;height:16px;margin-right:8px;border-width:2px;vertical-align:middle;display:inline-block; border-top-color: white;"></span> Generando PDF...';
+        btn.disabled = true;
+
+        const opt = {
+            html2canvas: {
+                scale: 2,
+                useCORS: true, 
+                backgroundColor: null,
+                logging: false,
+                onclone: function (doc) {
+                    const docRoot = doc.documentElement;
+                    docRoot.style.setProperty('--text-color', '#000000');
+                    docRoot.style.setProperty('--text-color-muted', '#000000');
+                    docRoot.style.setProperty('--text-color-light', '#000000');
+                    docRoot.style.setProperty('--bg-color', 'transparent');
+                    docRoot.style.setProperty('--card-bg', 'transparent');
+                    docRoot.style.setProperty('--border-color', '#000000');
+                    
+                    doc.body.style.setProperty('background', 'transparent', 'important');
+                    doc.body.style.setProperty('color', '#000000', 'important');
+                    doc.body.style.setProperty('font-family', "'Montserrat', sans-serif", 'important');
+                    doc.body.style.setProperty('font-size', '14pt', 'important');
+                    docRoot.style.setProperty('background', 'transparent', 'important');
+
+                    // Forzar color negro y fuente en todos los elementos del clon
+                    doc.querySelectorAll('*').forEach(el => {
+                        el.style.setProperty('color', '#000000', 'important');
+                        el.style.setProperty('font-family', "'Montserrat', sans-serif", 'important');
+                        el.style.setProperty('font-size', '14pt', 'important');
+                        if (el.tagName === 'HR') el.style.setProperty('border-color', '#000000', 'important');
+                    });
+
+                    const el = doc.getElementById('contenidoHojaRuta');
+                    if (el) {
+                        el.style.background = "transparent";
+
+                        // Agregar encabezado específico para el PDF
+                        const tituloPDF = doc.createElement('h1');
+                        tituloPDF.innerText = "Roadmap TrackSIM";
+                        tituloPDF.style.textAlign = "center";
+                        tituloPDF.style.marginBottom = "20px";
+                        tituloPDF.style.marginTop = "0";
+                        tituloPDF.style.fontSize = "22pt";
+                        tituloPDF.style.color = "#000000";
+                        tituloPDF.style.fontFamily = "'Montserrat', sans-serif";
+                        el.prepend(tituloPDF);
+                    }
+
+                    // --- Estabilización de Capas de Mapa ---
+                    const maps = doc.querySelectorAll('.leaflet-container');
+                    maps.forEach(m => {
+                        m.style.overflow = 'visible'; // Asegurar que nada se corte
+                    });
+                }
+            }
+        };
+
+        try {
+            await new Promise(resolve => setTimeout(resolve, 100));
+            const canvas = await html2canvas(elemento, opt.html2canvas);
+
+            const resp = await fetch('template/TrackSIM Membretada.pdf');
+            if (!resp.ok) throw new Error("Plantilla no encontrada");
+
+            const templateBytes = await resp.arrayBuffer();
+            const { PDFDocument } = window.PDFLib;
+
+            const mergedDoc = await PDFDocument.load(templateBytes);
+            const [templatePage] = mergedDoc.getPages();
+            const { width, height } = templatePage.getSize();
+
+            const marginX = 40;
+            const marginYTop = 100; // Espacio para el membrete
+            const marginYBottom = 60;
+            const drawWidth = width - marginX * 2;
+            const pageMaxHeight = height - marginYTop - marginYBottom;
+
+            const pxToPtRatio = drawWidth / canvas.width;
+            
+            let remainHeight = canvas.height;
+            let yPos = 0;
+            let pageIdx = 0;
+
+            while (remainHeight > 0) {
+                let currentPage;
+                if (pageIdx === 0) {
+                    currentPage = templatePage;
+                } else {
+                    const [newPage] = await mergedDoc.copyPages(await PDFDocument.load(templateBytes), [0]);
+                    mergedDoc.addPage(newPage);
+                    currentPage = newPage;
+                }
+
+                const segmentHeight = Math.min(remainHeight, pageMaxHeight / pxToPtRatio);
+                const drawHeight = segmentHeight * pxToPtRatio;
+
+                const partCanvas = document.createElement('canvas');
+                partCanvas.width = canvas.width;
+                partCanvas.height = segmentHeight;
+                const ctx = partCanvas.getContext('2d');
+                ctx.drawImage(canvas, 0, yPos, canvas.width, segmentHeight, 0, 0, canvas.width, segmentHeight);
+                
+                const partImage = await mergedDoc.embedPng(partCanvas.toDataURL('image/png'));
+                currentPage.drawImage(partImage, {
+                    x: marginX,
+                    y: height - marginYTop - drawHeight,
+                    width: drawWidth,
+                    height: drawHeight
+                });
+
+                remainHeight -= segmentHeight;
+                yPos += segmentHeight;
+                pageIdx++;
+            }
+
+            const pdfBytes = await mergedDoc.save();
+            const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `Roadmap_TrackSIM_${new Date().toISOString().split('T')[0]}.pdf`;
+            link.click();
+
+        } catch (e) {
+            console.error(e);
+            alert("Error al generar PDF: " + e.message);
+        } finally {
+            btn.innerHTML = textOrig;
+            btn.disabled = false;
+        }
+    } else {
+        alert("Librerías de PDF no cargadas.");
+    }
 }
