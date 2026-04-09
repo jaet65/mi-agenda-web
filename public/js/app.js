@@ -467,7 +467,7 @@ async function solicitarPermisoNotificaciones() {
 // Función centralizada para actualizar la UI en base al estado de 'esAdmin'
 function actualizarUIConEstadoAdmin() {
     const adminStatus = document.getElementById('admin-status');
-    
+
     // Elementos del menú unificado
     const menuLogin = document.getElementById('mobile-btn-login');
     const menuLogout = document.getElementById('mobile-btn-logout');
@@ -478,7 +478,7 @@ function actualizarUIConEstadoAdmin() {
     if (esAdmin) {
         if (adminStatus && auth.currentUser) adminStatus.innerText = `🔰`;
         if (adminStatus) adminStatus.style.display = 'inline-block';
-        
+
         // Items del menú
         if (menuLogin) menuLogin.style.display = 'none';
         if (menuLogout) menuLogout.style.display = 'block';
@@ -487,7 +487,7 @@ function actualizarUIConEstadoAdmin() {
         if (menuImport) menuImport.style.display = 'block';
     } else {
         if (adminStatus) adminStatus.style.display = 'none';
-        
+
         // Items del menú
         if (menuLogin) menuLogin.style.display = 'block';
         if (menuLogout) menuLogout.style.display = 'none';
@@ -1041,7 +1041,7 @@ window.mostrarMapa = function () {
     const hrView = document.getElementById('hoja-ruta-view');
     if (hrView) hrView.style.display = 'none';
     document.getElementById('map-view').style.display = 'flex';
-    
+
     // Ocultamos el botón de mapa en el menú si ya estamos en el mapa (opcional)
     const btnMap = document.getElementById('mobile-btn-map');
     if (btnMap) btnMap.style.display = 'none';
@@ -1054,7 +1054,7 @@ window.mostrarCalendario = function () {
     const hrView = document.getElementById('hoja-ruta-view');
     if (hrView) hrView.style.display = 'none';
     document.getElementById('calendar-container').style.display = 'block';
-    
+
     // Mostramos el botón de mapa en el menú si volvemos al calendario
     const btnMap = document.getElementById('mobile-btn-map');
     if (btnMap) btnMap.style.display = 'block';
@@ -1067,7 +1067,7 @@ window.mostrarVistaAgenda = function () {
     const hrView = document.getElementById('hoja-ruta-view');
     if (hrView) hrView.style.display = 'none';
     document.getElementById('agenda-view').style.display = 'block';
-    
+
     // Mostramos el botón de mapa en el menú si volvemos a la agenda
     const btnMap = document.getElementById('mobile-btn-map');
     if (btnMap) btnMap.style.display = 'block';
@@ -2988,127 +2988,97 @@ window.mostrarHojaRutaView = function () {
 window.exportarHojaRutaPDF = async function () {
     const elemento = document.getElementById('contenidoHojaRuta');
     const btn = document.getElementById('btnExportRoadmap');
-    
+
     if (!elemento) return;
 
-    if (typeof html2canvas !== 'undefined' && window.PDFLib) {
+    if (typeof html2pdf !== 'undefined' && typeof html2canvas !== 'undefined' && window.PDFLib) {
         const textOrig = btn.innerHTML;
         btn.innerHTML = '<span class="loader" style="width:16px;height:16px;margin-right:8px;border-width:2px;vertical-align:middle;display:inline-block; border-top-color: white;"></span> Generando PDF...';
         btn.disabled = true;
 
+        // --- ESTRATEGIA DE CONTENIDO PURO ---
+        // Para evitar CUALQUIER espacio en blanco o rastro del mapa, 
+        // creamos un contenedor virtual nuevo con solo lo que queremos exportar.
+        const exportContainer = document.createElement('div');
+        exportContainer.style.cssText = "width: 100%; height: auto !important; background: transparent !important; padding: 0 !important; margin: 0 !important; overflow: visible !important;";
+
+        // 1. Insertar Título profesional
+        const tituloPDF = document.createElement('h1');
+        tituloPDF.innerText = "Roadmap TrackSIM";
+        tituloPDF.style.cssText = "text-align: center; margin-bottom: 30px; font-size: 22pt; color: #000000; font-family: 'Montserrat', sans-serif; background: transparent !important;";
+        exportContainer.appendChild(tituloPDF);
+
+        // 2. Clonar SOLO el contenedor de la tabla (itinerario)
+        // Ignoramos el mapa y cualquier otro hermano
+        const tableContainer = elemento.querySelector('.hoja-ruta-container');
+        if (tableContainer) {
+            const tableClone = tableContainer.cloneNode(true);
+            // Limpieza de estilos del clon
+            tableClone.style.cssText = "width: 100%; background: transparent !important; border: none !important; margin: 0 !important; padding: 0 !important;";
+
+            // Forzar Montserrat y negro en todo el contenido de la tabla
+            tableClone.querySelectorAll('*').forEach(el => {
+                el.style.setProperty('color', '#000000', 'important');
+                el.style.setProperty('background', 'transparent', 'important');
+                el.style.setProperty('background-color', 'transparent', 'important');
+                el.style.setProperty('font-family', "'Montserrat', sans-serif", 'important');
+                el.style.setProperty('box-shadow', 'none', 'important');
+            });
+            exportContainer.appendChild(tableClone);
+        }
+
         const opt = {
+            margin: [100, 40, 60, 40], // [top, left, bottom, right] pt
+            filename: 'temp.pdf',
+            image: { type: 'png', quality: 0.98 },
             html2canvas: {
                 scale: 2,
-                useCORS: true, 
+                useCORS: true,
                 backgroundColor: null,
-                logging: false,
-                onclone: function (doc) {
-                    const docRoot = doc.documentElement;
-                    docRoot.style.setProperty('--text-color', '#000000');
-                    docRoot.style.setProperty('--text-color-muted', '#000000');
-                    docRoot.style.setProperty('--text-color-light', '#000000');
-                    docRoot.style.setProperty('--bg-color', 'transparent');
-                    docRoot.style.setProperty('--card-bg', 'transparent');
-                    docRoot.style.setProperty('--border-color', '#000000');
-                    
-                    doc.body.style.setProperty('background', 'transparent', 'important');
-                    doc.body.style.setProperty('color', '#000000', 'important');
-                    doc.body.style.setProperty('font-family', "'Montserrat', sans-serif", 'important');
-                    doc.body.style.setProperty('font-size', '14pt', 'important');
-                    docRoot.style.setProperty('background', 'transparent', 'important');
-
-                    // Forzar color negro y fuente en todos los elementos del clon
-                    doc.querySelectorAll('*').forEach(el => {
-                        el.style.setProperty('color', '#000000', 'important');
-                        el.style.setProperty('font-family', "'Montserrat', sans-serif", 'important');
-                        el.style.setProperty('font-size', '14pt', 'important');
-                        if (el.tagName === 'HR') el.style.setProperty('border-color', '#000000', 'important');
-                    });
-
-                    const el = doc.getElementById('contenidoHojaRuta');
-                    if (el) {
-                        el.style.background = "transparent";
-
-                        // Agregar encabezado específico para el PDF
-                        const tituloPDF = doc.createElement('h1');
-                        tituloPDF.innerText = "Roadmap TrackSIM";
-                        tituloPDF.style.textAlign = "center";
-                        tituloPDF.style.marginBottom = "20px";
-                        tituloPDF.style.marginTop = "0";
-                        tituloPDF.style.fontSize = "22pt";
-                        tituloPDF.style.color = "#000000";
-                        tituloPDF.style.fontFamily = "'Montserrat', sans-serif";
-                        el.prepend(tituloPDF);
-                    }
-
-                    // --- Estabilización de Capas de Mapa ---
-                    const maps = doc.querySelectorAll('.leaflet-container');
-                    maps.forEach(m => {
-                        m.style.overflow = 'visible'; // Asegurar que nada se corte
-                    });
-                }
-            }
+                logging: false
+            },
+            jsPDF: { unit: 'pt', format: 'letter', orientation: 'portrait' },
+            pagebreak: { mode: 'css' }
         };
 
         try {
-            await new Promise(resolve => setTimeout(resolve, 100));
-            const canvas = await html2canvas(elemento, opt.html2canvas);
+            await new Promise(resolve => setTimeout(resolve, 200));
 
-            const resp = await fetch('template/TrackSIM Membretada.pdf');
-            if (!resp.ok) throw new Error("Plantilla no encontrada");
+            // 1. Generar el PDF usando el contenedor "puro"
+            const contentPdfBuffer = await html2pdf().from(exportContainer).set(opt).output('arraybuffer');
 
-            const templateBytes = await resp.arrayBuffer();
+            // 2. Cargar la plantilla y el contenido con pdf-lib
             const { PDFDocument } = window.PDFLib;
+            const contentDoc = await PDFDocument.load(contentPdfBuffer);
 
-            const mergedDoc = await PDFDocument.load(templateBytes);
-            const [templatePage] = mergedDoc.getPages();
-            const { width, height } = templatePage.getSize();
+            const respTemplate = await fetch('template/TrackSIM Membretada.pdf');
+            if (!respTemplate.ok) throw new Error("Plantilla no encontrada");
+            const templateBytes = await respTemplate.arrayBuffer();
+            const templateDoc = await PDFDocument.load(templateBytes);
+            const [templatePageSource] = templateDoc.getPages();
 
-            const marginX = 40;
-            const marginYTop = 100; // Espacio para el membrete
-            const marginYBottom = 60;
-            const drawWidth = width - marginX * 2;
-            const pageMaxHeight = height - marginYTop - marginYBottom;
+            // 3. Crear el documento final mezclando ambos
+            const finalDoc = await PDFDocument.create();
+            const contentPages = await finalDoc.copyPages(contentDoc, contentDoc.getPageIndices());
 
-            const pxToPtRatio = drawWidth / canvas.width;
-            
-            let remainHeight = canvas.height;
-            let yPos = 0;
-            let pageIdx = 0;
+            for (const contentPage of contentPages) {
+                // Agregar una página basada en la plantilla
+                const [newTemplatePage] = await finalDoc.copyPages(templateDoc, [0]);
+                finalDoc.addPage(newTemplatePage);
+                const { width, height } = newTemplatePage.getSize();
 
-            while (remainHeight > 0) {
-                let currentPage;
-                if (pageIdx === 0) {
-                    currentPage = templatePage;
-                } else {
-                    const [newPage] = await mergedDoc.copyPages(await PDFDocument.load(templateBytes), [0]);
-                    mergedDoc.addPage(newPage);
-                    currentPage = newPage;
-                }
-
-                const segmentHeight = Math.min(remainHeight, pageMaxHeight / pxToPtRatio);
-                const drawHeight = segmentHeight * pxToPtRatio;
-
-                const partCanvas = document.createElement('canvas');
-                partCanvas.width = canvas.width;
-                partCanvas.height = segmentHeight;
-                const ctx = partCanvas.getContext('2d');
-                ctx.drawImage(canvas, 0, yPos, canvas.width, segmentHeight, 0, 0, canvas.width, segmentHeight);
-                
-                const partImage = await mergedDoc.embedPng(partCanvas.toDataURL('image/png'));
-                currentPage.drawImage(partImage, {
-                    x: marginX,
-                    y: height - marginYTop - drawHeight,
-                    width: drawWidth,
-                    height: drawHeight
+                // Embeber la página de contenido sobre la plantilla
+                const embeddedContentPage = await finalDoc.embedPage(contentPage);
+                newTemplatePage.drawPage(embeddedContentPage, {
+                    x: 0,
+                    y: 0,
+                    width: width,
+                    height: height
                 });
-
-                remainHeight -= segmentHeight;
-                yPos += segmentHeight;
-                pageIdx++;
             }
 
-            const pdfBytes = await mergedDoc.save();
+            // 4. Guardar y descargar
+            const pdfBytes = await finalDoc.save();
             const blob = new Blob([pdfBytes], { type: 'application/pdf' });
             const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
@@ -3123,6 +3093,6 @@ window.exportarHojaRutaPDF = async function () {
             btn.disabled = false;
         }
     } else {
-        alert("Librerías de PDF no cargadas.");
+        alert("Librerías de PDF no cargadas (html2pdf, html2canvas o PDFLib).");
     }
 }

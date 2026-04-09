@@ -1483,3 +1483,12 @@
         .btn-floating-roadmap:active {
             transform: translateX(-50%) scale(0.95);
         }
+
+        /* --- REGLAS DE SALTO DE PÁGINA PARA PDF --- */
+        .hoja-ruta-table tr, 
+        .sugerencia-item,
+        .match-item,
+        #hojaRutaMap {
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
+        }
