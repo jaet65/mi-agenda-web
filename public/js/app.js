@@ -2946,7 +2946,15 @@ window.mostrarHojaRutaView = function () {
     // 4. Inicializar y pintar Mapa Leaflet del Roadmap
     setTimeout(() => {
         if (!hojaRutaLeafletMap) {
-            hojaRutaLeafletMap = L.map('hojaRutaMap').setView([23.6345, -102.5528], 5);
+            hojaRutaLeafletMap = L.map('hojaRutaMap', {
+                dragging: false,
+                zoomControl: false,
+                scrollWheelZoom: false,
+                doubleClickZoom: false,
+                touchZoom: false,
+                boxZoom: false,
+                keyboard: false
+            }).setView([23.6345, -102.5528], 5);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '© OpenStreetMap'
             }).addTo(hojaRutaLeafletMap);
@@ -2959,8 +2967,20 @@ window.mostrarHojaRutaView = function () {
         const navLatlngs = [];
         futuras.forEach((r, idx) => {
             if (r.data.lat && r.data.lng) {
-                const mk = L.marker([r.data.lat, r.data.lng]).addTo(hojaRutaLeafletMap);
-                mk.bindPopup(`<b>${r.data.cliente}</b><br>${r.data.ciudad}<br>${formatearFecha(r.data.fechaInicio)}`);
+                // Pin numerado cronológicamente
+                const numberedIcon = L.divIcon({
+                    className: 'numbered-pin',
+                    html: `
+                        <div class="pin-container">
+                            <span class="pin-number">${idx + 1}</span>
+                        </div>
+                    `,
+                    iconSize: [30, 42],
+                    iconAnchor: [15, 30]
+                });
+
+                const mk = L.marker([r.data.lat, r.data.lng], { icon: numberedIcon }).addTo(hojaRutaLeafletMap);
+                mk.bindPopup(`<b>${idx + 1}. ${r.data.cliente}</b><br>${r.data.ciudad}<br>${formatearFecha(r.data.fechaInicio)}`);
                 hojaRutaMarkers.push(mk);
                 navLatlngs.push([r.data.lat, r.data.lng]);
             }

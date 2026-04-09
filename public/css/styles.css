@@ -819,3 +819,61 @@
             border-bottom: 1px solid var(--border-color-light);
             padding-bottom: 3px;
         }
+
+        /* --- Numbered Markers --- */
+        .numbered-pin {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .pin-container {
+            position: relative;
+            width: 30px;
+            height: 30px;
+            background: #ffc107;
+            border-radius: 50% 50% 50% 0;
+            transform: rotate(-45deg);
+            border: 2px solid white;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .pin-number {
+            transform: rotate(45deg);
+            color: #212529;
+            font-weight: bold;
+            font-size: 0.9rem;
+            margin-right: 2px;
+            margin-bottom: 2px;
+        }
+
+        /* --- Floating Back Button --- */
+        .btn-floating-roadmap {
+            position: fixed;
+            top: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 3000;
+            background-color: white;
+            color: #333;
+            padding: 12px 25px;
+            border-radius: 30px;
+            font-weight: bold;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.4);
+            border: 1px solid var(--border-color);
+            cursor: pointer;
+            transition: transform 0.2s, background-color 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-floating-roadmap:hover {
+            transform: translateX(-50%) scale(1.05);
+            background-color: #f8f9fa;
+        }
+
+        .btn-floating-roadmap:active {
+            transform: translateX(-50%) scale(0.95);
+        }
