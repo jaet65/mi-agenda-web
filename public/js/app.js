@@ -488,6 +488,8 @@ function actualizarUIConEstadoAdmin() {
     const mobileImport = document.getElementById('mobile-btn-import');
     const btnReporte = document.getElementById('btnReporte');
     const mobileReporte = document.getElementById('mobile-btn-reporte');
+    const btnHojaRuta = document.getElementById('btnHojaRuta');
+    const mobileHojaRuta = document.getElementById('mobile-btn-hoja-ruta');
 
     if (esAdmin) {
         btnLogin.style.display = 'none';
@@ -500,6 +502,8 @@ function actualizarUIConEstadoAdmin() {
         if (mobileImport) mobileImport.style.display = 'block';
         if (btnReporte) btnReporte.style.display = 'inline-block';
         if (mobileReporte) mobileReporte.style.display = 'block';
+        if (btnHojaRuta) btnHojaRuta.style.display = 'inline-block';
+        if (mobileHojaRuta) mobileHojaRuta.style.display = 'block';
     } else {
         btnLogin.style.display = 'inline-block';
         btnLogout.style.display = 'none';
@@ -510,6 +514,8 @@ function actualizarUIConEstadoAdmin() {
         if (mobileImport) mobileImport.style.display = 'none';
         if (btnReporte) btnReporte.style.display = 'none';
         if (mobileReporte) mobileReporte.style.display = 'none';
+        if (btnHojaRuta) btnHojaRuta.style.display = 'none';
+        if (mobileHojaRuta) mobileHojaRuta.style.display = 'none';
     }
     actualizarHeaderAdmin(); // Esto gestiona las estadísticas del admin.
 }
@@ -1054,6 +1060,8 @@ window.cambiarAnoMapa = function (delta) {
 window.mostrarMapa = function () {
     document.getElementById('calendar-container').style.display = 'none';
     document.getElementById('agenda-view').style.display = 'none';
+    const hrView = document.getElementById('hoja-ruta-view');
+    if(hrView) hrView.style.display = 'none';
     document.getElementById('map-view').style.display = 'flex';
     document.getElementById('btn-go-map').style.display = 'none';
     document.getElementById('mobile-btn-map').style.display = 'none';
@@ -1063,6 +1071,8 @@ window.mostrarMapa = function () {
 window.mostrarCalendario = function () {
     document.getElementById('map-view').style.display = 'none';
     document.getElementById('agenda-view').style.display = 'none';
+    const hrView = document.getElementById('hoja-ruta-view');
+    if(hrView) hrView.style.display = 'none';
     document.getElementById('calendar-container').style.display = 'block';
     document.getElementById('btn-go-map').style.display = 'inline-block';
     document.getElementById('mobile-btn-map').style.display = 'block';
@@ -1072,6 +1082,8 @@ window.mostrarCalendario = function () {
 window.mostrarVistaAgenda = function () {
     document.getElementById('calendar-container').style.display = 'none';
     document.getElementById('map-view').style.display = 'none';
+    const hrView = document.getElementById('hoja-ruta-view');
+    if(hrView) hrView.style.display = 'none';
     document.getElementById('agenda-view').style.display = 'block';
     document.getElementById('btn-go-map').style.display = 'inline-block';
     renderizarAgendaCustom();
@@ -2488,7 +2500,7 @@ window.generarReporte = function () {
 
     // Agrupar reservaciones consecutivas del mismo cliente (brecha <= 4 días)
     let reservasAgrupadas = [];
-    
+
     const calcDias = (res) => {
         const startObj = new Date(res.data.fechaInicio + 'T12:00:00');
         const endObj = new Date(res.data.fechaFin + 'T12:00:00');
@@ -2611,8 +2623,8 @@ window.exportarReportePDF = async function () {
     const colorOriginal = elemento.style.color;
     const bgOriginal = elemento.style.background;
     const opt = {
-        html2canvas: { 
-            scale: 2, 
+        html2canvas: {
+            scale: 2,
             backgroundColor: null,
             onclone: function (doc) {
                 // Set CSS variables only in the cloned document so the live UI doesn't flash transparent
@@ -2627,7 +2639,7 @@ window.exportarReportePDF = async function () {
 
                 doc.body.style.setProperty('background', 'transparent', 'important');
                 docRoot.style.setProperty('background', 'transparent', 'important');
-                
+
                 const el = doc.getElementById('reporteParaPdf');
                 if (el) {
                     el.classList.add('pdf-export-mode'); // Sólo en el clon
@@ -2639,7 +2651,7 @@ window.exportarReportePDF = async function () {
                     }
                 }
             }
-        } 
+        }
     };
 
     if (typeof html2canvas !== 'undefined' && window.PDFLib) {
@@ -2651,7 +2663,7 @@ window.exportarReportePDF = async function () {
         try {
             // Ceder el control al navegador para que dibuje el spinner antes del bloqueo
             await new Promise(resolve => setTimeout(resolve, 50));
-            
+
             // Obtenemos canvas saltandonos JS PDF y cualquier blanco por defecto
             const canvas = await html2canvas(elemento, opt.html2canvas);
 
@@ -2746,3 +2758,216 @@ window.exportarReportePDF = async function () {
         alert("Las dependencias para PDF no están disponibles.");
     }
 };
+// --- HOJA DE RUTA MÁGICA CON SUGERENCIAS ---
+
+// Distancia Haversine (en km)
+function calcularDistancia(lat1, lon1, lat2, lon2) {
+    if (!lat1 || !lon1 || !lat2 || !lon2) return Infinity;
+    const R = 6371; // Radio de la Tierra en km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+}
+
+// Calcular días hábiles (Lunes a Viernes) entre dos fechas
+function getDiasHabiles(startDateStr, endDateStr) {
+    const start = new Date(startDateStr);
+    const end = new Date(endDateStr);
+    let count = 0;
+    let curDate = new Date(start.getTime());
+
+    // Si start >= end, no hay días hábiles intermedios
+    if (curDate >= end) return 0;
+
+    // Empezamos a contar desde el día SIGUIENTE a start, hasta el día ANTERIOR a end
+    curDate.setDate(curDate.getDate() + 1);
+
+    // Ignorar si el fin es el mismo o anterior al inicio + 1 día
+    while (curDate < end) {
+        const dayOfWeek = curDate.getDay();
+        const isWeekend = (dayOfWeek === 6) || (dayOfWeek === 0);
+        if (!isWeekend) {
+            count++;
+        }
+        curDate.setDate(curDate.getDate() + 1);
+    }
+    return count;
+}
+
+function normalizeStr(str) {
+    if (!str) return '';
+    return str.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+}
+
+let hojaRutaLeafletMap = null;
+let hojaRutaMarkers = [];
+
+window.mostrarHojaRutaView = function () {
+    document.getElementById('calendar-container').style.display = 'none';
+    document.getElementById('map-view').style.display = 'none';
+    document.getElementById('agenda-view').style.display = 'none';
+    
+    const view = document.getElementById('hoja-ruta-view');
+    if (view) view.style.display = 'block';
+
+    const tbody = document.getElementById('tablaHojaRutaCuerpo');
+    tbody.innerHTML = '';
+
+    // 1. Fechas relativas
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayStr = today.toISOString().split('T')[0];
+
+    // 2. Separar reservas pasadas y futuras
+    const futuras = globalReservas.filter(r => (r.data.fechaInicio || '') >= todayStr).sort((a, b) => (a.data.fechaInicio > b.data.fechaInicio) ? 1 : ((b.data.fechaInicio > a.data.fechaInicio) ? -1 : 0));
+
+    // Extraer clientes con reservas futuras para EXCLUIRLOS de las recomendaciones
+    const clientesFuturos = new Set(futuras.map(r => normalizeStr(r.data.cliente)));
+
+    // Filtramos pasadas (usaremos TODAS de todos los años disponibles para mayor precisión en ubicaciones)
+    const pasadasBase = globalReservas.filter(r => (r.data.fechaInicio || '') < todayStr);
+    const pasadas = pasadasBase.filter(r => !clientesFuturos.has(normalizeStr(r.data.cliente)));
+
+    if (futuras.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="2" style="text-align:center;">No hay reservas futuras para la Hoja de Ruta.</td></tr>';
+        return;
+    }
+
+    // --- Helper function para buscar recomendaciones y crear la fila de Tiempo Muerto ---
+    function agregarFilaTiempoMuerto(fechaIniStr, fechaFinStr, ref1, ref2, ciudadRef1, ciudadRef2) {
+        const gapDays = getDiasHabiles(fechaIniStr, fechaFinStr);
+        if (gapDays <= 5) return;
+
+        const trG = document.createElement('tr');
+        trG.className = 'row-tiempo-muerto';
+        let sugerenciasHtml = '';
+        let sugerenciasMatch = [];
+
+        const c1 = normalizeStr(ciudadRef1 || '');
+        const c2 = normalizeStr(ciudadRef2 || '');
+
+        let matchExacto = pasadas.filter(p => {
+            const ciudadP = normalizeStr(p.data.ciudad);
+            return (c1 && ciudadP === c1) || (c2 && ciudadP === c2);
+        });
+
+        if (matchExacto.length > 0) {
+            sugerenciasMatch = matchExacto.map(p => ({ cliente: p, tipo: 'Exacto', color: 'badge-exacto' }));
+        } else if (ref1 || ref2) {
+            let match50 = pasadas.filter(p => {
+                const d1 = ref1 ? calcularDistancia(ref1.lat, ref1.lng, p.data.lat, p.data.lng) : Infinity;
+                const d2 = ref2 ? calcularDistancia(ref2.lat, ref2.lng, p.data.lat, p.data.lng) : Infinity;
+                return d1 <= 50 || d2 <= 50;
+            });
+
+            if (match50.length > 0) {
+                sugerenciasMatch = match50.map(p => ({ cliente: p, tipo: '< 50km', color: 'badge-cerca' }));
+            } else {
+                let match100 = pasadas.filter(p => {
+                    const d1 = ref1 ? calcularDistancia(ref1.lat, ref1.lng, p.data.lat, p.data.lng) : Infinity;
+                    const d2 = ref2 ? calcularDistancia(ref2.lat, ref2.lng, p.data.lat, p.data.lng) : Infinity;
+                    return d1 <= 100 || d2 <= 100;
+                });
+                sugerenciasMatch = match100.map(p => ({ cliente: p, tipo: '< 100km', color: 'badge-cerca' }));
+            }
+        }
+
+        if (sugerenciasMatch.length > 0) {
+            // Filtrar duplicados por cliente si viajó a múltiples ciudades cercanas
+            const uniqueSugs = new Map();
+            sugerenciasMatch.forEach(s => {
+                const nClient = normalizeStr(s.cliente.data.cliente);
+                if (!uniqueSugs.has(nClient)) uniqueSugs.set(nClient, s);
+            });
+            sugerenciasMatch = Array.from(uniqueSugs.values());
+
+            const mostrarSugs = sugerenciasMatch.slice(0, 3);
+            let listHTML = mostrarSugs.map(s => {
+                return `<div class="sugerencia-item">🤝 ${s.cliente.data.cliente} (<i>${s.cliente.data.ciudad}</i>) <span class="${s.color}">${s.tipo}</span></div>`;
+            }).join('');
+            sugerenciasHtml = `<div class="recomendacion-list"><strong>💡 Sugerencias:</strong>${listHTML}</div>`;
+        } else {
+            sugerenciasHtml = `<div class="recomendacion-list"><small>No se encontraron clientes anteriores cerca.</small></div>`;
+        }
+
+        let labelUbicacion = '';
+        if (ciudadRef1 && ciudadRef2) labelUbicacion = `Entre ${ciudadRef1} y ${ciudadRef2}`;
+        else if (ciudadRef1) labelUbicacion = `Desde ${ciudadRef1}`;
+        else if (ciudadRef2) labelUbicacion = `Hacia ${ciudadRef2}`;
+
+        trG.innerHTML = `
+            <td colspan="2">
+                <span class="text-tiempo-muerto">⚠️ Espacio Disponible (${gapDays} días hábiles)</span>
+                <div style="font-size: 0.85em; color: #555;">${labelUbicacion}</div>
+                ${sugerenciasHtml}
+            </td>
+        `;
+        tbody.appendChild(trG);
+    }
+
+    // 2.5. Evaluar gap inicial (Desde Hoy hasta la primera reserva)
+    agregarFilaTiempoMuerto(todayStr, futuras[0].data.fechaInicio, null, futuras[0].data, null, futuras[0].data.ciudad);
+
+    // 3. Evaluar e iterar Tiempos Muertos
+    for (let i = 0; i < futuras.length; i++) {
+        const r1 = futuras[i];
+
+        // Renderizar Reserva actual
+        const trR = document.createElement('tr');
+        trR.className = 'row-reserva';
+        const strFechaInicio = formatearFecha(r1.data.fechaInicio);
+        const strFechaFin = r1.data.fechaFin ? formatearFecha(r1.data.fechaFin) : strFechaInicio;
+
+        let labelDetalle = `<strong>👤 ${r1.data.cliente}</strong><br>📍 ${r1.data.ciudad}`;
+        if (r1.data.direccion) labelDetalle += `<br><small>🗺️ ${r1.data.direccion}</small>`;
+
+        trR.innerHTML = `
+            <td style="white-space: nowrap;">📅 ${strFechaInicio}<br><small>a ${strFechaFin}</small></td>
+            <td>${labelDetalle}</td>
+        `;
+        tbody.appendChild(trR);
+
+        // Si hay una siguiente reserva, evaluamos el gap incremental con la siguiente
+        if (i < futuras.length - 1) {
+            const r2 = futuras[i + 1];
+            agregarFilaTiempoMuerto(r1.data.fechaFin || r1.data.fechaInicio, r2.data.fechaInicio, r1.data, r2.data, r1.data.ciudad, r2.data.ciudad);
+        }
+    }
+
+    // 4. Inicializar y pintar Mapa Leaflet del Roadmap
+    setTimeout(() => {
+        if (!hojaRutaLeafletMap) {
+            hojaRutaLeafletMap = L.map('hojaRutaMap').setView([23.6345, -102.5528], 5);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap'
+            }).addTo(hojaRutaLeafletMap);
+        } else {
+            hojaRutaLeafletMap.invalidateSize(); // Fix modal rendering
+            hojaRutaMarkers.forEach(m => hojaRutaLeafletMap.removeLayer(m));
+            hojaRutaMarkers = [];
+        }
+
+        const navLatlngs = [];
+        futuras.forEach((r, idx) => {
+            if (r.data.lat && r.data.lng) {
+                const mk = L.marker([r.data.lat, r.data.lng]).addTo(hojaRutaLeafletMap);
+                mk.bindPopup(`<b>${r.data.cliente}</b><br>${r.data.ciudad}<br>${formatearFecha(r.data.fechaInicio)}`);
+                hojaRutaMarkers.push(mk);
+                navLatlngs.push([r.data.lat, r.data.lng]);
+            }
+        });
+
+        // Trazar línea de ruta
+        if (navLatlngs.length > 1) {
+            const polyline = L.polyline(navLatlngs, { color: '#ffc107', weight: 4, dashArray: '10, 10' }).addTo(hojaRutaLeafletMap);
+            hojaRutaMarkers.push(polyline);
+            hojaRutaLeafletMap.fitBounds(polyline.getBounds(), { padding: [30, 30] });
+        }
+
+    }, 300);
+}

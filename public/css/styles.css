@@ -758,4 +758,43 @@
             background-image: none !important;
             font-family: 'Montserrat', sans-serif !important;
             color: #000 !important;
+        }
+
+        /* --- Hoja de Ruta Styles --- */
+        .row-reserva {
+            background-color: rgba(40, 167, 69, 0.05);
+            border-left: 4px solid #28a745;
+        }
+        .row-tiempo-muerto {
+            background-color: rgba(255, 193, 7, 0.1);
+            border-left: 4px solid #ffc107;
+        }
+        .text-tiempo-muerto {
+            color: #d39e00;
+            font-weight: bold;
+        }
+        .recomendacion-list {
+            margin-top: 8px;
+            padding-left: 20px;
+            font-size: 0.9em;
+            color: var(--text-color);
+        }
+        .sugerencia-item {
+            margin-bottom: 4px;
+        }
+        .badge-exacto {
+            background: #17a2b8;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.75em;
+            margin-left: 5px;
+        }
+        .badge-cerca {
+            background: #6c757d;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.75em;
+            margin-left: 5px;
         }
