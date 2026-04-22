@@ -2743,6 +2743,104 @@ window.exportarReportePDF = async function () {
         alert("Las dependencias para PDF no están disponibles.");
     }
 };
+
+window.exportarReportePNG = async function () {
+    const elemento = document.getElementById('reporteParaPdf');
+    const opt = {
+        html2canvas: {
+            scale: 2,
+            backgroundColor: null, // Permitir transparencia original
+            onclone: function (doc) {
+                const docRoot = doc.documentElement;
+                docRoot.style.setProperty('--text-color', '#000000');
+                docRoot.style.setProperty('--text-color-muted', '#333333');
+                docRoot.style.setProperty('--text-color-light', '#222222');
+                docRoot.style.setProperty('--bg-color', 'transparent');
+                docRoot.style.setProperty('--card-bg', 'transparent');
+                docRoot.style.setProperty('--hover-bg', 'transparent');
+                docRoot.style.setProperty('--border-color', '#cccccc');
+
+                doc.body.style.setProperty('background', 'transparent', 'important');
+                docRoot.style.setProperty('background', 'transparent', 'important');
+
+                const el = doc.getElementById('reporteParaPdf');
+                if (el) {
+                    el.classList.add('pdf-export-mode'); 
+
+                    let anc = el.parentElement;
+                    while (anc && anc !== doc.body && anc !== docRoot) {
+                        anc.style.setProperty('background', 'transparent', 'important');
+                        anc.style.setProperty('background-color', 'transparent', 'important');
+                        anc = anc.parentElement;
+                    }
+                }
+            }
+        }
+    };
+
+    if (typeof html2canvas !== 'undefined') {
+        const btn = document.querySelector('#btnExportarPNG');
+        const textOrig = btn ? btn.innerHTML : '🖼️ Exportar a PNG';
+        if (btn) {
+            btn.innerHTML = '<span class="loader" style="width:16px;height:16px;margin-right:8px;border-width:2px;vertical-align:middle;display:inline-block; border-top-color: white;"></span> Exportando...';
+            btn.disabled = true;
+        }
+
+        try {
+            await new Promise(resolve => setTimeout(resolve, 50));
+            const canvas = await html2canvas(elemento, opt.html2canvas);
+
+            // Crear canvas final con fondo transparente garantizado
+            const finalCanvas = document.createElement('canvas');
+            finalCanvas.width = canvas.width;
+            finalCanvas.height = canvas.height;
+            const ctx = finalCanvas.getContext('2d');
+
+            // 1. Dibujar la marca de agua primero (al fondo)
+            const img = new Image();
+            img.src = 'icon-512.png';
+            img.crossOrigin = "Anonymous";
+            
+            await new Promise((resolve) => {
+                img.onload = resolve;
+                img.onerror = resolve; // Ignorar fallo para no bloquear
+            });
+
+            if (img.complete && img.naturalWidth > 0) {
+                // Centrado exacto mitigando diferencias de aspecto si las hubiera
+                const sizeW = canvas.width * 0.7;
+                const sizeH = sizeW; // Asumiendo que el icono es un cuadrado perfecto
+                const x = (canvas.width - sizeW) / 2;
+                const y = (canvas.height - sizeH) / 2;
+                
+                ctx.globalAlpha = 0.25; 
+                ctx.drawImage(img, x, y, sizeW, sizeH);
+                ctx.globalAlpha = 1.0; 
+            }
+
+            // 2. Dibujar el contenido de html2canvas (que ahora tiene fondos transparentes) encima
+            ctx.drawImage(canvas, 0, 0);
+
+            const dataUrl = finalCanvas.toDataURL('image/png');
+            
+            const a = document.createElement('a');
+            a.href = dataUrl;
+            a.download = `Reporte_Ejecutivo_${new Date().getTime()}.png`;
+            a.click();
+        } catch (err) {
+            console.error("Error exportando PNG: ", err);
+            alert('Hubo un error al exportar como PNG.');
+        } finally {
+            if (btn) {
+                btn.innerHTML = textOrig;
+                btn.disabled = false;
+            }
+        }
+    } else {
+        alert("Las dependencias (html2canvas) no están disponibles.");
+    }
+};
+
 // --- HOJA DE RUTA MÁGICA CON SUGERENCIAS ---
 
 // Distancia Haversine (en km)
