@@ -160,10 +160,17 @@
             Reservas futuras y sugerencias para Tiempos Muertos.
         </p>
 
-        <button id="btnExportRoadmap" onclick="exportarHojaRutaPDF()" class="btn-action"
-            style="position: fixed; top: 85px; left: 20px; z-index: 3001; background-color: #17a2b8; padding: 6px 15px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; box-shadow: 0 4px 10px rgba(0,0,0,0.2);">
-            📄 Exportar PDF
-        </button>
+        <div
+            style="position: fixed; top: 85px; left: 20px; z-index: 3001; display: flex; flex-direction: column; gap: 5px;">
+            <button id="btnExportRoadmap" onclick="exportarHojaRutaPDF()" class="btn-action"
+                style="background-color: #17a2b8; padding: 6px 15px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; box-shadow: 0 4px 10px rgba(0,0,0,0.2); margin: 0;">
+                📄 Exportar PDF
+            </button>
+            <button id="btnExportRoadmapPNG" onclick="exportarHojaRutaPNG()" class="btn-action"
+                style="background-color: #27ae60; padding: 6px 15px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; box-shadow: 0 4px 10px rgba(0,0,0,0.2); margin: 0;">
+                🖼️ Exportar PNG
+            </button>
+        </div>
 
         <div id="contenidoHojaRuta"
             style="background: var(--bg-color); padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 15px;">
@@ -412,8 +419,10 @@
             </div>
 
             <div style="display: flex; gap: 10px; flex-shrink: 0;">
-                <button id="btnExportarPDF" onclick="exportarReportePDF()" class="btn-action" style="flex: 1; background-color: #e74c3c;">📄 Exportar a PDF</button>
-                <button id="btnExportarPNG" onclick="exportarReportePNG()" class="btn-action" style="flex: 1; background-color: #27ae60;">🖼️ Exportar a PNG</button>
+                <button id="btnExportarPDF" onclick="exportarReportePDF()" class="btn-action"
+                    style="flex: 1; background-color: #e74c3c;">📄 Exportar a PDF</button>
+                <button id="btnExportarPNG" onclick="exportarReportePNG()" class="btn-action"
+                    style="flex: 1; background-color: #27ae60;">🖼️ Exportar a PNG</button>
                 <button onclick="cerrarModal('reporteModal')" class="btn-secondary" style="flex: 1;">Cerrar</button>
             </div>
         </div>

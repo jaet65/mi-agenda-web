@@ -2813,7 +2813,7 @@ window.exportarReportePNG = async function () {
                 const x = (canvas.width - sizeW) / 2;
                 const y = (canvas.height - sizeH) / 2;
                 
-                ctx.globalAlpha = 0.25; 
+                ctx.globalAlpha = 0.10; // Opacidad reducida 
                 ctx.drawImage(img, x, y, sizeW, sizeH);
                 ctx.globalAlpha = 1.0; 
             }
@@ -3192,5 +3192,107 @@ window.exportarHojaRutaPDF = async function () {
         }
     } else {
         alert("Librerías de PDF no cargadas (html2pdf, html2canvas o PDFLib).");
+    }
+}
+
+// --- EXPORTACIÓN DE HOJA DE RUTA A PNG ---
+window.exportarHojaRutaPNG = async function () {
+    const elemento = document.getElementById('contenidoHojaRuta');
+    const btn = document.getElementById('btnExportRoadmapPNG');
+
+    if (!elemento) return;
+
+    if (typeof html2canvas !== 'undefined') {
+        const textOrig = btn.innerHTML;
+        btn.innerHTML = '<span class="loader" style="width:16px;height:16px;margin-right:8px;border-width:2px;vertical-align:middle;display:inline-block; border-top-color: white;"></span> Creando PNG...';
+        btn.disabled = true;
+
+        // Crear contenedor virtual para exportar el contenido puro sin el mapa
+        const exportContainer = document.createElement('div');
+        exportContainer.style.cssText = "position: absolute; left: -9999px; top: 0; width: 800px; height: auto; background: transparent !important; padding: 20px !important; margin: 0 !important; overflow: visible !important;";
+        
+        // 1. Insertar Título
+        const titulo = document.createElement('h1');
+        titulo.innerText = "Roadmap TrackSIM";
+        titulo.style.cssText = "text-align: center; margin-bottom: 30px; font-size: 22pt; color: #000000; font-family: 'Montserrat', sans-serif; background: transparent !important;";
+        exportContainer.appendChild(titulo);
+
+        // 2. Clonar SOLO el contenedor de la tabla
+        const tableContainer = elemento.querySelector('.hoja-ruta-container');
+        if (tableContainer) {
+            const tableClone = tableContainer.cloneNode(true);
+            tableClone.style.cssText = "width: 100%; background: transparent !important; border: none !important; margin: 0 !important; padding: 0 !important;";
+            tableClone.querySelectorAll('*').forEach(el => {
+                el.style.setProperty('color', '#000000', 'important');
+                el.style.setProperty('background', 'transparent', 'important');
+                el.style.setProperty('background-color', 'transparent', 'important');
+                el.style.setProperty('font-family', "'Montserrat', sans-serif", 'important');
+                el.style.setProperty('box-shadow', 'none', 'important');
+            });
+            exportContainer.appendChild(tableClone);
+        }
+
+        // Es vital agregarlo al DOM para que html2canvas lo dibuje correctamente
+        document.body.appendChild(exportContainer);
+
+        try {
+            await new Promise(resolve => setTimeout(resolve, 200));
+            const canvas = await html2canvas(exportContainer, {
+                scale: 2,
+                backgroundColor: null, // Mantener alfa
+                logging: false,
+                useCORS: true
+            });
+
+            // Limpieza inmediata del DOM
+            document.body.removeChild(exportContainer);
+
+            // Crear el canvas definitivo para la marca de agua
+            const finalCanvas = document.createElement('canvas');
+            finalCanvas.width = canvas.width;
+            finalCanvas.height = canvas.height;
+            const ctx = finalCanvas.getContext('2d');
+
+            // Dibujar la marca de agua primero
+            const img = new Image();
+            img.src = 'icon-512.png';
+            img.crossOrigin = "Anonymous";
+            await new Promise((resolve) => {
+                img.onload = resolve;
+                img.onerror = resolve; // Ignorar fallo silenciosamente
+            });
+
+            if (img.complete && img.naturalWidth > 0) {
+                const sizeW = Math.min(canvas.width, canvas.height) * 0.7;
+                const sizeH = sizeW; // Asume imagen cuadrada
+                const x = (canvas.width - sizeW) / 2;
+                const y = (canvas.height - sizeH) / 2;
+                ctx.globalAlpha = 0.10; // Opacidad reducida
+                ctx.drawImage(img, x, y, sizeW, sizeH);
+                ctx.globalAlpha = 1.0; 
+            }
+
+            // Encimar el texto renderizado
+            ctx.drawImage(canvas, 0, 0);
+
+            // Descargar el PNG
+            const dataUrl = finalCanvas.toDataURL('image/png');
+            const a = document.createElement('a');
+            a.href = dataUrl;
+            a.download = `Roadmap_TrackSIM_${new Date().toISOString().split('T')[0]}.png`;
+            a.click();
+
+        } catch (err) {
+            console.error("Error al generar PNG de Roadmap:", err);
+            alert("Error al generar la imagen PNG.");
+            if (document.body.contains(exportContainer)) {
+                document.body.removeChild(exportContainer);
+            }
+        } finally {
+            btn.innerHTML = textOrig;
+            btn.disabled = false;
+        }
+    } else {
+        alert("Librerías de captura (html2canvas) no cargadas.");
     }
 }
