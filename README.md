@@ -7,7 +7,7 @@
 ## 📋 Características Principales
 
 * **📅 Calendario Interactivo:**
-    * Vista anual y mensual utilizando *FullCalendar*.
+    * Vista anual y mensual utilizando **FullCalendar v6**.
     * Identificación visual de eventos pasados, presentes y futuros.
 * **🗺️ Mapa de Itinerarios (Geolocalización):**
     * Integración con **Leaflet** y **HERE Maps API**.
@@ -15,30 +15,29 @@
     * Cálculo automático de rutas y tiempos entre servicios.
 * **☁️ Backend en Firebase:**
     * Base de datos en tiempo real con **Firestore**.
-    * Hospedaje seguro mediante **Firebase Hosting**.
+    * Autenticación de administradores.
 * **📥 Importación Masiva:**
-    * Soporte para carga de archivos Excel (`.xlsx`, `.xls`) mediante *SheetJS*.
+    * Soporte para carga de archivos Excel (`.xlsx`, `.xls`) mediante **SheetJS**.
     * **Geocodificación Automática:** Si el Excel no tiene coordenadas, la app busca la dirección automáticamente usando la API de HERE Maps.
 * **📱 PWA (Progressive Web App):**
     * Diseño *Responsive* (Móvil/Escritorio).
-    * Instalable en dispositivos móviles (Android/iOS) gracias al `manifest.json`.
+    * Instalable en dispositivos móviles y funcionamiento offline parcial mediante **Service Workers**.
 * **🔐 Modo Administrador:**
     * Gestión CRUD (Crear, Leer, Actualizar, Borrar) de reservas.
     * Enlace de documentación (PDFs en Google Drive) a las reservas.
-* **⚙️ Automatización (CI/CD):**
-    * Actualización automática de versión y fecha de despliegue mediante GitHub Actions.
 
 ## 🛠️ Tecnologías Utilizadas
 
-* **Frontend:** HTML5, CSS3, JavaScript (ES6 Modules).
+* **Frontend:** HTML5, CSS3 (Vanilla), JavaScript (ES6+).
+* **Entorno de Desarrollo:** [Vite](https://vitejs.dev/) (Node.js).
 * **Mapas:** Leaflet.js, HERE Maps API.
 * **Calendario:** FullCalendar v6.
 * **Datos y Hosting:** Google Firebase (Firestore, Hosting, Auth).
-* **Utilidades:** SheetJS (Excel), Node.js (Script de versionado).
+* **Utilidades:** SheetJS (Excel), html2pdf.js, pdf-lib, html2canvas.
 
 ## 🚀 Instalación y Ejecución Local
 
-Para probar la aplicación en tu máquina local, es **muy recomendable** usar un servidor HTTPS para asegurar que todas las funcionalidades de la PWA (como notificaciones y Service Workers) operen correctamente.
+Para ejecutar este proyecto localmente, necesitas tener instalado [Node.js](https://nodejs.org/).
 
 1.  **Clonar el repositorio:**
     ```bash
@@ -46,53 +45,43 @@ Para probar la aplicación en tu máquina local, es **muy recomendable** usar un
     cd mi-agenda-web
     ```
 
-2.  **Instalar dependencias de Python:**
-    El servidor de desarrollo local requiere la librería `cryptography` para generar certificados SSL.
+2.  **Instalar dependencias:**
     ```bash
-    pip install cryptography
+    npm install
     ```
 
-3.  **Ejecutar el servidor HTTPS local:**
-    El proyecto incluye un script `server.py` listo para usar.
+3.  **Ejecutar el servidor de desarrollo:**
     ```bash
-    python server.py
+    npm run dev
     ```
-    La primera vez que lo ejecutes, creará los archivos `cert.pem` y `key.pem`.
+    La aplicación estará disponible en `http://localhost:5173`.
 
-4.  **Acceder a la aplicación:**
-    Abre tu navegador y ve a **`https://localhost:8000`**.
-    *   Tu navegador mostrará una advertencia de seguridad porque el certificado es autofirmado. Debes aceptarla para continuar (generalmente en "Avanzado" > "Continuar a localhost").
-
-### Alternativa (Despliegue con Firebase)
-Si prefieres usar el ecosistema de Firebase para el desarrollo:
-1.  Instala las herramientas de Firebase: `npm install -g firebase-tools`
-2.  Inicia sesión: `firebase login`
-3.  Ejecuta el emulador: `firebase serve`
+4.  **Construir para producción:**
+    ```bash
+    npm run build
+    ```
+    Esto generará la carpeta `dist/` con los archivos optimizados.
 
 ## 🔄 Despliegue Automático (CI/CD)
 
-El proyecto cuenta con flujos de trabajo de GitHub Actions configurados en `.github/workflows`:
+El proyecto cuenta con flujos de trabajo de GitHub Actions:
 
-1.  **Pull Request (`firebase-hosting-pull-request.yml`):**
-    * Al crear un PR, se genera una URL de previsualización temporal en Firebase para probar los cambios.
-2.  **Merge a Main (`firebase-hosting-merge.yml`):**
-    * Al hacer push o merge a la rama `main`:
-        1.  Se ejecuta el script `node update-version.js`.
-        2.  Este script actualiza automáticamente la versión y la fecha (Zona horaria CDMX) en `public/index.html` y genera `version.json`.
-        3.  Se despliega la versión productiva a Firebase Hosting (`channelId: live`).
+1.  **Pull Request:** Genera una URL de previsualización temporal en Firebase.
+2.  **Merge a Main:**
+    * Ejecuta el script de versionado.
+    * Despliega la versión productiva a Firebase Hosting.
 
 ## 📂 Estructura del Proyecto
 
 ```text
 /
-├── .github/workflows/   # Scripts de despliegue automático (GitHub Actions)
-├── public/              # Archivos públicos estáticos
-│   ├── index.html       # Lógica principal de la aplicación (JS embebido)
-│   ├── 404.html         # Página de error
-│   ├── manifest.json    # Configuración PWA
-│   ├── favicon.ico      # Iconos
-│   └── ...
-├── update-version.js    # Script Node.js para auto-versionado
-├── firebase.json        # Configuración de hosting y headers
-├── .firebaserc          # Configuración del proyecto Firebase
-└── .gitignore           # Archivos ignorados por Git
+├── src/                 # Código fuente
+│   ├── js/              # Lógica principal (app.js, config)
+│   └── css/             # Estilos de la aplicación
+├── public/              # Assets estáticos (imágenes, manifest, sw.js)
+├── index.html           # Punto de entrada principal (raíz)
+├── vite.config.js       # Configuración de Vite
+├── package.json         # Dependencias y scripts de NPM
+├── firebase.json        # Configuración de hosting
+└── ...
+```
