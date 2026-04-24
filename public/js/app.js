@@ -2056,7 +2056,7 @@ window.procesarArchivoExcel = function (input) {
 
     // Referencias al botón (para evitar doble clic de fondo)
     const btnImport = document.getElementById('btnImport');
-    btnImport.disabled = true;
+    if (btnImport) btnImport.disabled = true;
 
     const reader = new FileReader();
 
@@ -2088,7 +2088,7 @@ MODO DE PRECISIÓN:
 
 ¿Continuar?`)) {
                 input.value = '';
-                btnImport.disabled = false;
+                if (btnImport) btnImport.disabled = false;
                 textoOverlay.innerText = textoOriginalOverlay;
                 return;
             }
@@ -2236,7 +2236,7 @@ MODO DE PRECISIÓN:
             overlay.style.display = 'none';
             textoOverlay.innerText = textoOriginalOverlay; // "Cargando Agenda..."
 
-            btnImport.disabled = false;
+            if (btnImport) btnImport.disabled = false;
             input.value = '';
         }
     };
