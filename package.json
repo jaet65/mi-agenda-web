@@ -1,0 +1,32 @@
+{
+  "name": "mi-agenda-web",
+  "version": "1.0.0",
+  "description": "![TrackSIM Logo](public/TrackSIM%20LOGO%20GIF.gif)",
+  "main": "update-version.js",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "bugs": {
+    "url": "https://github.com/jaet65/mi-agenda-web/issues"
+  },
+  "homepage": "https://github.com/jaet65/mi-agenda-web#readme",
+  "devDependencies": {
+    "@vitejs/plugin-basic-ssl": "^2.3.0",
+    "vite": "^8.0.10"
+  },
+  "dependencies": {
+    "@fullcalendar/core": "^6.1.20",
+    "@fullcalendar/multimonth": "^6.1.20",
+    "firebase": "^12.12.1",
+    "fullcalendar": "^6.1.20",
+    "html2canvas": "^1.4.1",
+    "html2pdf.js": "^0.14.0",
+    "leaflet": "^1.9.4",
+    "pdf-lib": "^1.17.1",
+    "xlsx": "^0.18.5"
+  }
+}

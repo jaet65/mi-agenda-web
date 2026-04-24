@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
+    <title>Agenda TrackSIM</title>
+
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#ffffff">
+    <link rel="apple-touch-icon" href="favicon.ico">
+    <link rel="icon" type="image/png" href="favicon.ico">
+
+    <meta property="og:title" content="Agenda TrackSIM">
+    <meta property="og:description" content="Gestión de itinerarios y servicios TrackSIM.">
+    <meta property="og:image" content="favicon.ico">
+
+    <link rel="stylesheet" href="/src/css/styles.css">
+</head>
+
+<body>
+    <div id="loading-overlay"
+        style="position:fixed; top:0; left:0; width:100%; height:100%; background:white; z-index:9999; display:flex; justify-content:center; align-items:center; flex-direction:column;">
+        <div class="loader" style="width: 50px; height: 50px; border-width: 5px;"></div>
+        <p style="margin-top:15px; color:#555; font-weight:bold;">Cargando Agenda...</p>
+    </div>
+
+    <div class="header">
+        <h1>
+            <a href="/index.html" style="text-decoration: none; color: inherit; display: flex; align-items: center;">
+                <span id="admin-status" style="margin-right: 8px; font-size: 1.2rem; display: none;">🟢</span>
+                <img src="Animation Ligth.webp" alt="TrackSIM" class="header-gif light-logo">
+                <img src="Animation Dark.webp" alt="TrackSIM" class="header-gif dark-logo">
+                <span style="white-space: nowrap;">Agenda TrackSIM</span>
+            </a>
+        </h1>
+        <div class="search-container">
+            <input type="text" id="globalSearch" placeholder="🔍 Buscar..." autocomplete="off">
+            <ul id="globalSearchResults"></ul>
+        </div>
+
+        <div class="header-controls">
+            <span id="admin-stats"></span>
+
+            <div class="desktop-buttons">
+                <input type="file" id="fileInput" accept=".xlsx, .xls" style="display: none;"
+                    onchange="procesarArchivoExcel(this)">
+            </div>
+
+            <button class="hamburger-btn" onclick="toggleMenu()">☰</button>
+        </div>
+
+        <div id="mobile-menu" class="mobile-menu">
+            <div class="mobile-section-title">Compartir</div>
+            <button onclick="compartirApp(); toggleMenu()">🔗 Enviar Vínculo</button>
+            <button onclick="verQR(); toggleMenu()">📱 Ver Código QR</button>
+            <button id="mobile-btn-export" onclick="exportarCalendario(); toggleMenu()">📅 Exportar Calendario</button>
+
+            <div class="mobile-section-title">Navegación</div>
+            <button id="mobile-btn-map" onclick="mostrarMapa(); toggleMenu()">🗺️ Mapa</button>
+            <button id="mobile-btn-reporte" onclick="abrirReporteModal(); toggleMenu()"
+                style="display:none; background-color: #17a2b8; color: white;">📊 Reporte</button>
+            <button id="mobile-btn-hoja-ruta" onclick="mostrarHojaRutaView(); toggleMenu()"
+                style="display:none; background-color: #28a745; color: white;">🗺️ Roadmap</button>
+            <button id="mobile-btn-import" onclick="abrirSelectorCSV(); toggleMenu()"
+                style="display:none; background-color: #6f42c1; color: white;">📥 Import</button>
+
+            <hr style="width:100%; border:0; border-top:1px solid #eee; margin:5px 0;">
+
+            <button id="mobile-btn-login" onclick="iniciarSesion(); toggleMenu()">🔐 Entrar</button>
+            <button id="mobile-btn-logout" style="display:none;" onclick="cerrarSesion(); toggleMenu()">➜🚪
+                Salir</button>
+        </div>
+    </div>
+
+    <div id="main-container">
+        <div id="calendar-container">
+            <div id='calendar'></div>
+        </div>
+
+        <div id="agenda-view">
+            <div style="text-align:center; padding-top: 20px; padding-bottom: 0;">
+                <h2 style="color:#2c3e50; margin: 0;">Agenda de Servicios</h2>
+            </div>
+
+            <div style="
+                position: sticky; 
+                top: 0; 
+                z-index: 1000; 
+                background-color: transparent; /* Fondo invisible */
+                padding: 15px 0; 
+                text-align: center;
+                pointer-events: none; /* Permite hacer clic a través del espacio vacío */
+            ">
+                <button class="btn-secondary" onclick="mostrarCalendario()"
+                    style="box-shadow: 0 4px 15px rgba(0,0,0,0.3); pointer-events: auto;border-radius: 30px;background-color: white; color: #333;">
+                    📅 Volver al Calendario
+                </button>
+            </div>
+
+            <ul id="lista-agenda-custom" class="agenda-list"></ul>
+        </div>
+
+        <div id="map-view" style="display:none;">
+            <div id="map-sidebar">
+                <h3 onclick="toggleItinerary()" id="itinerary-header">
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <span>📍 Itinerario</span>
+                        <span id="header-year-label" style="color:#007bff; font-weight:bold;"></span>
+                    </div>
+
+                    <span id="itinerary-toggle-icon">▲</span>
+                </h3>
+
+                <div class="map-year-controls">
+                    <button class="map-year-btn" onclick="cambiarAnoMapa(-1)">&lt;</button>
+                    <span id="map-year-display"></span>
+                    <button class="map-year-btn" onclick="cambiarAnoMapa(1)">&gt;</button>
+                </div>
+
+                <div class="legend-container">
+                    <span class="legend-item"><span class="dot grey"></span> Pasado</span>
+                    <span class="legend-item"><span class="dot red"></span> Hoy</span>
+                    <span class="legend-item"><span class="dot gold"></span> Siguiente</span>
+                    <span class="legend-item"><span class="dot blue"></span> Futuro</span>
+                </div>
+
+                <ul id="lista-rutas"></ul>
+            </div>
+            <div id="map-canvas">
+                <button id="btn-back-calendar" onclick="mostrarCalendario()">
+                    📅 Volver al Calendario
+                </button>
+                <button id="btn-fit-map" onclick="ajustarMapa()">
+                    🌍
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Nueva Vista Completa para Hoja de Ruta Mágica -->
+    <div id="hoja-ruta-view"
+        style="display:none; width: 100%; height: 100%; padding: 20px; overflow-y: auto; background: var(--bg-color);">
+        <button onclick="mostrarCalendario()" class="btn-floating-roadmap">📅 Volver al Calendario</button>
+        <h2 style="text-align: center; margin-top: 0; margin-bottom: 5px;">🗺️ Roadmap</h2>
+        <p style="text-align: center; color: #666; font-size: 0.9rem; margin-bottom: 15px;">
+            Reservas futuras y sugerencias para Tiempos Muertos.
+        </p>
+
+        <div
+            style="position: fixed; top: 85px; left: 20px; z-index: 3001; display: flex; flex-direction: column; gap: 5px;">
+            <button id="btnExportRoadmap" onclick="exportarHojaRutaPDF()" class="btn-action"
+                style="background-color: #17a2b8; padding: 6px 15px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; box-shadow: 0 4px 10px rgba(0,0,0,0.2); margin: 0;">
+                📄 Exportar PDF
+            </button>
+            <button id="btnExportRoadmapPNG" onclick="exportarHojaRutaPNG()" class="btn-action"
+                style="background-color: #27ae60; padding: 6px 15px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; box-shadow: 0 4px 10px rgba(0,0,0,0.2); margin: 0;">
+                🖼️ Exportar PNG
+            </button>
+        </div>
+
+        <div id="contenidoHojaRuta"
+            style="background: var(--bg-color); padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 15px;">
+            <div class="hoja-ruta-container">
+                <table class="dashboard-table hoja-ruta-table">
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Detalle / Recomendación</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaHojaRutaCuerpo">
+                        <!-- Filas generadas por JS -->
+                    </tbody>
+                </table>
+            </div>
+
+            <h3 data-html2canvas-ignore="true"
+                style="margin-top: 20px; text-align: center; font-size: 1.1rem; border-top: 1px solid #ccc; padding-top: 10px;">
+                Vista Mapa de los Servicios</h3>
+            <div id="hojaRutaMap" data-html2canvas-ignore="true"
+                style="width: 100%; height: 400px; border-radius: 8px; border: 1px solid #ccc; margin-top: 10px;"></div>
+        </div>
+    </div>
+
+    <div id="statsModal" class="modal">
+        <div class="modal-content">
+            <span class="close-x" onclick="cerrarModal('statsModal')">×</span>
+            <h3 style="margin-top:0; text-align:center; color:#2c3e50;">📊 Reporte de Semanas</h3>
+            <p style="text-align:center; font-size:0.9rem; color:#666; margin-bottom:15px;">
+                Desglose histórico de reservación:
+            </p>
+
+            <ul id="listaStats" class="match-list"></ul>
+
+            <button onclick="cerrarModal('statsModal')" class="btn-secondary" style="margin-top:15px; width:100%;">
+                Cerrar
+            </button>
+        </div>
+    </div>
+
+    <div id="reservaModal" class="modal">
+        <div class="modal-content">
+            <span class="close-x" onclick="cerrarModal('reservaModal')">×</span>
+            <h2 style="margin-top:0;">Nueva Reserva</h2>
+
+            <div class="form-group">
+                <label>Desde: <span style="color:red">*</span></label>
+                <input type="date" id="fechaInicio">
+            </div>
+            <div class="form-group">
+                <label>Hasta: <span style="color:red">*</span></label>
+                <input type="date" id="fechaFin">
+            </div>
+
+            <div class="form-group">
+                <label>Cliente: <span style="color:red">*</span></label>
+                <input type="text" id="nombreInput" placeholder="Nombre completo">
+            </div>
+
+            <div class="form-group">
+                <label>Dirección / Ubicación (Opcional):</label>
+                <input type="text" id="direccionInput" placeholder="Escribe dirección para buscar..."
+                    autocomplete="off">
+                <ul id="listaSugerencias" class="suggestions-list"></ul>
+            </div>
+
+            <div class="form-group">
+                <label>Ciudad (Opcional):</label>
+                <input type="text" id="ciudadInput" placeholder="Se llenará sola o escribe para buscar..." readonly>
+                <ul id="listaSugerenciasCiudad" class="suggestions-list"
+                    style="bottom:100%; top:auto; border-radius:6px 6px 0 0; border-bottom:none;"></ul>
+                <input type="hidden" id="latTemp">
+                <input type="hidden" id="lonTemp">
+            </div>
+
+            <div class="form-group"
+                style="display: flex; align-items: center; gap: 10px; margin-top: 15px; user-select: none;">
+                <input type="checkbox" id="eventoEspecialCheck"
+                    style="width: auto; height: 18px; margin: 0; cursor: pointer;">
+                <label for="eventoEspecialCheck" style="margin: 0; font-weight: normal; cursor: pointer;">
+                    🎉 Evento especial (resaltar)
+                </label>
+            </div>
+
+            <button onclick="guardarReserva()" class="btn-save">💾 Guardar Reserva</button>
+        </div>
+    </div>
+
+    <div id="selectionModal" class="modal">
+        <div class="modal-content" style="text-align: center;">
+            <span class="close-x" onclick="cerrarModal('selectionModal')">×</span>
+            <h3 style="margin-top:0;">Selecciona una ubicación</h3>
+            <p style="font-size:0.9rem; color:#555; text-align:left;">Hemos encontrado estas coincidencias:</p>
+            <ul id="listaCoincidencias" class="match-list" style="text-align:left;"></ul>
+
+            <div class="modal-buttons-row">
+                <button class="btn-omitir" onclick="usarSinCiudad()">🚫 Omitir (Sin Ciudad)</button>
+                <button class="btn-manual" onclick="habilitarManual()">✍️ Ingresar Manualmente</button>
+                <button class="btn-retry" onclick="reintentarDireccion()">↩ Reintentar Dirección</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="successModal" class="modal">
+        <div class="modal-content" style="text-align: center;">
+            <span class="close-x" onclick="cerrarModal('successModal')">×</span>
+            <h2 style="color:#28a745; margin-top:0;">✅ ¡Reserva Guardada!</h2>
+            <p>La reserva se ha registrado correctamente.</p>
+            <button onclick="cerrarModal('successModal')" class="btn-secondary"
+                style="margin-top:15px; width:100%;">Cerrar</button>
+        </div>
+    </div>
+
+    <div id="detalleModal" class="modal">
+        <div class="modal-content">
+            <span class="close-x" onclick="cerrarModal('detalleModal')">×</span>
+            <h2 style="margin-top:0;">Detalles</h2>
+            <p><strong>Cliente:</strong> <span id="detCliente"></span></p>
+            <p><strong>Ciudad:</strong> <span id="detCiudad"></span></p>
+            <p><strong>Dirección:</strong> <span id="detDireccion"></span></p>
+            <p><strong>Fechas:</strong> <span id="detFechas"></span></p>
+
+            <div id="seccionPDF"
+                style="margin-top: 15px; padding: 10px; background: #f8f9fa18; border-radius: 8px; display: none;">
+                <p style="margin:0 0 10px 0;"><strong>Documentación:</strong></p>
+
+                <div id="pdfInfo"
+                    style="display: none; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+                    <a id="linkPDF" href="#" target="_blank"
+                        style="color: #3300ff; text-decoration: none; font-weight: bold;">
+                        📄 Abrir en Drive
+                    </a>
+                </div>
+
+                <div id="adminPDFInput" style="display: none;">
+                    <div style="display: flex; gap: 5px;">
+                        <input type="text" id="driveUrlInput" placeholder="Pegar enlace de Google Drive"
+                            style="flex-grow: 1; padding: 5px; font-size: 0.8rem; border: 1px solid #ccc; border-radius: 4px;">
+
+                        <button id="btnGuardarDrive" onclick="guardarEnlaceDrive()"
+                            style="padding: 5px 10px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;"
+                            title="Guardar">
+                            💾
+                        </button>
+
+                        <button id="btnEliminarDrive" onclick="eliminarEnlaceDrive()"
+                            style="display:none; padding: 5px 10px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;"
+                            title="Eliminar enlace">
+                            🗑️
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-top: 15px;">
+                <button id="btnEditar" class="btn-edit" style="display:none; margin-top:0;"
+                    onclick="prepararEdicion()">✏️</button>
+                <button id="btnEliminar" class="btn-delete" style="display:none; margin-top:0;"
+                    onclick="borrarReserva()">🗑️</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="qrModal" class="modal">
+        <div class="modal-content" style="text-align: center;">
+            <span class="close-x" onclick="cerrarModal('qrModal')">×</span>
+            <h2 style="margin-top:0;">Escanea para abrir</h2>
+            <p>Comparte la agenda escaneando este código:</p>
+            <img id="imagenQR" src="" alt="QR Code" style="width: 200px; height: 200px; margin: 10px auto;">
+            <p style="font-size:0.8rem; color:#666;">Agenda TrackSIM</p>
+            <button onclick="cerrarModal('qrModal')" class="btn-secondary"
+                style="width:100%; margin-top:10px;">Cerrar</button>
+        </div>
+    </div>
+
+
+
+    <!-- Modal para Reporte Ejecutivo -->
+    <div id="reporteModal" class="modal">
+        <div class="modal-content"
+            style="max-width: 650px; max-height: 80vh; display: flex; flex-direction: column; overflow: hidden !important;">
+            <span class="close-x" onclick="cerrarModal('reporteModal')">×</span>
+
+            <div style="display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap;">
+                <div style="flex: 1; min-width: 120px;">
+                    <label>Año:</label>
+                    <select id="filtroAnoReporte" onchange="generarReporte()"
+                        style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ccc;">
+                        <option value="todos">Todos</option>
+                    </select>
+                </div>
+                <div style="flex: 2; min-width: 200px;">
+                    <label>Cliente (opcional):</label>
+                    <input type="text" id="filtroClienteReporte" placeholder="Buscar cliente..."
+                        oninput="generarReporte()"
+                        style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ccc;">
+                </div>
+            </div>
+
+            <div id="contenidoReporte"
+                style="flex: 1; overflow-y: auto; background: var(--bg-color); padding: 15px; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 15px;">
+                <div id="reporteParaPdf" style="padding: 15px; color: var(--text-color);">
+                    <!-- Margen superior extra para el membrete -->
+                    <div style="height: 1px;" class="margin-membrete"></div>
+                    <h3 style="text-align: center; margin-top: 0; font-size: 1.5rem; margin-bottom: 5px;"
+                        id="tituloDocumentoReporte">Reporte Ejecutivo</h3>
+                    <p style="text-align: center; color: var(--text-color-muted); font-size: 0.9em; margin-bottom: 20px;"
+                        id="subtituloReporte"></p>
+
+                    <div class="dashboard-kpis">
+                        <div class="kpi-card">
+                            <h3>Total Reservas</h3>
+                            <p id="kpiTotal">0</p>
+                        </div>
+                        <div class="kpi-card">
+                            <h3>Clientes Únicos</h3>
+                            <p id="kpiClientes">0</p>
+                        </div>
+                        <div class="kpi-card">
+                            <h3>Destino Principal</h3>
+                            <p id="kpiCiudad" style="font-size: 1.1rem; margin-top: 15px;">-</p>
+                        </div>
+                        <div class="kpi-card">
+                            <h3>Semanas Totales</h3>
+                            <p id="kpiSemanas">0</p>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-table-container">
+                        <table class="dashboard-table">
+                            <thead>
+                                <tr>
+                                    <th>Cliente</th>
+                                    <th>Ciudad</th>
+                                    <th>Fechas</th>
+                                    <th style="text-align: center;">Días</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tablaReporteCuerpo">
+                                <!-- Filas generadas por JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 10px; flex-shrink: 0;">
+                <button id="btnExportarPDF" onclick="exportarReportePDF()" class="btn-action"
+                    style="flex: 1; background-color: #e74c3c;">📄 Exportar a PDF</button>
+                <button id="btnExportarPNG" onclick="exportarReportePNG()" class="btn-action"
+                    style="flex: 1; background-color: #27ae60;">🖼️ Exportar a PNG</button>
+                <button onclick="cerrarModal('reporteModal')" class="btn-secondary" style="flex: 1;">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="/src/js/app.js"></script>
+
+
+    <footer
+        style="flex-shrink: 0; background: #fff; padding: 5px; text-align: center; font-size: 0.75rem; color: #888; border-top: 1px solid #ddd;">
+        TrackSIM vLOCAL ()</span>
+    </footer>
+
+</body>
+
+</html>

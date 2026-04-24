@@ -1,3 +1,11 @@
+import { Calendar } from 'fullcalendar';
+import multiMonthPlugin from '@fullcalendar/multimonth'; // Nota: Puede que necesitemos instalar esto si no está en el bundle principal, pero probaremos con el import directo si el bundle lo permite.
+import * as L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+import * as XLSX from 'xlsx';
+import html2canvas from 'html2canvas';
+import html2pdf from 'html2pdf.js';
+import { PDFDocument } from 'pdf-lib';
 
 // Cache para evitar recargas
 const aniosCargados = new Set();
@@ -137,10 +145,10 @@ function ajustarZoom(delta) {
     }
 }
 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, where, writeBatch, updateDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-import { ADMIN_EMAILS } from '../admin-config.js'; // Importar ADMIN_EMAILS
+import { initializeApp } from "firebase/app";
+import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, where, writeBatch, updateDoc, setDoc } from "firebase/firestore";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "firebase/auth";
+import { ADMIN_EMAILS } from './admin-config.js'; // Importar ADMIN_EMAILS
 window.toggleMenu = function () {
     const menu = document.getElementById('mobile-menu');
     if (menu) {
@@ -229,7 +237,8 @@ document.addEventListener('DOMContentLoaded', function () {
     if (headerYearLabel) headerYearLabel.textContent = currentMapYear;
 
     // 1. Configuración del Calendario (Esto es ligero)
-    calendar = new FullCalendar.Calendar(calendarEl, {
+    calendar = new Calendar(calendarEl, {
+        plugins: [ multiMonthPlugin ], // Añadir el plugin si usamos imports individuales
         eventContent: function (arg) {
             let container = document.createElement('div');
             container.style.display = 'flex';
@@ -2639,7 +2648,7 @@ window.exportarReportePDF = async function () {
         }
     };
 
-    if (typeof html2canvas !== 'undefined' && window.PDFLib) {
+    if (true) { // Ahora usamos módulos importados
         const btn = document.querySelector('#reporteModal .btn-action');
         const textOrig = btn.innerHTML;
         btn.innerHTML = '<span class="loader" style="width:16px;height:16px;margin-right:8px;border-width:2px;vertical-align:middle;display:inline-block; border-top-color: white;"></span> Generando PDF...';
@@ -2657,7 +2666,7 @@ window.exportarReportePDF = async function () {
             if (!resp.ok) throw new Error("Plantilla no encontrada");
 
             const templateBytes = await resp.arrayBuffer();
-            const { PDFDocument } = window.PDFLib;
+            // Usamos PDFDocument importado
 
             const mergedDoc = await PDFDocument.load(templateBytes);
             const templateDoc = await PDFDocument.load(templateBytes);
@@ -3089,7 +3098,7 @@ window.exportarHojaRutaPDF = async function () {
 
     if (!elemento) return;
 
-    if (typeof html2pdf !== 'undefined' && typeof html2canvas !== 'undefined' && window.PDFLib) {
+    if (true) { // Ahora usamos módulos importados
         const textOrig = btn.innerHTML;
         btn.innerHTML = '<span class="loader" style="width:16px;height:16px;margin-right:8px;border-width:2px;vertical-align:middle;display:inline-block; border-top-color: white;"></span> Generando PDF...';
         btn.disabled = true;
@@ -3146,7 +3155,7 @@ window.exportarHojaRutaPDF = async function () {
             const contentPdfBuffer = await html2pdf().from(exportContainer).set(opt).output('arraybuffer');
 
             // 2. Cargar la plantilla y el contenido con pdf-lib
-            const { PDFDocument } = window.PDFLib;
+            // Usamos PDFDocument importado
             const contentDoc = await PDFDocument.load(contentPdfBuffer);
 
             const respTemplate = await fetch('template/TrackSIM Membretada.pdf');

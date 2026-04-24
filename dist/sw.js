@@ -1,13 +1,15 @@
 const CACHE_NAME = 'tracksim-v1';
 const ASSETS = [
-  '/', 
-  '/index.html',
-  '/manifest.json',
-  '/favicon.ico',
-  '/icon-192.png',
-  '/icon-512.png',
-  // Las librerías externas ahora son parte del bundle de Vite, 
-  // así que Vite se encarga de su versión y caché.
+  '/public/', // Caché del ámbito principal
+  '/public/index.html',
+  '/public/manifest.json',
+  'admin-config.js', // Nuevo archivo de configuración
+  '/public/favicon.ico',
+  '/public/icon-192.png',
+  '/public/icon-512.png',
+  'https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js',
+  'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
+  'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
 ];
 
 // 1. Instalación: Cachear recursos estáticos
@@ -74,8 +76,8 @@ self.addEventListener('push', (event) => {
   const title = data.title || 'Agenda TrackSIM';
   const options = {
     body: data.body, // Usar el icono enviado o uno por defecto
-    icon: data.icon || '/icon-192.png',
-    badge: '/icon-192.png', // Icono para la barra de notificaciones en Android
+    icon: data.icon || '/public/icon-192.png',
+    badge: '/public/icon-192.png', // Icono para la barra de notificaciones en Android
     data: {
       url: data.url || '/' // URL a la que se navegará al hacer clic
     }
