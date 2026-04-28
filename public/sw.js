@@ -1,24 +1,24 @@
-const CACHE_NAME = 'tracksim-v1';
+const CACHE_NAME = "tracksim-v1";
 const ASSETS = [
-  '/', 
-  '/index.html',
-  '/manifest.json',
-  '/favicon.ico',
-  '/icon-192.png',
-  '/icon-512.png',
+  "/", 
+  "/index.html",
+  "/manifest.json",
+  "/favicon.ico",
+  "/icon-192.png",
+  "/icon-512.png",
   // Las librerías externas ahora son parte del bundle de Vite, 
   // así que Vite se encarga de su versión y caché.
 ];
 
 // 1. Instalación: Cachear recursos estáticos
-self.addEventListener('install', (event) => {
+self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS))
   );
 });
 
 // 2. Activación: Limpiar cachés viejas
-self.addEventListener('activate', (event) => {
+self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
       return Promise.all(
@@ -29,9 +29,9 @@ self.addEventListener('activate', (event) => {
 });
 
 // 3. Fetch: Estrategia Stale-While-Revalidate (Usa caché, pero actualiza en segundo plano)
-self.addEventListener('fetch', (event) => {
+self.addEventListener("fetch", (event) => {
   // Ignorar peticiones que no sean GET o que sean a la API de Firestore/Google
-  if (event.request.method !== 'GET' || event.request.url.includes('firestore') || event.request.url.includes('googleapis')) {
+  if (event.request.method !== "GET" || event.request.url.includes("firestore") || event.request.url.includes("googleapis")) {
     return;
   }
 
@@ -67,17 +67,17 @@ self.addEventListener('fetch', (event) => {
 // --- MANEJO DE NOTIFICACIONES PUSH ---
 
 // 4. Escuchar el evento 'push' (cuando el servidor envía una notificación)
-self.addEventListener('push', (event) => {
+self.addEventListener("push", (event) => {
   // El servidor (o la app cliente) nos envía los datos de la notificación en formato JSON
   const data = event.data ? event.data.json() : {};
 
-  const title = data.title || 'Agenda TrackSIM';
+  const title = data.title || "Agenda TrackSIM";
   const options = {
     body: data.body, // Usar el icono enviado o uno por defecto
-    icon: data.icon || '/icon-192.png',
-    badge: '/icon-192.png', // Icono para la barra de notificaciones en Android
+    icon: data.icon || "/icon-192.png",
+    badge: "/icon-192.png", // Icono para la barra de notificaciones en Android
     data: {
-      url: data.url || '/' // URL a la que se navegará al hacer clic
+      url: data.url || "/" // URL a la que se navegará al hacer clic
     }
   };
 
@@ -85,7 +85,7 @@ self.addEventListener('push', (event) => {
 });
 
 // 5. Escuchar el clic en la notificación
-self.addEventListener('notificationclick', (event) => {
+self.addEventListener("notificationclick", (event) => {
   event.notification.close(); // Cierra la notificación
   event.waitUntil(clients.openWindow(event.notification.data.url)); // Abre la app o la URL especificada
 });

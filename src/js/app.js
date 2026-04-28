@@ -1,36 +1,36 @@
-import { Calendar } from 'fullcalendar';
-import multiMonthPlugin from '@fullcalendar/multimonth'; // Nota: Puede que necesitemos instalar esto si no está en el bundle principal, pero probaremos con el import directo si el bundle lo permite.
-import * as L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
-import * as XLSX from 'xlsx';
-import html2canvas from 'html2canvas';
-import html2pdf from 'html2pdf.js';
-import { PDFDocument } from 'pdf-lib';
+import { Calendar } from "fullcalendar";
+import multiMonthPlugin from "@fullcalendar/multimonth"; // Nota: Puede que necesitemos instalar esto si no está en el bundle principal, pero probaremos con el import directo si el bundle lo permite.
+import * as L from "leaflet";
+import "leaflet/dist/leaflet.css";
+import * as XLSX from "xlsx";
+import html2canvas from "html2canvas";
+import html2pdf from "html2pdf.js";
+import { PDFDocument } from "pdf-lib";
 
 // Cache para evitar recargas
 const aniosCargados = new Set();
 let cargandoDatos = false; // Semáforo para no llamar dos veces seguidas
 
-const API_KEY_HERE = 'vtP_Ocp9-jUl3SG6HpMHLSaRQoumNPiDV7SyOYmNkZA'; // Reemplaza con tu llave de HERE
+const API_KEY_HERE = "vtP_Ocp9-jUl3SG6HpMHLSaRQoumNPiDV7SyOYmNkZA"; // Reemplaza con tu llave de HERE
 
 // --- DETECCIÓN DE SWIPE (DESLIZAR) PARA CAMBIAR AÑO ---
-const sidebarSwipe = document.getElementById('map-sidebar');
+const sidebarSwipe = document.getElementById("map-sidebar");
 let touchStartX = 0;
 let touchEndX = 0;
 
 // 1. Detectar dónde empieza el toque
-sidebarSwipe.addEventListener('touchstart', (e) => {
+sidebarSwipe.addEventListener("touchstart", (e) => {
     touchStartX = e.changedTouches[0].screenX;
 }, { passive: true });
 
 // 2. Detectar dónde termina el toque
-sidebarSwipe.addEventListener('touchend', (e) => {
+sidebarSwipe.addEventListener("touchend", (e) => {
     touchEndX = e.changedTouches[0].screenX;
     manejarSwipe();
 }, { passive: true });
 
 function manejarSwipe() {
-    if (!sidebarSwipe.classList.contains('open')) return;
+    if (!sidebarSwipe.classList.contains("open")) return;
     // Mínima distancia para considerar que fue un deslizamiento intencional (50px)
     const umbral = 50;
     const distancia = touchEndX - touchStartX;
@@ -41,41 +41,41 @@ function manejarSwipe() {
         // Deslizó hacia la IZQUIERDA ( <-- ) 
         // Significa "Traer el futuro", avanzar año
         cambiarAnoMapa(1);
-        animarCambioAno('derecha'); // Opcional: Feedback visual
+        animarCambioAno("derecha"); // Opcional: Feedback visual
     } else {
         // Deslizó hacia la DERECHA ( --> )
         // Significa "Traer el pasado", retroceder año
         cambiarAnoMapa(-1);
-        animarCambioAno('izquierda'); // Opcional: Feedback visual
+        animarCambioAno("izquierda"); // Opcional: Feedback visual
     }
 }
 
 // Pequeña animación visual para confirmar la acción
 function animarCambioAno(direccion) {
-    const display = document.getElementById('map-year-display');
-    display.style.transition = 'transform 0.2s, opacity 0.2s';
+    const display = document.getElementById("map-year-display");
+    display.style.transition = "transform 0.2s, opacity 0.2s";
 
     // Efecto de salida
-    const x = direccion === 'derecha' ? '-20px' : '20px';
+    const x = direccion === "derecha" ? "-20px" : "20px";
     display.style.transform = `translateX(${x})`;
-    display.style.opacity = '0.5';
+    display.style.opacity = "0.5";
 
     setTimeout(() => {
         // Restaurar
-        display.style.transform = 'translateX(0)';
-        display.style.opacity = '1';
+        display.style.transform = "translateX(0)";
+        display.style.opacity = "1";
     }, 200);
 }
 
 // --- DETECCIÓN DE GESTOS DEFINITIVA (ZOOM Y SWIPE) ---
-const calendarElement = document.getElementById('calendar');
+const calendarElement = document.getElementById("calendar");
 let touchStartXCal = 0;
 let touchEndXCal = 0;
 
 let distanciaInicioPinch = 0;
 let isPinching = false;
 
-calendarElement.addEventListener('touchstart', (e) => {
+calendarElement.addEventListener("touchstart", (e) => {
     if (e.touches.length === 2) {
         isPinching = true;
         distanciaInicioPinch = Math.hypot(
@@ -88,7 +88,7 @@ calendarElement.addEventListener('touchstart', (e) => {
     }
 }, { passive: true });
 
-calendarElement.addEventListener('touchmove', (e) => {
+calendarElement.addEventListener("touchmove", (e) => {
     if (isPinching && e.touches.length === 2) {
         const distanciaActual = Math.hypot(
             e.touches[0].pageX - e.touches[1].pageX,
@@ -107,7 +107,7 @@ calendarElement.addEventListener('touchmove', (e) => {
     }
 }, { passive: true });
 
-calendarElement.addEventListener('touchend', (e) => {
+calendarElement.addEventListener("touchend", (e) => {
     if (!isPinching && e.changedTouches.length > 0) {
         touchEndXCal = e.changedTouches[0].screenX;
         manejarSwipeCalendario();
@@ -125,14 +125,14 @@ function manejarSwipeCalendario() {
 }
 
 function ajustarZoom(delta) {
-    if (!calendar || calendar.view.type !== 'multiMonthYear') return;
+    if (!calendar || calendar.view.type !== "multiMonthYear") return;
 
     // Detectar límites
     const esCelular = window.innerWidth < 768;
     const limiteMax = esCelular ? 2 : 4;
 
     // Leer valor actual (ahora sí funciona leerlo directo)
-    let colsActuales = calendar.getOption('multiMonthMaxColumns') || (esCelular ? 1 : 4);
+    let colsActuales = calendar.getOption("multiMonthMaxColumns") || (esCelular ? 1 : 4);
     let nuevasCols = colsActuales + delta;
 
     if (nuevasCols < 1) nuevasCols = 1;
@@ -140,7 +140,7 @@ function ajustarZoom(delta) {
 
     if (nuevasCols !== colsActuales) {
         // Aplicar cambio directo
-        calendar.setOption('multiMonthMaxColumns', nuevasCols);
+        calendar.setOption("multiMonthMaxColumns", nuevasCols);
         console.log(`Zoom: ${colsActuales} -> ${nuevasCols}`);
     }
 }
@@ -148,11 +148,11 @@ function ajustarZoom(delta) {
 import { initializeApp } from "firebase/app";
 import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, where, writeBatch, updateDoc, setDoc } from "firebase/firestore";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "firebase/auth";
-import { ADMIN_EMAILS } from './admin-config.js'; // Importar ADMIN_EMAILS
+import { ADMIN_EMAILS } from "./admin-config.js"; // Importar ADMIN_EMAILS
 window.toggleMenu = function () {
-    const menu = document.getElementById('mobile-menu');
+    const menu = document.getElementById("mobile-menu");
     if (menu) {
-        menu.classList.toggle('open');
+        menu.classList.toggle("open");
     }
 };
 
@@ -174,8 +174,8 @@ let map;
 let markers = [];
 let esAdmin = false;
 let currentTileLayer; // Para poder cambiar el tema del mapa
-const HERE_STYLE_LIGHT = 'explore.day';
-const HERE_STYLE_DARK = 'lite.night'; // Estilo oscuro de HERE Maps
+const HERE_STYLE_LIGHT = "explore.day";
+const HERE_STYLE_DARK = "lite.night"; // Estilo oscuro de HERE Maps
 
 let eventoSeleccionadoID = null;
 let grupoSeleccionadoID = null;
@@ -189,8 +189,8 @@ let currentMapYear = new Date().getFullYear();
 
 // Icono para la reserva más próxima (Gold)
 const goldIcon = new L.Icon({
-    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-gold.png',
-    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+    iconUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-gold.png",
+    shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png",
     iconSize: [25, 41],
     iconAnchor: [12, 41],
     popupAnchor: [1, -34],
@@ -198,8 +198,8 @@ const goldIcon = new L.Icon({
 });
 
 const blueIcon = new L.Icon({
-    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
-    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+    iconUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png",
+    shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png",
     iconSize: [25, 41],
     iconAnchor: [12, 41],
     popupAnchor: [1, -34],
@@ -207,8 +207,8 @@ const blueIcon = new L.Icon({
 });
 
 const redIcon = new L.Icon({
-    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
-    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+    iconUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png",
+    shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png",
     iconSize: [25, 41],
     iconAnchor: [12, 41],
     popupAnchor: [1, -34],
@@ -216,50 +216,50 @@ const redIcon = new L.Icon({
 });
 
 const greyIcon = new L.Icon({
-    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-grey.png',
-    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+    iconUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-grey.png",
+    shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png",
     iconSize: [25, 41],
     iconAnchor: [12, 41],
     popupAnchor: [1, -34],
     shadowSize: [41, 41]
 });
 
-document.addEventListener('DOMContentLoaded', function () {
+document.addEventListener("DOMContentLoaded", function () {
     // --- GESTIÓN DE TEMA (MODO OSCURO) ---
     // Inyectamos los botones y aplicamos el tema guardado.
     inyectarBotonesTema();
-    applyTheme(localStorage.getItem('agenda_theme') || 'light');
+    applyTheme(localStorage.getItem("agenda_theme") || "light");
 
-    var calendarEl = document.getElementById('calendar');
+    var calendarEl = document.getElementById("calendar");
     const esMovil = window.innerWidth < 768;
 
-    const headerYearLabel = document.getElementById('header-year-label');
+    const headerYearLabel = document.getElementById("header-year-label");
     if (headerYearLabel) headerYearLabel.textContent = currentMapYear;
 
     // 1. Configuración del Calendario (Esto es ligero)
     calendar = new Calendar(calendarEl, {
         plugins: [ multiMonthPlugin ], // Añadir el plugin si usamos imports individuales
         eventContent: function (arg) {
-            let container = document.createElement('div');
-            container.style.display = 'flex';
-            container.style.justifyContent = 'space-between';
-            container.style.alignItems = 'center';
-            container.style.width = '100%';
-            container.style.padding = '0 2px';
+            let container = document.createElement("div");
+            container.style.display = "flex";
+            container.style.justifyContent = "space-between";
+            container.style.alignItems = "center";
+            container.style.width = "100%";
+            container.style.padding = "0 2px";
 
-            let titleEl = document.createElement('div');
+            let titleEl = document.createElement("div");
             titleEl.innerHTML = arg.event.title;
-            titleEl.style.overflow = 'hidden';
-            titleEl.style.textOverflow = 'ellipsis';
-            titleEl.style.whiteSpace = 'nowrap';
+            titleEl.style.overflow = "hidden";
+            titleEl.style.textOverflow = "ellipsis";
+            titleEl.style.whiteSpace = "nowrap";
             container.appendChild(titleEl);
 
             if (arg.event.extendedProps.pdfUrl) {
-                let iconEl = document.createElement('span');
-                iconEl.innerHTML = ' 📎';
-                iconEl.style.fontSize = '1.0em';
-                iconEl.style.marginLeft = '4px';
-                iconEl.style.color = 'white';
+                let iconEl = document.createElement("span");
+                iconEl.innerHTML = " 📎";
+                iconEl.style.fontSize = "1.0em";
+                iconEl.style.marginLeft = "4px";
+                iconEl.style.color = "white";
                 container.appendChild(iconEl);
             }
             return { domNodes: [container] };
@@ -267,43 +267,43 @@ document.addEventListener('DOMContentLoaded', function () {
         // Nuevo: Permite añadir atributos personalizados al DOM del evento para fácil selección
         eventDidMount: function (info) {
             if (info.el) {
-                info.el.setAttribute('data-event-id', info.event.id);
+                info.el.setAttribute("data-event-id", info.event.id);
             }
         },
-        height: '100%',
-        initialView: 'multiMonthYear',
-        locale: 'es',
+        height: "100%",
+        initialView: "multiMonthYear",
+        locale: "es",
 
         customButtons: {
             // CAMBIO 1: Al hacer clic en HOY, forzamos la vista de AÑO y vamos a la fecha
             btnHoy: {
-                text: 'Hoy',
+                text: "Hoy",
                 click: function () {
-                    calendar.changeView('multiMonthYear');
+                    calendar.changeView("multiMonthYear");
                     calendar.today();
                 }
             },
             btnCustomAgenda: {
-                text: 'Agenda',
+                text: "Agenda",
                 click: function () { mostrarVistaAgenda(); }
             }
         },
 
         headerToolbar: {
-            left: 'prev,next btnHoy',
-            center: 'title',
+            left: "prev,next btnHoy",
+            center: "title",
             // CAMBIO 2: Quitamos 'dayGridMonth' de la barra derecha
-            right: 'btnCustomAgenda'
+            right: "btnCustomAgenda"
         },
 
         views: {
             // CAMBIO 3: Eliminamos la configuración de dayGridMonth
-            multiMonthYear: { buttonText: 'Año' }
+            multiMonthYear: { buttonText: "Año" }
         },
 
         dateClick: function (info) {
             if (!esAdmin) return;
-            const parts = info.dateStr.split('-');
+            const parts = info.dateStr.split("-");
             const localDate = new Date(parts[0], parts[1] - 1, parts[2]);
             if (localDate.getDay() === 0) { alert("⛔ Servicio no disponible los domingos."); return; }
             const fechaClickeada = info.dateStr;
@@ -312,7 +312,7 @@ document.addEventListener('DOMContentLoaded', function () {
             else abrirModalCrear(info.dateStr);
         },
         eventClick: function (info) {
-            if (info.event.display === 'background') return;
+            if (info.event.display === "background") return;
             if (info.event.start.getDay() === 0) { alert("⛔ Servicio no disponible los domingos."); return; }
             mostrarDetalles(info.event);
         }
@@ -322,9 +322,9 @@ document.addEventListener('DOMContentLoaded', function () {
     calendar.render();
 
     // 3. Inicializar Mapa (Ligero si no agregamos pines aún)
-    map = L.map('map-canvas').setView([23.6345, -102.5528], 5);
+    map = L.map("map-canvas").setView([23.6345, -102.5528], 5);
     setMapTileLayer(); // Usar la nueva función para establecer el mapa base
-    document.getElementById('map-year-display').textContent = currentMapYear;
+    document.getElementById("map-year-display").textContent = currentMapYear;
 
     // 4. CARGA DE DATOS DIFERIDA (EL TRUCO FINAL)
     // Esperamos 100ms para que el navegador termine de pintar la interfaz inicial.
@@ -343,17 +343,17 @@ document.addEventListener('DOMContentLoaded', function () {
 
 function inyectarBotonesTema() {
     // Solo inyectamos en el menú (que ahora es el mismo para desktop y móvil)
-    const menuContainer = document.getElementById('mobile-menu');
+    const menuContainer = document.getElementById("mobile-menu");
     if (menuContainer) {
-        const themeBtn = document.createElement('button');
-        themeBtn.id = 'menu-btn-theme-toggle';
-        themeBtn.innerHTML = '🌓 Cambiar Tema';
-        themeBtn.addEventListener('click', toggleTheme);
+        const themeBtn = document.createElement("button");
+        themeBtn.id = "menu-btn-theme-toggle";
+        themeBtn.innerHTML = "🌓 Cambiar Tema";
+        themeBtn.addEventListener("click", toggleTheme);
 
         // Añadir una sección de "Apariencia" para el botón
-        const appearanceTitle = document.createElement('div');
-        appearanceTitle.className = 'mobile-section-title';
-        appearanceTitle.innerText = 'APARIENCIA';
+        const appearanceTitle = document.createElement("div");
+        appearanceTitle.className = "mobile-section-title";
+        appearanceTitle.innerText = "APARIENCIA";
 
         // Insertar el título y el botón al principio del menú
         menuContainer.insertBefore(themeBtn, menuContainer.firstChild);
@@ -362,10 +362,10 @@ function inyectarBotonesTema() {
 }
 
 function applyTheme(theme) {
-    if (theme === 'dark') {
-        document.body.classList.add('dark-mode');
+    if (theme === "dark") {
+        document.body.classList.add("dark-mode");
     } else {
-        document.body.classList.remove('dark-mode');
+        document.body.classList.remove("dark-mode");
     }
     // Actualizar el mapa si ya está inicializado
     if (map) {
@@ -374,8 +374,8 @@ function applyTheme(theme) {
 }
 
 function toggleTheme() {
-    const currentTheme = document.body.classList.contains('dark-mode') ? 'light' : 'dark';
-    localStorage.setItem('agenda_theme', currentTheme);
+    const currentTheme = document.body.classList.contains("dark-mode") ? "light" : "dark";
+    localStorage.setItem("agenda_theme", currentTheme);
     applyTheme(currentTheme);
 }
 
@@ -385,11 +385,11 @@ function setMapTileLayer() {
     if (currentTileLayer) {
         map.removeLayer(currentTileLayer);
     }
-    const isDark = document.body.classList.contains('dark-mode');
+    const isDark = document.body.classList.contains("dark-mode");
     const style = isDark ? HERE_STYLE_DARK : HERE_STYLE_LIGHT;
 
     currentTileLayer = L.tileLayer(`https://maps.hereapi.com/v3/base/mc/{z}/{x}/{y}/png8?style=${style}&apiKey=${API_KEY_HERE}`, {
-        attribution: '© 2024 HERE',
+        attribution: "© 2024 HERE",
         maxZoom: 20
     }).addTo(map);
 }
@@ -400,7 +400,7 @@ function setMapTileLayer() {
 // Se mueve esta función a una posición anterior para que esté definida cuando se le llama.
 async function verificarEventosProximos() {
     // globalReservas está inicializado como array vacío, así que `.length` es seguro.
-    if (Notification.permission !== 'granted' || globalReservas.length === 0) return;
+    if (Notification.permission !== "granted" || globalReservas.length === 0) return;
 
     const swRegistration = await navigator.serviceWorker.ready;
     if (!swRegistration) return;
@@ -414,12 +414,12 @@ async function verificarEventosProximos() {
     semana.setDate(hoy.getDate() + 7);
 
     // Convertimos a formato YYYY-MM-DD
-    const hoyStr = hoy.toISOString().split('T')[0];
-    const mananaStr = manana.toISOString().split('T')[0];
-    const semanaStr = semana.toISOString().split('T')[0];
+    const hoyStr = hoy.toISOString().split("T")[0];
+    const mananaStr = manana.toISOString().split("T")[0];
+    const semanaStr = semana.toISOString().split("T")[0];
 
     // El sistema de notificados ahora guarda el ID y el tipo de aviso (ej: "idReserva_7d")
-    const notificados = JSON.parse(localStorage.getItem('notificacionesEnviadas') || '[]');
+    const notificados = JSON.parse(localStorage.getItem("notificacionesEnviadas") || "[]");
 
     for (const reserva of globalReservas) {
         const id = reserva.id;
@@ -429,80 +429,80 @@ Ciudad: ${reserva.data.ciudad}`;
 
         // Notificación de 7 días
         if (fechaInicio === semanaStr && !notificados.includes(`${id}_7d`)) {
-            swRegistration.showNotification('🗓️ Servicio en 1 Semana', { body, icon: './icon-192.png' });
+            swRegistration.showNotification("🗓️ Servicio en 1 Semana", { body, icon: "./icon-192.png" });
             notificados.push(`${id}_7d`);
         }
 
         // Notificación de 1 día
         if (fechaInicio === mananaStr && !notificados.includes(`${id}_1d`)) {
-            swRegistration.showNotification('🗓️ Servicio Mañana', { body, icon: './icon-192.png' });
+            swRegistration.showNotification("🗓️ Servicio Mañana", { body, icon: "./icon-192.png" });
             notificados.push(`${id}_1d`);
         }
 
         // Notificación del mismo día
         if (fechaInicio === hoyStr && !notificados.includes(`${id}_0d`)) {
-            swRegistration.showNotification('✅ Servicio para Hoy', { body, icon: './icon-192.png' });
+            swRegistration.showNotification("✅ Servicio para Hoy", { body, icon: "./icon-192.png" });
             notificados.push(`${id}_0d`);
         }
     }
-    localStorage.setItem('notificacionesEnviadas', JSON.stringify(notificados));
+    localStorage.setItem("notificacionesEnviadas", JSON.stringify(notificados));
 }
 
 // --- NOTIFICACIONES DE ESCRITORIO (CLIENT-SIDE) ---
 
 // 1. Solicitar permiso al usuario (Devuelve una promesa)
 async function solicitarPermisoNotificaciones() {
-    if (!('Notification' in window) || !navigator.serviceWorker) {
+    if (!("Notification" in window) || !navigator.serviceWorker) {
         console.log("Este navegador no soporta notificaciones.");
         return false;
     }
     // Si el permiso ya fue concedido, no hacemos nada y devolvemos true
-    if (Notification.permission === 'granted') {
+    if (Notification.permission === "granted") {
         console.log("El permiso de notificación ya estaba concedido.");
         verificarEventosProximos(); // Hacemos una primera verificación al cargar
         return true;
     }
     // Si fue denegado, no podemos volver a preguntar
-    if (Notification.permission === 'denied') {
+    if (Notification.permission === "denied") {
         console.log("El permiso de notificación fue denegado previamente.");
         return false;
     }
     // Si no se ha decidido (default), solicitamos permiso
     const permission = await Notification.requestPermission();
-    if (permission === 'granted') { console.log('Permiso de notificación concedido.'); verificarEventosProximos(); return true; }
+    if (permission === "granted") { console.log("Permiso de notificación concedido."); verificarEventosProximos(); return true; }
     return false;
 }
 
 // Función centralizada para actualizar la UI en base al estado de 'esAdmin'
 function actualizarUIConEstadoAdmin() {
-    const adminStatus = document.getElementById('admin-status');
+    const adminStatus = document.getElementById("admin-status");
 
     // Elementos del menú unificado
-    const menuLogin = document.getElementById('mobile-btn-login');
-    const menuLogout = document.getElementById('mobile-btn-logout');
-    const menuReporte = document.getElementById('mobile-btn-reporte');
-    const menuHojaRuta = document.getElementById('mobile-btn-hoja-ruta');
-    const menuImport = document.getElementById('mobile-btn-import');
+    const menuLogin = document.getElementById("mobile-btn-login");
+    const menuLogout = document.getElementById("mobile-btn-logout");
+    const menuReporte = document.getElementById("mobile-btn-reporte");
+    const menuHojaRuta = document.getElementById("mobile-btn-hoja-ruta");
+    const menuImport = document.getElementById("mobile-btn-import");
 
     if (esAdmin) {
-        if (adminStatus && auth.currentUser) adminStatus.innerText = `🔰`;
-        if (adminStatus) adminStatus.style.display = 'inline-block';
+        if (adminStatus && auth.currentUser) adminStatus.innerText = "🔰";
+        if (adminStatus) adminStatus.style.display = "inline-block";
 
         // Items del menú
-        if (menuLogin) menuLogin.style.display = 'none';
-        if (menuLogout) menuLogout.style.display = 'block';
-        if (menuReporte) menuReporte.style.display = 'block';
-        if (menuHojaRuta) menuHojaRuta.style.display = 'block';
-        if (menuImport) menuImport.style.display = 'block';
+        if (menuLogin) menuLogin.style.display = "none";
+        if (menuLogout) menuLogout.style.display = "block";
+        if (menuReporte) menuReporte.style.display = "block";
+        if (menuHojaRuta) menuHojaRuta.style.display = "block";
+        if (menuImport) menuImport.style.display = "block";
     } else {
-        if (adminStatus) adminStatus.style.display = 'none';
+        if (adminStatus) adminStatus.style.display = "none";
 
         // Items del menú
-        if (menuLogin) menuLogin.style.display = 'block';
-        if (menuLogout) menuLogout.style.display = 'none';
-        if (menuReporte) menuReporte.style.display = 'none';
-        if (menuHojaRuta) menuHojaRuta.style.display = 'none';
-        if (menuImport) menuImport.style.display = 'none';
+        if (menuLogin) menuLogin.style.display = "block";
+        if (menuLogout) menuLogout.style.display = "none";
+        if (menuReporte) menuReporte.style.display = "none";
+        if (menuHojaRuta) menuHojaRuta.style.display = "none";
+        if (menuImport) menuImport.style.display = "none";
     }
     actualizarHeaderAdmin();
 }
@@ -528,13 +528,13 @@ onAuthStateChanged(auth, (user) => {
 });
 
 // --- BUSCADOR GLOBAL ---
-const searchInput = document.getElementById('globalSearch');
-const resultsList = document.getElementById('globalSearchResults');
+const searchInput = document.getElementById("globalSearch");
+const resultsList = document.getElementById("globalSearchResults");
 
-searchInput.addEventListener('input', function () {
+searchInput.addEventListener("input", function () {
     const texto = this.value.toLowerCase().trim();
-    resultsList.innerHTML = '';
-    if (texto.length < 2) { resultsList.style.display = 'none'; return; }
+    resultsList.innerHTML = "";
+    if (texto.length < 2) { resultsList.style.display = "none"; return; }
 
     const encontrados = globalReservas.filter(r => {
         const cliente = (r.data.cliente || "").toLowerCase();
@@ -542,17 +542,17 @@ searchInput.addEventListener('input', function () {
         return cliente.includes(texto) || ciudad.includes(texto);
     }).sort((a, b) => a.start - b.start).slice(0, 8);
 
-    if (encontrados.length === 0) { resultsList.style.display = 'none'; return; }
-    resultsList.style.display = 'block';
+    if (encontrados.length === 0) { resultsList.style.display = "none"; return; }
+    resultsList.style.display = "block";
 
     encontrados.forEach(reserva => {
-        const li = document.createElement('li');
-        li.className = 'search-result-item';
+        const li = document.createElement("li");
+        li.className = "search-result-item";
         const fechaStr = formatearFecha(reserva.data.fechaInicio);
         li.innerHTML = `
             <div>
                 <div class="result-main">👤 ${reserva.data.cliente}</div>
-                <div class="result-sub">📍 ${reserva.data.ciudad.split(',')[0]}</div>
+                <div class="result-sub">📍 ${reserva.data.ciudad.split(",")[0]}</div>
             </div>
             <div class="result-sub" style="color:#007bff;">${fechaStr}</div>
         `;
@@ -561,20 +561,20 @@ searchInput.addEventListener('input', function () {
     });
 });
 
-document.addEventListener('click', (e) => {
-    if (!searchInput.contains(e.target) && !resultsList.contains(e.target)) { resultsList.style.display = 'none'; }
+document.addEventListener("click", (e) => {
+    if (!searchInput.contains(e.target) && !resultsList.contains(e.target)) { resultsList.style.display = "none"; }
 });
 
 window.seleccionarResultado = function (reserva) {
-    resultsList.style.display = 'none';
-    searchInput.value = '';
-    const mapaVisible = document.getElementById('map-view').style.display !== 'none';
+    resultsList.style.display = "none";
+    searchInput.value = "";
+    const mapaVisible = document.getElementById("map-view").style.display !== "none";
 
     if (mapaVisible) {
         const yearReserva = reserva.start.getFullYear();
         if (yearReserva !== currentMapYear) {
             currentMapYear = yearReserva;
-            document.getElementById('map-year-display').textContent = currentMapYear;
+            document.getElementById("map-year-display").textContent = currentMapYear;
             actualizarMapaYLista();
         }
         if (reserva.data.lat && reserva.data.lng) {
@@ -588,17 +588,17 @@ window.seleccionarResultado = function (reserva) {
             }, 500);
         } else { alert("Esta reserva no tiene coordenadas."); }
     } else {
-        if (document.getElementById('agenda-view').style.display === 'block') {
+        if (document.getElementById("agenda-view").style.display === "block") {
             mostrarCalendario();
         }
         resaltarEventoEnCalendario(reserva.id);
     }
-}
+};
 
 // Nueva función para resaltar un evento en el calendario
 function resaltarEventoEnCalendario(reservaId) {
     // Asegurarse de que la vista de calendario esté activa
-    if (document.getElementById('calendar-container').style.display === 'none') {
+    if (document.getElementById("calendar-container").style.display === "none") {
         mostrarCalendario();
     }
 
@@ -618,31 +618,31 @@ function resaltarEventoEnCalendario(reservaId) {
         const eventEl = document.querySelector(`.fc-event[data-event-id='${reservaId}']`);
 
         if (eventEl) {
-            eventEl.classList.add('event-blink');
+            eventEl.classList.add("event-blink");
             // Quitar la animación después de unos segundos
             setTimeout(() => {
-                eventEl.classList.remove('event-blink');
+                eventEl.classList.remove("event-blink");
             }, 3000); // Parpadea por 3 segundos
 
             // Opcional: Hacer scroll al evento si está fuera de la vista
-            eventEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            eventEl.scrollIntoView({ behavior: "smooth", block: "center" });
         }
     }, 300); // Esperar 300ms para el renderizado
 }
 
 // --- AUTOCOMPLETE DE DIRECCIÓN (MEJORADO PARA DIRECCIONES COMPLEJAS) ---
-const inputDireccion = document.getElementById('direccionInput');
-const listaSugerencias = document.getElementById('listaSugerencias');
+const inputDireccion = document.getElementById("direccionInput");
+const listaSugerencias = document.getElementById("listaSugerencias");
 let timeoutBuscador = null;
 
-inputDireccion.addEventListener('input', function () {
+inputDireccion.addEventListener("input", function () {
     const texto = this.value;
 
-    document.getElementById('latTemp').value = "";
-    document.getElementById('lonTemp').value = "";
+    document.getElementById("latTemp").value = "";
+    document.getElementById("lonTemp").value = "";
 
-    listaSugerencias.innerHTML = '';
-    listaSugerencias.style.display = 'none';
+    listaSugerencias.innerHTML = "";
+    listaSugerencias.style.display = "none";
 
     if (texto.length < 3) return;
 
@@ -665,10 +665,10 @@ inputDireccion.addEventListener('input', function () {
             const data = await respuesta.json();
 
             if (data.items && data.items.length > 0) {
-                listaSugerencias.style.display = 'block';
+                listaSugerencias.style.display = "block";
                 data.items.forEach(item => {
-                    const li = document.createElement('li');
-                    li.className = 'suggestion-item';
+                    const li = document.createElement("li");
+                    li.className = "suggestion-item";
 
                     // Extraer ciudad/localidad de la jerarquía de HERE
                     const ciudad = item.address.city || item.address.locality || item.address.district || "";
@@ -677,10 +677,10 @@ inputDireccion.addEventListener('input', function () {
 
                     li.onclick = function () {
                         inputDireccion.value = item.address.label;
-                        document.getElementById('latTemp').value = item.position.lat;
-                        document.getElementById('lonTemp').value = item.position.lng;
-                        document.getElementById('ciudadInput').value = ciudad;
-                        listaSugerencias.style.display = 'none';
+                        document.getElementById("latTemp").value = item.position.lat;
+                        document.getElementById("lonTemp").value = item.position.lng;
+                        document.getElementById("ciudadInput").value = ciudad;
+                        listaSugerencias.style.display = "none";
                     };
                     listaSugerencias.appendChild(li);
                 });
@@ -689,17 +689,17 @@ inputDireccion.addEventListener('input', function () {
     }, 600);
 });
 
-const inputCiudad = document.getElementById('ciudadInput');
-const listaSugerenciasCiudad = document.getElementById('listaSugerenciasCiudad');
+const inputCiudad = document.getElementById("ciudadInput");
+const listaSugerenciasCiudad = document.getElementById("listaSugerenciasCiudad");
 let timeoutCiudad = null;
 
-inputCiudad.addEventListener('input', function () {
+inputCiudad.addEventListener("input", function () {
     if (this.readOnly) return;
     const texto = this.value.trim();
-    const API_KEY_HERE = 'vtP_Ocp9-jUl3SG6HpMHLSaRQoumNPiDV7SyOYmNkZA';
+    const API_KEY_HERE = "vtP_Ocp9-jUl3SG6HpMHLSaRQoumNPiDV7SyOYmNkZA";
 
-    listaSugerenciasCiudad.innerHTML = '';
-    listaSugerenciasCiudad.style.display = 'none';
+    listaSugerenciasCiudad.innerHTML = "";
+    listaSugerenciasCiudad.style.display = "none";
 
     if (texto.length < 3) return;
 
@@ -721,23 +721,23 @@ inputCiudad.addEventListener('input', function () {
             const data = await respuesta.json();
 
             if (data.items && data.items.length > 0) {
-                listaSugerenciasCiudad.style.display = 'block';
+                listaSugerenciasCiudad.style.display = "block";
                 data.items.forEach(item => {
-                    const li = document.createElement('li');
-                    li.className = 'suggestion-item';
+                    const li = document.createElement("li");
+                    li.className = "suggestion-item";
 
                     const nombreCiudad = item.address.city || item.address.locality || item.title;
                     const estado = item.address.state || "";
 
-                    li.innerHTML = `<strong>🏙️ ${nombreCiudad}</strong><br><small>${estado}, CP: ${item.address.postalCode || ''}</small>`;
+                    li.innerHTML = `<strong>🏙️ ${nombreCiudad}</strong><br><small>${estado}, CP: ${item.address.postalCode || ""}</small>`;
 
                     li.onclick = function () {
                         inputCiudad.value = nombreCiudad;
-                        if (!document.getElementById('latTemp').value) {
-                            document.getElementById('latTemp').value = item.position.lat;
-                            document.getElementById('lonTemp').value = item.position.lng;
+                        if (!document.getElementById("latTemp").value) {
+                            document.getElementById("latTemp").value = item.position.lat;
+                            document.getElementById("lonTemp").value = item.position.lng;
                         }
-                        listaSugerenciasCiudad.style.display = 'none';
+                        listaSugerenciasCiudad.style.display = "none";
                     };
                     listaSugerenciasCiudad.appendChild(li);
                 });
@@ -745,24 +745,24 @@ inputCiudad.addEventListener('input', function () {
         } catch (e) { console.error("Error ciudad CP:", e); }
     }, 400);
 });
-document.addEventListener('click', function (e) {
-    if (e.target !== inputDireccion) listaSugerencias.style.display = 'none';
-    if (e.target !== inputCiudad) listaSugerenciasCiudad.style.display = 'none';
+document.addEventListener("click", function (e) {
+    if (e.target !== inputDireccion) listaSugerencias.style.display = "none";
+    if (e.target !== inputCiudad) listaSugerenciasCiudad.style.display = "none";
 });
 
 // --- GUARDAR RESERVA ---
 window.guardarReserva = async function () {
     // 1. Obtener valores del formulario
-    const fechaInicioStr = document.getElementById('fechaInicio').value;
-    const fechaFinStr = document.getElementById('fechaFin').value;
-    const ciudad = document.getElementById('ciudadInput').value;
-    const nombre = document.getElementById('nombreInput').value;
-    const direccion = document.getElementById('direccionInput').value;
+    const fechaInicioStr = document.getElementById("fechaInicio").value;
+    const fechaFinStr = document.getElementById("fechaFin").value;
+    const ciudad = document.getElementById("ciudadInput").value;
+    const nombre = document.getElementById("nombreInput").value;
+    const direccion = document.getElementById("direccionInput").value;
 
-    const esEspecial = document.getElementById('eventoEspecialCheck').checked;
+    const esEspecial = document.getElementById("eventoEspecialCheck").checked;
     // Coordenadas (pueden venir de un Plus Code previo o estar vacías)
-    let lat = document.getElementById('latTemp').value;
-    let lon = document.getElementById('lonTemp').value;
+    let lat = document.getElementById("latTemp").value;
+    let lon = document.getElementById("lonTemp").value;
 
     // 2. Validaciones básicas
     if (nombre === "" || fechaInicioStr === "") {
@@ -773,11 +773,11 @@ window.guardarReserva = async function () {
     // 3. LÓGICA DE BÚSQUEDA DE MAPA
     // Solo buscamos si NO tenemos coordenadas fijadas Y hay texto en la dirección
     if ((lat === "" || lon === "") && direccion.length > 2) {
-        const btn = document.querySelector('#reservaModal .btn-save');
+        const btn = document.querySelector("#reservaModal .btn-save");
         const textoOriginal = btn.innerHTML; // Guardamos el texto actual del botón
 
         // Feedback visual de carga
-        btn.innerHTML = `<span class="loader"></span> Buscando en Mapa...`;
+        btn.innerHTML = "<span class=\"loader\"></span> Buscando en Mapa...";
         btn.disabled = true;
 
         try {
@@ -825,9 +825,9 @@ window.guardarReserva = async function () {
 
     let ciudadFinal = ciudad.trim();
     if (ciudadFinal === "" || ciudadFinal === "Desconocida" || ciudadFinal === "Ubicación") {
-        const partes = direccion.split(',');
+        const partes = direccion.split(",");
         if (partes.length >= 2) {
-            ciudadFinal = partes[partes.length - 2].replace(/\d+/g, '').trim();
+            ciudadFinal = partes[partes.length - 2].replace(/\d+/g, "").trim();
         } else {
             ciudadFinal = "Sin Ciudad";
         }
@@ -842,7 +842,7 @@ window.guardarReserva = async function () {
     const grupoId = modoEdicion ? idGrupoEdicion : Date.now().toString();
 
     // UI Guardando
-    const btnFinal = document.querySelector('#reservaModal .btn-save');
+    const btnFinal = document.querySelector("#reservaModal .btn-save");
     btnFinal.innerHTML = "💾 Guardando...";
     btnFinal.disabled = true;
 
@@ -858,8 +858,8 @@ window.guardarReserva = async function () {
 
         // Guardamos en Firebase
         for (let r of rangos) {
-            let fInicio = r.start.toISOString().split('T')[0];
-            let fFin = r.end.toISOString().split('T')[0];
+            let fInicio = r.start.toISOString().split("T")[0];
+            let fFin = r.end.toISOString().split("T")[0];
 
             await addDoc(collection(db, "reservas"), {
                 fechaInicio: fInicio,
@@ -877,8 +877,8 @@ window.guardarReserva = async function () {
         }
 
         await cargarReservas(true);
-        cerrarModal('reservaModal');
-        document.getElementById('successModal').style.display = "block";
+        cerrarModal("reservaModal");
+        document.getElementById("successModal").style.display = "block";
     } catch (e) {
         console.error(e);
         alert("Error al guardar en base de datos.");
@@ -891,12 +891,12 @@ window.guardarReserva = async function () {
 };
 
 window.mostrarSelectorUbicacion = function (items) {
-    const lista = document.getElementById('listaCoincidencias');
+    const lista = document.getElementById("listaCoincidencias");
     lista.innerHTML = "";
 
     items.forEach(item => {
-        const li = document.createElement('li');
-        li.className = 'match-item';
+        const li = document.createElement("li");
+        li.className = "match-item";
 
         // Extraemos datos de HERE
         const ciudad = item.address.city || item.address.locality || item.address.district || "Ubicación";
@@ -906,57 +906,57 @@ window.mostrarSelectorUbicacion = function (items) {
 
         li.onclick = function () {
             // 1. Llenamos las coordenadas (Lo más importante)
-            document.getElementById('latTemp').value = item.position.lat;
-            document.getElementById('lonTemp').value = item.position.lng;
+            document.getElementById("latTemp").value = item.position.lat;
+            document.getElementById("lonTemp").value = item.position.lng;
 
             // 2. Llenamos ciudad y dirección sugerida
-            document.getElementById('ciudadInput').value = ciudad;
-            document.getElementById('direccionInput').value = direccionDetectada;
+            document.getElementById("ciudadInput").value = ciudad;
+            document.getElementById("direccionInput").value = direccionDetectada;
 
             // 3. CAMBIO IMPORTANTE:
             // Ya NO guardamos automáticamente. 
             // Cerramos el modal y avisamos al usuario que puede editar.
-            cerrarModal('selectionModal');
+            cerrarModal("selectionModal");
 
             // 4. Enfocamos el campo de dirección para que puedas editarlo si salió genérico
-            const inputDir = document.getElementById('direccionInput');
+            const inputDir = document.getElementById("direccionInput");
             inputDir.focus();
             inputDir.select(); // Selecciona el texto para borrarlo fácil si quieres
 
             // Cambiamos el texto del botón para indicar que ya tenemos ubicación
-            const btnSave = document.querySelector('#reservaModal .btn-save');
+            const btnSave = document.querySelector("#reservaModal .btn-save");
             btnSave.innerHTML = "✅ Ubicación fijada. Clic para Guardar.";
             btnSave.style.background = "#17a2b8"; // Color azul informativo
         };
         lista.appendChild(li);
     });
-    document.getElementById('selectionModal').style.display = 'block';
-}
+    document.getElementById("selectionModal").style.display = "block";
+};
 
 window.mostrarModalSinResultados = function () {
-    const lista = document.getElementById('listaCoincidencias');
+    const lista = document.getElementById("listaCoincidencias");
     lista.innerHTML = "<li style='padding:15px; color:#666;'>No se encontraron coincidencias exactas.</li>";
-    document.getElementById('selectionModal').style.display = 'block';
-}
+    document.getElementById("selectionModal").style.display = "block";
+};
 
 window.habilitarManual = function () {
-    const inputC = document.getElementById('ciudadInput');
+    const inputC = document.getElementById("ciudadInput");
     inputC.readOnly = false;
     inputC.placeholder = "Escribe ciudad para buscar...";
     inputC.focus();
-    cerrarModal('selectionModal');
-}
+    cerrarModal("selectionModal");
+};
 
 window.usarSinCiudad = function () {
-    document.getElementById('ciudadInput').value = "Sin Ciudad";
-    cerrarModal('selectionModal');
+    document.getElementById("ciudadInput").value = "Sin Ciudad";
+    cerrarModal("selectionModal");
     guardarReserva();
-}
+};
 
 window.reintentarDireccion = function () {
-    cerrarModal('selectionModal');
-    document.getElementById('direccionInput').focus();
-}
+    cerrarModal("selectionModal");
+    document.getElementById("direccionInput").focus();
+};
 
 function calcularEstadisticas() {
     statsPorAno = {};
@@ -969,15 +969,15 @@ function calcularEstadisticas() {
         const fechaStringInicio = item.data.fechaInicio;
         const fechaStringFin = item.data.fechaFin;
 
-        const current = new Date(fechaStringInicio + 'T12:00:00');
-        const fechaLimite = new Date(fechaStringFin + 'T12:00:00');
+        const current = new Date(fechaStringInicio + "T12:00:00");
+        const fechaLimite = new Date(fechaStringFin + "T12:00:00");
 
         let diasTotales = Math.floor((fechaLimite - current) / (1000 * 60 * 60 * 24)) + 1;
         if (diasTotales < 1) diasTotales = 1;
 
         const semanas = diasTotales / 5;
 
-        const yearInicio = new Date(fechaStringInicio + 'T12:00:00').getFullYear();
+        const yearInicio = new Date(fechaStringInicio + "T12:00:00").getFullYear();
 
         if (!statsPorAno[yearInicio]) {
             statsPorAno[yearInicio] = 0;
@@ -989,7 +989,7 @@ function calcularEstadisticas() {
 }
 
 function actualizarHeaderAdmin() {
-    const statsDiv = document.getElementById('admin-stats');
+    const statsDiv = document.getElementById("admin-stats");
 
     if (esAdmin) {
         const years = Object.keys(statsPorAno).sort(); // Ordenar años (ascendente)
@@ -1006,16 +1006,16 @@ function actualizarHeaderAdmin() {
 
             // 2. Evento Click: Abrir Modal
             statsDiv.onclick = function () {
-                const listaUl = document.getElementById('listaStats');
-                listaUl.innerHTML = ''; // Limpiar lista anterior
+                const listaUl = document.getElementById("listaStats");
+                listaUl.innerHTML = ""; // Limpiar lista anterior
 
                 // Recorremos los años (invertimos para ver el más reciente arriba)
                 years.slice().reverse().forEach(y => {
-                    const li = document.createElement('li');
-                    li.className = 'match-item'; // Reusamos estilo de lista existente
-                    li.style.display = 'flex';
-                    li.style.justifyContent = 'space-between';
-                    li.style.cursor = 'default'; // No es clicable
+                    const li = document.createElement("li");
+                    li.className = "match-item"; // Reusamos estilo de lista existente
+                    li.style.display = "flex";
+                    li.style.justifyContent = "space-between";
+                    li.style.cursor = "default"; // No es clicable
 
                     // Contenido de la fila
                     li.innerHTML = `
@@ -1026,72 +1026,72 @@ function actualizarHeaderAdmin() {
                 });
 
                 // Mostrar el modal
-                document.getElementById('statsModal').style.display = 'block';
+                document.getElementById("statsModal").style.display = "block";
             };
         }
-        statsDiv.style.display = 'inline-block';
+        statsDiv.style.display = "inline-block";
     } else {
-        statsDiv.style.display = 'none';
+        statsDiv.style.display = "none";
     }
 }
 
 window.cambiarAnoMapa = function (delta) {
     currentMapYear += delta;
-    document.getElementById('map-year-display').textContent = currentMapYear;
-    const headerYearLabel = document.getElementById('header-year-label');
+    document.getElementById("map-year-display").textContent = currentMapYear;
+    const headerYearLabel = document.getElementById("header-year-label");
     if (headerYearLabel) headerYearLabel.textContent = currentMapYear;
     actualizarMapaYLista();
-}
+};
 
 // --- SISTEMA DE VISTAS ---
 window.mostrarMapa = function () {
-    document.getElementById('calendar-container').style.display = 'none';
-    document.getElementById('agenda-view').style.display = 'none';
-    const hrView = document.getElementById('hoja-ruta-view');
-    if (hrView) hrView.style.display = 'none';
-    document.getElementById('map-view').style.display = 'flex';
+    document.getElementById("calendar-container").style.display = "none";
+    document.getElementById("agenda-view").style.display = "none";
+    const hrView = document.getElementById("hoja-ruta-view");
+    if (hrView) hrView.style.display = "none";
+    document.getElementById("map-view").style.display = "flex";
 
     // Ocultamos el botón de mapa en el menú si ya estamos en el mapa (opcional)
-    const btnMap = document.getElementById('mobile-btn-map');
-    if (btnMap) btnMap.style.display = 'none';
+    const btnMap = document.getElementById("mobile-btn-map");
+    if (btnMap) btnMap.style.display = "none";
     setTimeout(() => { map.invalidateSize(); }, 200);
-}
+};
 
 window.mostrarCalendario = function () {
-    document.getElementById('map-view').style.display = 'none';
-    document.getElementById('agenda-view').style.display = 'none';
-    const hrView = document.getElementById('hoja-ruta-view');
-    if (hrView) hrView.style.display = 'none';
-    document.getElementById('calendar-container').style.display = 'block';
+    document.getElementById("map-view").style.display = "none";
+    document.getElementById("agenda-view").style.display = "none";
+    const hrView = document.getElementById("hoja-ruta-view");
+    if (hrView) hrView.style.display = "none";
+    document.getElementById("calendar-container").style.display = "block";
 
     // Mostramos el botón de mapa en el menú si volvemos al calendario
-    const btnMap = document.getElementById('mobile-btn-map');
-    if (btnMap) btnMap.style.display = 'block';
+    const btnMap = document.getElementById("mobile-btn-map");
+    if (btnMap) btnMap.style.display = "block";
     calendar.updateSize();
-}
+};
 
 window.mostrarVistaAgenda = function () {
-    document.getElementById('calendar-container').style.display = 'none';
-    document.getElementById('map-view').style.display = 'none';
-    const hrView = document.getElementById('hoja-ruta-view');
-    if (hrView) hrView.style.display = 'none';
-    document.getElementById('agenda-view').style.display = 'block';
+    document.getElementById("calendar-container").style.display = "none";
+    document.getElementById("map-view").style.display = "none";
+    const hrView = document.getElementById("hoja-ruta-view");
+    if (hrView) hrView.style.display = "none";
+    document.getElementById("agenda-view").style.display = "block";
 
     // Mostramos el botón de mapa en el menú si volvemos a la agenda
-    const btnMap = document.getElementById('mobile-btn-map');
-    if (btnMap) btnMap.style.display = 'block';
+    const btnMap = document.getElementById("mobile-btn-map");
+    if (btnMap) btnMap.style.display = "block";
     renderizarAgendaCustom();
-}
+};
 
 function renderizarAgendaCustom() {
     let listaOrdenada = [...globalReservas];
     listaOrdenada.sort((a, b) => a.start - b.start);
 
-    const agendaContainer = document.getElementById('lista-agenda-custom');
-    agendaContainer.innerHTML = '';
+    const agendaContainer = document.getElementById("lista-agenda-custom");
+    agendaContainer.innerHTML = "";
 
     if (listaOrdenada.length === 0) {
-        agendaContainer.innerHTML = '<li style="text-align:center; padding:20px; color:#777;">No hay reservas registradas.</li>';
+        agendaContainer.innerHTML = "<li style=\"text-align:center; padding:20px; color:#777;\">No hay reservas registradas.</li>";
         return;
     }
 
@@ -1137,13 +1137,13 @@ function renderizarAgendaCustom() {
     gruposAgenda.forEach(grupo => {
         // Convertir fecha fin a objeto Date para comparar
         // (Sumamos 1 día a la fecha fin para que el evento de "hoy" no cuente como pasado hasta mañana)
-        const fechaFinObj = new Date(grupo.fin + 'T00:00:00');
+        const fechaFinObj = new Date(grupo.fin + "T00:00:00");
         fechaFinObj.setDate(fechaFinObj.getDate() + 1);
 
         const esPasado = fechaFinObj < hoy;
 
-        const card = document.createElement('li');
-        card.className = 'agenda-card' + (esPasado ? ' pasada' : '');
+        const card = document.createElement("li");
+        card.className = "agenda-card" + (esPasado ? " pasada" : "");
 
         // NUEVO: Detectar el elemento objetivo para el Scroll
         // Si NO es pasado y aun no hemos encontrado el "próximo", este es el ganador.
@@ -1153,7 +1153,7 @@ function renderizarAgendaCustom() {
             proximoEncontrado = true; // Ya no marcamos más
         }
 
-        let direccionHtml = grupo.direccion ? `<small>📍 ${grupo.direccion}</small>` : '';
+        let direccionHtml = grupo.direccion ? `<small>📍 ${grupo.direccion}</small>` : "";
 
         const tieneDoc = grupo.reservaObj.data.pdfUrl;
         const enlaceDocHtml = (tieneDoc)
@@ -1162,7 +1162,7 @@ function renderizarAgendaCustom() {
                    📄 Ver Documentación (Drive)
                  </a>
                </div>`
-            : '';
+            : "";
 
         card.innerHTML = `
             <div class="ruta-ciudad">${grupo.ciudad}</div>
@@ -1183,9 +1183,9 @@ function renderizarAgendaCustom() {
 
     // NUEVO: Ejecutar el scroll automático
     setTimeout(() => {
-        const objetivo = document.getElementById('scroll-objetivo');
+        const objetivo = document.getElementById("scroll-objetivo");
         if (objetivo) {
-            objetivo.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            objetivo.scrollIntoView({ behavior: "smooth", block: "center" });
         } else {
             // Si todo es pasado, opcionalmente podrías hacer scroll al final
             // agendaContainer.scrollTop = agendaContainer.scrollHeight;
@@ -1194,13 +1194,13 @@ function renderizarAgendaCustom() {
 }
 
 function configurarDiasEspeciales() {
-    calendar.addEvent({ daysOfWeek: [0], display: 'background', color: '#e0e0e0' });
-    calendar.addEvent({ daysOfWeek: [6], display: 'background', color: '#fff9c4' });
+    calendar.addEvent({ daysOfWeek: [0], display: "background", color: "#e0e0e0" });
+    calendar.addEvent({ daysOfWeek: [6], display: "background", color: "#fff9c4" });
 }
 
 function calcularRangosSinDomingo(fechaInicioStr, fechaFinStr) {
-    let start = new Date(fechaInicioStr + 'T00:00:00');
-    let end = new Date(fechaFinStr + 'T00:00:00');
+    let start = new Date(fechaInicioStr + "T00:00:00");
+    let end = new Date(fechaFinStr + "T00:00:00");
     let diasHabiles = [];
     let current = new Date(start);
     while (current <= end) {
@@ -1221,23 +1221,23 @@ function calcularRangosSinDomingo(fechaInicioStr, fechaFinStr) {
 
 function formatearFecha(fechaStr) {
     if (!fechaStr) return "";
-    const partes = fechaStr.split('-');
+    const partes = fechaStr.split("-");
     const meses = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
     return `${partes[2]}/${meses[parseInt(partes[1]) - 1]}/${partes[0]}`;
 }
 
 async function cargarReservas(forzarRecarga = false) {
-    const calendarEl = document.getElementById('calendar');
-    const loadingOverlay = document.getElementById('loading-overlay');
+    const calendarEl = document.getElementById("calendar");
+    const loadingOverlay = document.getElementById("loading-overlay");
 
-    if (loadingOverlay) loadingOverlay.style.display = 'flex';
+    if (loadingOverlay) loadingOverlay.style.display = "flex";
     calendarEl.style.opacity = "0.5";
     document.body.style.cursor = "wait";
 
     try {
         // --- 1. CACHÉ LOCAL CON TIEMPO DE EXPIRACIÓN ---
-        const cacheGuardado = localStorage.getItem('agenda_reservas_cache');
-        const cacheTimestamp = localStorage.getItem('agenda_reservas_timestamp'); // Leemos la hora guardada
+        const cacheGuardado = localStorage.getItem("agenda_reservas_cache");
+        const cacheTimestamp = localStorage.getItem("agenda_reservas_timestamp"); // Leemos la hora guardada
 
         let datosParaProcesar = [];
         let origenDatos = "";
@@ -1288,8 +1288,8 @@ async function cargarReservas(forzarRecarga = false) {
 
             // Guardamos en caché CON LA HORA ACTUAL
             try {
-                localStorage.setItem('agenda_reservas_cache', JSON.stringify(datosParaProcesar));
-                localStorage.setItem('agenda_reservas_timestamp', Date.now().toString()); // Guardamos timestamp
+                localStorage.setItem("agenda_reservas_cache", JSON.stringify(datosParaProcesar));
+                localStorage.setItem("agenda_reservas_timestamp", Date.now().toString()); // Guardamos timestamp
             } catch (e) { console.warn("Memoria llena", e); }
         }
 
@@ -1321,13 +1321,13 @@ async function cargarReservas(forzarRecarga = false) {
             fechaFinVisual.setDate(fechaFinVisual.getDate() + 1);
 
             const esEspecial = item.data.esEspecial || false;
-            const colorEvento = esEspecial ? '#7F00FF' : '#FF5733'; // Naranja para especial, rojo para normal
+            const colorEvento = esEspecial ? "#7F00FF" : "#FF5733"; // Naranja para especial, rojo para normal
 
             eventosFullCalendar.push({
                 id: item.id,
-                title: '📍 ' + (item.data.ciudad ? item.data.ciudad.split(",")[0] : "Sin ciudad") + ' - ' + item.data.cliente,
+                title: "📍 " + (item.data.ciudad ? item.data.ciudad.split(",")[0] : "Sin ciudad") + " - " + item.data.cliente,
                 start: item.data.fechaInicio,
-                end: fechaFinVisual.toISOString().split('T')[0],
+                end: fechaFinVisual.toISOString().split("T")[0],
                 allDay: true,
                 backgroundColor: colorEvento,
                 borderColor: colorEvento,
@@ -1360,25 +1360,25 @@ async function cargarReservas(forzarRecarga = false) {
     } finally {
         calendarEl.style.opacity = "1";
         document.body.style.cursor = "default";
-        if (loadingOverlay) loadingOverlay.style.display = 'none';
+        if (loadingOverlay) loadingOverlay.style.display = "none";
     }
 }
 
 // --- Función auxiliar para no repetir código de "addEvent" ---
 function agregarEventoAlCalendario(data, id) {
     // Calculamos fecha fin visual (+1 día para que FullCalendar llene el cuadro completo)
-    let fechaFinObj = new Date(data.fechaFin + 'T00:00:00');
+    let fechaFinObj = new Date(data.fechaFin + "T00:00:00");
     let fechaFinVisual = new Date(fechaFinObj);
     fechaFinVisual.setDate(fechaFinVisual.getDate() + 1);
 
     const esEspecial = data.esEspecial || false;
-    const colorEvento = esEspecial ? '#e67e22' : '#FF5733';
+    const colorEvento = esEspecial ? "#e67e22" : "#FF5733";
 
     calendar.addEvent({
         id: id,
-        title: '📍 ' + (data.ciudad ? data.ciudad.split(",")[0] : "Sin ciudad") + ' - ' + data.cliente,
+        title: "📍 " + (data.ciudad ? data.ciudad.split(",")[0] : "Sin ciudad") + " - " + data.cliente,
         start: data.fechaInicio,
-        end: fechaFinVisual.toISOString().split('T')[0],
+        end: fechaFinVisual.toISOString().split("T")[0],
         allDay: true,
         backgroundColor: colorEvento,
         borderColor: colorEvento,
@@ -1418,10 +1418,10 @@ window.actualizarMapaYLista = function (centrarHoy = false) {
 
         const getNombreEstado = (prioridad) => {
             switch (prioridad) {
-                case 3: return 'activo';
-                case 2: return 'destacado';
-                case 0: return 'pasado';
-                default: return 'futuro';
+                case 3: return "activo";
+                case 2: return "destacado";
+                case 0: return "pasado";
+                default: return "futuro";
             }
         };
 
@@ -1446,8 +1446,8 @@ window.actualizarMapaYLista = function (centrarHoy = false) {
             }
 
             const ultimoGrupo = rutasAgrupadas[rutasAgrupadas.length - 1];
-            const finAnterior = new Date(ultimoGrupo.fin + 'T00:00:00');
-            const inicioActual = new Date(reserva.data.fechaInicio + 'T00:00:00');
+            const finAnterior = new Date(ultimoGrupo.fin + "T00:00:00");
+            const inicioActual = new Date(reserva.data.fechaInicio + "T00:00:00");
             const diferenciaTiempo = inicioActual - finAnterior;
             const diasDiferencia = Math.ceil(diferenciaTiempo / (1000 * 60 * 60 * 24));
 
@@ -1469,23 +1469,23 @@ window.actualizarMapaYLista = function (centrarHoy = false) {
         });
 
         // --- PASO 2: RENDERIZAR LISTA (Batch Fragment) ---
-        const ulLista = document.getElementById('lista-rutas');
+        const ulLista = document.getElementById("lista-rutas");
         if (ulLista) {
-            ulLista.innerHTML = '';
+            ulLista.innerHTML = "";
             if (rutasAgrupadas.length === 0) {
-                ulLista.innerHTML = '<li style="padding:15px;color:#999;text-align:center;">Sin reservas este año.</li>';
+                ulLista.innerHTML = "<li style=\"padding:15px;color:#999;text-align:center;\">Sin reservas este año.</li>";
             } else {
                 const fragmento = document.createDocumentFragment();
                 rutasAgrupadas.forEach(grupo => {
-                    const li = document.createElement('li');
+                    const li = document.createElement("li");
                     let estadoTexto = getNombreEstado(grupo.prioridadGrupo);
-                    let claseEstado = '';
-                    if (estadoTexto === 'pasado') claseEstado = ' pasada';
-                    else if (estadoTexto === 'activo') claseEstado = ' activa';
-                    else if (estadoTexto === 'destacado') claseEstado = ' destacada';
+                    let claseEstado = "";
+                    if (estadoTexto === "pasado") claseEstado = " pasada";
+                    else if (estadoTexto === "activo") claseEstado = " activa";
+                    else if (estadoTexto === "destacado") claseEstado = " destacada";
 
-                    li.className = 'ruta-item' + claseEstado;
-                    const clientesHTML = grupo.clientes.map(c => `<div style="padding-left:10px; margin-bottom:2px;">• ${c}</div>`).join('');
+                    li.className = "ruta-item" + claseEstado;
+                    const clientesHTML = grupo.clientes.map(c => `<div style="padding-left:10px; margin-bottom:2px;">• ${c}</div>`).join("");
 
                     li.innerHTML = `
                         <div class="ruta-ciudad">${grupo.ciudad}</div>
@@ -1494,7 +1494,7 @@ window.actualizarMapaYLista = function (centrarHoy = false) {
                     `;
 
                     li.onclick = () => {
-                        if (typeof map !== 'undefined' && map && grupo.lat && grupo.lng) {
+                        if (typeof map !== "undefined" && map && grupo.lat && grupo.lng) {
                             map.flyTo([grupo.lat, grupo.lng], 13);
                             // Búsqueda optimizada de marcador en el grupo
                             if (window.markersLayer) {
@@ -1513,14 +1513,14 @@ window.actualizarMapaYLista = function (centrarHoy = false) {
 
                 // Scroll diferido para evitar Forced Reflow
                 setTimeout(() => {
-                    const destacado = ulLista.querySelector('.ruta-item.destacada, .ruta-item.activa');
-                    if (destacado) destacado.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    const destacado = ulLista.querySelector(".ruta-item.destacada, .ruta-item.activa");
+                    if (destacado) destacado.scrollIntoView({ behavior: "smooth", block: "center" });
                 }, 100);
             }
         }
 
         // --- PASO 3: RENDERIZAR MAPA (OPTIMIZACIÓN LAYER GROUP) ---
-        if (typeof map !== 'undefined' && map) {
+        if (typeof map !== "undefined" && map) {
 
             // 1. Crear el grupo de capas si no existe
             if (!window.markersLayer) {
@@ -1547,8 +1547,8 @@ window.actualizarMapaYLista = function (centrarHoy = false) {
                 // al contar los días, igual que en la función de estadísticas.
                 const fechaStringInicio = r.data.fechaInicio;
                 const fechaStringFin = r.data.fechaFin;
-                let current = new Date(fechaStringInicio + 'T12:00:00');
-                const fechaLimite = new Date(fechaStringFin + 'T12:00:00');
+                let current = new Date(fechaStringInicio + "T12:00:00");
+                const fechaLimite = new Date(fechaStringFin + "T12:00:00");
 
                 while (current <= fechaLimite) {
                     if (current.getDay() !== 0) ciudadesMap[nombreCiudad].diasTotales++;
@@ -1574,7 +1574,7 @@ window.actualizarMapaYLista = function (centrarHoy = false) {
                 // NOTA: Ya no usamos .addTo(map) aquí.
                 const marker = L.marker([datos.lat, datos.lng], { icon: icono, zIndexOffset: zIndex });
 
-                const listaClientesVertical = Array.from(datos.clientes).map(c => `<div style="margin-bottom:3px;">• ${c}</div>`).join('');
+                const listaClientesVertical = Array.from(datos.clientes).map(c => `<div style="margin-bottom:3px;">• ${c}</div>`).join("");
 
                 marker.bindPopup(`
                     <div style="text-align:center; min-width:160px;">
@@ -1596,7 +1596,7 @@ window.actualizarMapaYLista = function (centrarHoy = false) {
             });
         }
     });
-}
+};
 
 // --- FUNCIÓN RECUPERADA: EXPORTAR CALENDARIO ---
 window.exportarCalendario = function () {
@@ -1614,12 +1614,12 @@ METHOD:PUBLISH
 
     globalReservas.forEach(reserva => {
         // Formatear fechas YYYYMMDD (Quitar guiones)
-        const start = reserva.data.fechaInicio.replace(/-/g, '');
+        const start = reserva.data.fechaInicio.replace(/-/g, "");
 
         // iCal requiere que la fecha final sea exclusiva (día siguiente), así que sumamos 1 día
-        let endDateObj = new Date(reserva.data.fechaFin + 'T00:00:00');
+        let endDateObj = new Date(reserva.data.fechaFin + "T00:00:00");
         endDateObj.setDate(endDateObj.getDate() + 1);
-        const end = endDateObj.toISOString().split('T')[0].replace(/-/g, '');
+        const end = endDateObj.toISOString().split("T")[0].replace(/-/g, "");
 
         const ciudad = reserva.data.ciudad || "Sin ciudad";
         const cliente = reserva.data.cliente || "Cliente";
@@ -1646,10 +1646,10 @@ METHOD:PUBLISH
     icsContent += "END:VCALENDAR";
 
     // Crear enlace de descarga virtual
-    const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
-    const link = document.createElement('a');
+    const blob = new Blob([icsContent], { type: "text/calendar;charset=utf-8" });
+    const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
-    link.download = `agenda_tracksim_${new Date().toISOString().split('T')[0]}.ics`;
+    link.download = `agenda_tracksim_${new Date().toISOString().split("T")[0]}.ics`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -1657,8 +1657,8 @@ METHOD:PUBLISH
 
 window.compartirApp = async function () {
     const shareData = {
-        title: 'Agenda TrackSIM',
-        text: 'Consulta la gestión de itinerarios y servicios TrackSIM.',
+        title: "Agenda TrackSIM",
+        text: "Consulta la gestión de itinerarios y servicios TrackSIM.",
         url: window.location.href
     };
     try {
@@ -1668,15 +1668,15 @@ window.compartirApp = async function () {
             await navigator.clipboard.writeText(window.location.href);
             alert("🔗 Vínculo copiado al portapapeles.");
         }
-    } catch (err) { console.log('Error al compartir:', err); }
-}
+    } catch (err) { console.log("Error al compartir:", err); }
+};
 
 window.verQR = function () {
     const url = window.location.href;
-    const qrImg = document.getElementById('imagenQR');
+    const qrImg = document.getElementById("imagenQR");
     qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(url)}`;
-    document.getElementById('qrModal').style.display = 'block';
-}
+    document.getElementById("qrModal").style.display = "block";
+};
 
 window.abrirModalCrear = function (fecha) {
     // Resetear variables
@@ -1685,24 +1685,24 @@ window.abrirModalCrear = function (fecha) {
     urlEdicion = null; // <--- LIMPIAMOS LA VARIABLE AQUÍ
 
     // Limpiar campos
-    document.getElementById('fechaInicio').value = fecha;
-    document.getElementById('fechaFin').value = fecha;
-    document.getElementById('ciudadInput').value = "";
-    document.getElementById('ciudadInput').readOnly = true;
-    document.getElementById('nombreInput').value = "";
-    document.getElementById('direccionInput').value = "";
-    document.getElementById('latTemp').value = "";
-    document.getElementById('lonTemp').value = "";
-    document.getElementById('eventoEspecialCheck').checked = false;
+    document.getElementById("fechaInicio").value = fecha;
+    document.getElementById("fechaFin").value = fecha;
+    document.getElementById("ciudadInput").value = "";
+    document.getElementById("ciudadInput").readOnly = true;
+    document.getElementById("nombreInput").value = "";
+    document.getElementById("direccionInput").value = "";
+    document.getElementById("latTemp").value = "";
+    document.getElementById("lonTemp").value = "";
+    document.getElementById("eventoEspecialCheck").checked = false;
 
     // Resetear botón
-    const btn = document.querySelector('#reservaModal .btn-save');
+    const btn = document.querySelector("#reservaModal .btn-save");
     btn.textContent = "💾 Guardar Reserva";
     btn.style.background = "#28a745";
     btn.style.color = "white";
 
-    document.getElementById('reservaModal').style.display = "block";
-}
+    document.getElementById("reservaModal").style.display = "block";
+};
 
 window.prepararEdicion = function () {
     if (!eventoSeleccionadoID) return;
@@ -1715,31 +1715,31 @@ window.prepararEdicion = function () {
     urlEdicion = evento.extendedProps.pdfUrl || null; // <--- CAPTURAMOS EL LINK AQUÍ
 
     // Llenar el formulario
-    document.getElementById('fechaInicio').value = evento.start.toISOString().split('T')[0];
-    document.getElementById('fechaFin').value = evento.extendedProps.fechaFinReal;
-    document.getElementById('nombreInput').value = evento.extendedProps.cliente;
-    document.getElementById('direccionInput').value = evento.extendedProps.direccion || "";
-    document.getElementById('ciudadInput').value = evento.extendedProps.ciudadCompleta || "";
+    document.getElementById("fechaInicio").value = evento.start.toISOString().split("T")[0];
+    document.getElementById("fechaFin").value = evento.extendedProps.fechaFinReal;
+    document.getElementById("nombreInput").value = evento.extendedProps.cliente;
+    document.getElementById("direccionInput").value = evento.extendedProps.direccion || "";
+    document.getElementById("ciudadInput").value = evento.extendedProps.ciudadCompleta || "";
 
-    document.getElementById('eventoEspecialCheck').checked = evento.extendedProps.esEspecial || false;
+    document.getElementById("eventoEspecialCheck").checked = evento.extendedProps.esEspecial || false;
     const originalLat = evento.extendedProps.lat || "";
     const originalLng = evento.extendedProps.lng || "";
 
     const reservaOriginal = globalReservas.find(r => r.id === eventoSeleccionadoID);
     if (reservaOriginal) {
-        document.getElementById('latTemp').value = reservaOriginal.data.lat || "";
-        document.getElementById('lonTemp').value = reservaOriginal.data.lng || "";
+        document.getElementById("latTemp").value = reservaOriginal.data.lat || "";
+        document.getElementById("lonTemp").value = reservaOriginal.data.lng || "";
     }
 
     // Cambiar texto del botón
-    const btnGuardar = document.querySelector('#reservaModal .btn-save');
+    const btnGuardar = document.querySelector("#reservaModal .btn-save");
     btnGuardar.textContent = "📝 Actualizar Reserva";
     btnGuardar.style.background = "#ffc107";
     btnGuardar.style.color = "#333";
 
-    cerrarModal('detalleModal');
-    document.getElementById('reservaModal').style.display = "block";
-}
+    cerrarModal("detalleModal");
+    document.getElementById("reservaModal").style.display = "block";
+};
 
 // 1. Nueva función para eliminar el enlace
 window.eliminarEnlaceDrive = async function () {
@@ -1753,7 +1753,7 @@ window.eliminarEnlaceDrive = async function () {
 
         alert("🗑️ Enlace eliminado.");
         await cargarReservas(true);
-        cerrarModal('detalleModal');
+        cerrarModal("detalleModal");
     } catch (error) {
         console.error("Error al eliminar enlace:", error);
         alert("Error al eliminar.");
@@ -1762,9 +1762,9 @@ window.eliminarEnlaceDrive = async function () {
 
 // 2. Función actualizada para habilitar edición
 window.habilitarEdicionDrive = function () {
-    const input = document.getElementById('driveUrlInput');
-    const btnGuardar = document.getElementById('btnGuardarDrive');
-    const btnEliminar = document.getElementById('btnEliminarDrive');
+    const input = document.getElementById("driveUrlInput");
+    const btnGuardar = document.getElementById("btnGuardarDrive");
+    const btnEliminar = document.getElementById("btnEliminarDrive");
 
     // Habilitar escritura
     input.readOnly = false;
@@ -1772,8 +1772,8 @@ window.habilitarEdicionDrive = function () {
 
     // Cambiar icono a guardar
     btnGuardar.textContent = "💾";
-    btnGuardar.classList.remove('btn-drive-edit');
-    btnGuardar.classList.add('btn-drive-save');
+    btnGuardar.classList.remove("btn-drive-edit");
+    btnGuardar.classList.add("btn-drive-save");
     btnGuardar.onclick = function () { window.guardarEnlaceDrive(); };
 
     // Mantener visible el botón de eliminar
@@ -1784,37 +1784,27 @@ window.mostrarDetalles = function (evento) {
     eventoSeleccionadoID = evento.id;
     grupoSeleccionadoID = evento.extendedProps.groupId || null;
 
-    const seccionPDF = document.getElementById('seccionPDF');
-    const pdfInfo = document.getElementById('pdfInfo');
-    const linkPDF = document.getElementById('linkPDF');
-    const adminPDFInput = document.getElementById('adminPDFInput');
-    const driveUrlInput = document.getElementById('driveUrlInput');
-    const btnGuardarDrive = document.getElementById('btnGuardarDrive');
-    const btnEliminarDrive = document.getElementById('btnEliminarDrive');
-    const btnEliminar = document.getElementById('btnEliminar');
-    const btnEditar = document.getElementById('btnEditar');
+    const seccionPDF = document.getElementById("seccionPDF");
+    const pdfInfo = document.getElementById("pdfInfo");
+    const linkPDF = document.getElementById("linkPDF");
+    const adminPDFInput = document.getElementById("adminPDFInput");
+    const driveUrlInput = document.getElementById("driveUrlInput");
+    const btnGuardarDrive = document.getElementById("btnGuardarDrive");
+    const btnEliminarDrive = document.getElementById("btnEliminarDrive");
+    const btnEliminar = document.getElementById("btnEliminar");
+    const btnEditar = document.getElementById("btnEditar");
 
     // 1. Llenar datos básicos
-    document.getElementById('detCliente').innerText = evento.extendedProps.cliente || "No especificado";
-    document.getElementById('detCiudad').innerText = evento.extendedProps.ciudadCompleta || evento.title;
+    document.getElementById("detCliente").innerText = evento.extendedProps.cliente || "No especificado";
+    document.getElementById("detCiudad").innerText = evento.extendedProps.ciudadCompleta || evento.title;
 
     // --- INICIO CAMBIOS DIRECCIÓN E ICONOS ---
     const direccionTexto = evento.extendedProps.direccion;
     const lat = evento.extendedProps.lat;
     const lng = evento.extendedProps.lng;
-    const spanDireccion = document.getElementById('detDireccion');
+    const spanDireccion = document.getElementById("detDireccion");
 
     if (direccionTexto && direccionTexto.trim().length > 0) {
-        let urlMaps = "";
-        // Prioridad a coordenadas si existen
-        if (lat && lng) {
-            urlMaps = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
-        } else {
-            // Respaldo por búsqueda de texto
-            const busqueda = encodeURIComponent(direccionTexto + ", " + (evento.extendedProps.ciudadCompleta || ""));
-            urlMaps = `https://www.google.com/maps/search/?api=1&query=${busqueda}`;
-        }
-
         // Escapamos comillas simples por seguridad para la función onclick
         const textoSeguroParaCopiar = direccionTexto.replace(/'/g, "'");
 
@@ -1847,55 +1837,55 @@ window.mostrarDetalles = function (evento) {
     // --- FIN CAMBIOS DIRECCIÓN ---
 
     // Fechas
-    document.getElementById('detFechas').innerText = `${evento.start.toISOString().split('T')[0]} al ${evento.extendedProps.fechaFinReal}`;
+    document.getElementById("detFechas").innerText = `${evento.start.toISOString().split("T")[0]} al ${evento.extendedProps.fechaFinReal}`;
 
     // ... (EL RESTO DE LA FUNCIÓN PERMANECE EXACTAMENTE IGUAL: Lógica de PDF, Admin, botones) ...
     const urlExistente = evento.extendedProps.pdfUrl;
     if (esAdmin) {
-        seccionPDF.style.display = 'block';
-        adminPDFInput.style.display = 'block';
-        btnEliminar.style.display = 'block';
-        btnEditar.style.display = 'block';
+        seccionPDF.style.display = "block";
+        adminPDFInput.style.display = "block";
+        btnEliminar.style.display = "block";
+        btnEditar.style.display = "block";
 
         if (urlExistente) {
-            pdfInfo.style.display = 'flex';
+            pdfInfo.style.display = "flex";
             linkPDF.href = urlExistente;
             driveUrlInput.value = urlExistente;
             driveUrlInput.readOnly = true;
             btnGuardarDrive.textContent = "✏️";
-            btnGuardarDrive.classList.remove('btn-drive-save');
-            btnGuardarDrive.classList.add('btn-drive-edit');
+            btnGuardarDrive.classList.remove("btn-drive-save");
+            btnGuardarDrive.classList.add("btn-drive-edit");
             btnGuardarDrive.onclick = function () { window.habilitarEdicionDrive(); };
             btnEliminarDrive.style.display = "block";
         } else {
-            pdfInfo.style.display = 'none';
+            pdfInfo.style.display = "none";
             driveUrlInput.value = "";
             driveUrlInput.readOnly = false;
             driveUrlInput.placeholder = "Pegar enlace de Google Drive";
             btnGuardarDrive.textContent = "💾";
-            btnGuardarDrive.classList.remove('btn-drive-edit');
-            btnGuardarDrive.classList.add('btn-drive-save');
+            btnGuardarDrive.classList.remove("btn-drive-edit");
+            btnGuardarDrive.classList.add("btn-drive-save");
             btnGuardarDrive.onclick = function () { window.guardarEnlaceDrive(); };
             btnEliminarDrive.style.display = "none";
         }
     } else {
         if (urlExistente) {
-            pdfInfo.style.display = 'flex';
+            pdfInfo.style.display = "flex";
             linkPDF.href = urlExistente;
             driveUrlInput.value = urlExistente;
             driveUrlInput.readOnly = true;
-            seccionPDF.style.display = 'block';
-            adminPDFInput.style.display = 'none';
-            btnEliminar.style.display = 'none';
-            btnEditar.style.display = 'none';
+            seccionPDF.style.display = "block";
+            adminPDFInput.style.display = "none";
+            btnEliminar.style.display = "none";
+            btnEditar.style.display = "none";
         } else {
-            seccionPDF.style.display = 'none';
+            seccionPDF.style.display = "none";
         }
     }
-    document.getElementById('detalleModal').style.display = "block";
-}
+    document.getElementById("detalleModal").style.display = "block";
+};
 
-window.cerrarModal = function (idModal) { document.getElementById(idModal).style.display = "none"; }
+window.cerrarModal = function (idModal) { document.getElementById(idModal).style.display = "none"; };
 
 window.borrarReserva = async function () {
     if (!eventoSeleccionadoID) return;
@@ -1935,7 +1925,7 @@ window.borrarReserva = async function () {
             await deleteDoc(doc(db, "reservas", eventoSeleccionadoID));
         }
 
-        cerrarModal('detalleModal');
+        cerrarModal("detalleModal");
         await cargarReservas(true); // Recargar calendario y mapa
         alert("🗑️ Reservación eliminada correctamente.");
 
@@ -1948,12 +1938,12 @@ window.borrarReserva = async function () {
 // 1. Modificar iniciarSesion para abrir el modal en lugar del prompt
 window.iniciarSesion = async function () {
     const provider = new GoogleAuthProvider();
-    provider.addScope('profile');
-    provider.addScope('email');
+    provider.addScope("profile");
+    provider.addScope("email");
 
     // Forzar que siempre se muestre el selector de cuentas de Google. [1, 3, 6]
     provider.setCustomParameters({
-        prompt: 'select_account'
+        prompt: "select_account"
     });
 
     try {
@@ -2000,10 +1990,10 @@ window.ajustarMapa = function () {
         });
         map.closePopup();
     }
-}
+};
 
 window.guardarEnlaceDrive = async function () {
-    const url = document.getElementById('driveUrlInput').value;
+    const url = document.getElementById("driveUrlInput").value;
     if (!url) return alert("Por favor, pega un enlace válido.");
     if (!eventoSeleccionadoID) return;
 
@@ -2012,7 +2002,7 @@ window.guardarEnlaceDrive = async function () {
         await updateDoc(docRef, { pdfUrl: url });
         alert("✅ Enlace de Drive guardado.");
         await cargarReservas(true); // Refresca el calendario
-        cerrarModal('detalleModal');
+        cerrarModal("detalleModal");
     } catch (error) {
         console.error("Error al guardar link:", error);
         alert("Error al guardar en base de datos.");
@@ -2023,9 +2013,9 @@ window.guardarEnlaceDrive = async function () {
 // ---------------------------------------------------------
 
 // 1. Cerrar con tecla Escape
-document.addEventListener('keydown', function (event) {
+document.addEventListener("keydown", function (event) {
     if (event.key === "Escape") {
-        const modales = document.querySelectorAll('.modal');
+        const modales = document.querySelectorAll(".modal");
         modales.forEach(modal => {
             modal.style.display = "none";
         });
@@ -2034,10 +2024,10 @@ document.addEventListener('keydown', function (event) {
 
 // 2. Cerrar al hacer clic en el fondo oscuro (.modal)
 // Se usa 'window' para capturar clics globales
-window.addEventListener('click', function (event) {
+window.addEventListener("click", function (event) {
     // Verificamos si el elemento clickeado tiene la clase 'modal'
     // (Esto significa que clickeó el fondo, no el 'modal-content')
-    if (event.target.classList.contains('modal')) {
+    if (event.target.classList.contains("modal")) {
         event.target.style.display = "none";
     }
 });
@@ -2045,26 +2035,26 @@ window.addEventListener('click', function (event) {
 // --- FUNCIONES DE IMPORTACIÓN CSV ---
 // Función para abrir el selector de archivos
 window.abrirSelectorCSV = function () {
-    const input = document.getElementById('fileInput'); // <--- Debe coincidir con el ID del HTML
+    const input = document.getElementById("fileInput"); // <--- Debe coincidir con el ID del HTML
     if (input) {
         input.click();
     } else {
         console.error("No se encontró el elemento <input type='file' id='fileInput'>");
         alert("Error: No se encuentra el campo de carga de archivos. Recarga la página.");
     }
-}
+};
 
 window.procesarArchivoExcel = function (input) {
     const archivo = input.files[0];
     if (!archivo) return;
 
     // 1. Referencias al Overlay (Spinner Pantalla Completa)
-    const overlay = document.getElementById('loading-overlay');
-    const textoOverlay = overlay.querySelector('p'); // El texto debajo del spinner
+    const overlay = document.getElementById("loading-overlay");
+    const textoOverlay = overlay.querySelector("p"); // El texto debajo del spinner
     const textoOriginalOverlay = textoOverlay.innerText; // Guardamos "Cargando Agenda..." para restaurarlo luego
 
     // Referencias al botón (para evitar doble clic de fondo)
-    const btnImport = document.getElementById('btnImport');
+    const btnImport = document.getElementById("btnImport");
     if (btnImport) btnImport.disabled = true;
 
     const reader = new FileReader();
@@ -2072,12 +2062,12 @@ window.procesarArchivoExcel = function (input) {
     reader.onload = async function (e) {
         try {
             // 2. ACTIVAR SPINNER
-            overlay.style.display = 'flex';
+            overlay.style.display = "flex";
             textoOverlay.innerText = "📂 Analizando Excel...";
 
             // --- LECTURA DEL ARCHIVO ---
             const data = new Uint8Array(e.target.result);
-            const workbook = XLSX.read(data, { type: 'array', cellDates: true, dateNF: 'yyyy-mm-dd' });
+            const workbook = XLSX.read(data, { type: "array", cellDates: true, dateNF: "yyyy-mm-dd" });
             const worksheet = workbook.Sheets[workbook.SheetNames[0]];
             const lineas = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "", raw: false });
 
@@ -2087,7 +2077,7 @@ window.procesarArchivoExcel = function (input) {
             }
 
             // Pausa momentánea para ocultar spinner y mostrar confirmación (el confirm bloquea el render)
-            overlay.style.display = 'none';
+            overlay.style.display = "none";
 
             if (!confirm(`Procesando Excel (${lineas.length - 1} filas).
 
@@ -2096,14 +2086,14 @@ MODO DE PRECISIÓN:
 2. Si no -> Se busca la Dirección en el mapa.
 
 ¿Continuar?`)) {
-                input.value = '';
+                input.value = "";
                 if (btnImport) btnImport.disabled = false;
                 textoOverlay.innerText = textoOriginalOverlay;
                 return;
             }
 
             // 3. REACTIVAR SPINNER PARA EL PROCESO
-            overlay.style.display = 'flex';
+            overlay.style.display = "flex";
             textoOverlay.innerText = "🚀 Iniciando motor de importación...";
 
             let contExito = 0;
@@ -2117,14 +2107,14 @@ MODO DE PRECISIÓN:
 
             const formatearFecha = (val) => {
                 if (!val) return null;
-                if (val instanceof Date) return val.toISOString().split('T')[0];
+                if (val instanceof Date) return val.toISOString().split("T")[0];
                 let str = val.toString().trim();
                 if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
-                if (str.includes('/')) {
-                    const partes = str.split('/');
+                if (str.includes("/")) {
+                    const partes = str.split("/");
                     if (partes.length === 3) {
-                        let dia = partes[0].padStart(2, '0');
-                        let mes = partes[1].padStart(2, '0');
+                        let dia = partes[0].padStart(2, "0");
+                        let mes = partes[1].padStart(2, "0");
                         let ano = partes[2];
                         if (ano.length === 2) ano = "20" + ano;
                         return `${ano}-${mes}-${dia}`;
@@ -2138,7 +2128,7 @@ MODO DE PRECISIÓN:
                 try {
                     let url = `https://geocode.search.hereapi.com/v1/geocode?q=${encodeURIComponent(direccion)}&apiKey=${API_KEY_HERE}&lang=es&limit=1`;
                     if (ciudad && ciudad.length > 2 && ciudad !== "Sin Ciudad") url += `&qq=city=${encodeURIComponent(ciudad)};country=MEX`;
-                    else url += `&qq=country=MEX`;
+                    else url += "&qq=country=MEX";
 
                     const res = await fetch(url);
                     const data = await res.json();
@@ -2192,12 +2182,12 @@ MODO DE PRECISIÓN:
                 const rangos = calcularRangosSinDomingo(fInicio, fFin);
                 if (rangos.length === 0) { contError++; continue; }
 
-                const cleanClient = cliente.replace(/[^a-zA-Z0-9]/g, '');
+                const cleanClient = cliente.replace(/[^a-zA-Z0-9]/g, "");
                 const groupId = `GRP_${fInicio}_${cleanClient}`;
 
                 for (let r of rangos) {
-                    let startStr = r.start.toISOString().split('T')[0];
-                    let endStr = r.end.toISOString().split('T')[0];
+                    let startStr = r.start.toISOString().split("T")[0];
+                    let endStr = r.end.toISOString().split("T")[0];
                     const docId = `${startStr}_${cleanClient}`;
                     const docRef = doc(db, "reservas", docId);
 
@@ -2242,15 +2232,15 @@ MODO DE PRECISIÓN:
             alert("Error crítico en el archivo Excel: " + error.message);
         } finally {
             // 6. LIMPIEZA FINAL: OCULTAR SPINNER Y RESTAURAR TEXTO
-            overlay.style.display = 'none';
+            overlay.style.display = "none";
             textoOverlay.innerText = textoOriginalOverlay; // "Cargando Agenda..."
 
             if (btnImport) btnImport.disabled = false;
-            input.value = '';
+            input.value = "";
         }
     };
     reader.readAsArrayBuffer(archivo);
-}
+};
 
 // --- Función auxiliar para copiar texto al portapapeles ---
 window.copiarTextoAlPortapapeles = function (texto, elementoIcono) {
@@ -2269,7 +2259,7 @@ window.copiarTextoAlPortapapeles = function (texto, elementoIcono) {
                 }, 1500);
             })
             .catch(err => {
-                console.error('Error al copiar: ', err);
+                console.error("Error al copiar: ", err);
                 alert("Hubo un problema al intentar copiar automáticamente.");
             });
     } else {
@@ -2279,7 +2269,7 @@ window.copiarTextoAlPortapapeles = function (texto, elementoIcono) {
         document.body.appendChild(textArea);
         textArea.select();
         try {
-            document.execCommand('copy');
+            document.execCommand("copy");
             alert("Dirección copiada.");
         } catch (err) {
             alert("No se pudo copiar la dirección.");
@@ -2289,18 +2279,18 @@ window.copiarTextoAlPortapapeles = function (texto, elementoIcono) {
 };
 
 window.toggleItinerary = function () {
-    const sidebar = document.getElementById('map-sidebar');
-    const icon = document.getElementById('itinerary-toggle-icon');
+    const sidebar = document.getElementById("map-sidebar");
+    const icon = document.getElementById("itinerary-toggle-icon");
 
     // Solo actuar si estamos en modo móvil (verificando si el header está colapsado o tiene la clase)
     // Aunque la clase .open solo afecta en móvil por el CSS media query, es seguro alternarla siempre.
 
-    if (sidebar.classList.contains('open')) {
-        sidebar.classList.remove('open');
-        if (icon) icon.style.transform = 'rotate(0deg)'; // Flecha arriba
+    if (sidebar.classList.contains("open")) {
+        sidebar.classList.remove("open");
+        if (icon) icon.style.transform = "rotate(0deg)"; // Flecha arriba
     } else {
-        sidebar.classList.add('open');
-        if (icon) icon.style.transform = 'rotate(180deg)'; // Flecha abajo
+        sidebar.classList.add("open");
+        if (icon) icon.style.transform = "rotate(180deg)"; // Flecha abajo
     }
 };
 
@@ -2309,12 +2299,12 @@ async function verificarNuevaVersion() {
     try {
         // 1. Obtener la versión que tiene el HTML cargado actualmente
         // Nota: Esto depende del span que ya tienes: <span id="app-version">1.0.X</span>
-        const elementoVersion = document.getElementById('app-version');
+        const elementoVersion = document.getElementById("app-version");
         if (!elementoVersion) return;
 
         // Limpiamos el texto para obtener solo el número "1.0.XXXX"
         // Asume formato "1.0.1234 (Fecha)" -> split toma la primera parte
-        const versionLocal = elementoVersion.innerText.split(' ')[0].trim();
+        const versionLocal = elementoVersion.innerText.split(" ")[0].trim();
 
         // 2. Consultar al servidor la versión real (usamos timestamp para evitar caché)
         const respuesta = await fetch(`version.json?t=${new Date().getTime()}`, { cache: "no-store" });
@@ -2346,26 +2336,26 @@ Se recargará la página para obtener las mejoras.`)) {
 }
 
 // Ejecutar verificación al cargar
-window.addEventListener('load', () => {
+window.addEventListener("load", () => {
     setTimeout(verificarNuevaVersion, 3000); // Espera 3 seg para no alentar el inicio
 });
 
 // Ejecutar verificación cada vez que la app vuelve a primer plano (común en celulares)
-document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') {
+document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
         verificarNuevaVersion();
     }
 });
 
-document.addEventListener('click', function (event) {
-    const menu = document.getElementById('mobile-menu');
-    const hamburger = document.querySelector('.hamburger-btn');
+document.addEventListener("click", function (event) {
+    const menu = document.getElementById("mobile-menu");
+    const hamburger = document.querySelector(".hamburger-btn");
 
     // Verificamos si el menú existe y si está abierto
-    if (menu && menu.classList.contains('open')) {
+    if (menu && menu.classList.contains("open")) {
         // Si el clic NO fue dentro del menú Y TAMPOCO en el botón de hamburguesa
         if (!menu.contains(event.target) && !hamburger.contains(event.target)) {
-            menu.classList.remove('open');
+            menu.classList.remove("open");
         }
     }
 });
@@ -2376,22 +2366,22 @@ function testNotificaciones() {
     console.log("🧪 Forzando la verificación de notificaciones...");
     // La función verificarEventosProximos() está en el módulo, por lo que no podemos llamarla directamente.
     // En su lugar, disparamos un evento personalizado que el módulo escuchará.
-    window.dispatchEvent(new CustomEvent('test-notificaciones'));
+    window.dispatchEvent(new CustomEvent("test-notificaciones"));
 }
 
 // 1. Registrar Service Worker
-if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('sw.js') // Ruta corregida
-            .then(reg => console.log('Service Worker registrado: ', reg.scope))
-            .catch(err => console.log('Service Worker falló: ', err));
+if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+        navigator.serviceWorker.register("sw.js") // Ruta corregida
+            .then(reg => console.log("Service Worker registrado: ", reg.scope))
+            .catch(err => console.log("Service Worker falló: ", err));
     });
 }
 
 // 2. Lógica del Botón de Instalación (Opcional pero recomendado)
 let deferredPrompt;
 // Escuchar el evento que indica que la app es instalable
-window.addEventListener('beforeinstallprompt', (e) => {
+window.addEventListener("beforeinstallprompt", (e) => {
     // Prevenir que Chrome muestre el banner automáticamente (opcional, si quieres control total)
     // e.preventDefault(); 
 
@@ -2416,12 +2406,12 @@ async function instalarApp() {
 // --- REPORTES EJECUTIVOS ---
 
 window.abrirReporteModal = function () {
-    const modal = document.getElementById('reporteModal');
-    const selectAno = document.getElementById('filtroAnoReporte');
-    const inputCliente = document.getElementById('filtroClienteReporte');
+    const modal = document.getElementById("reporteModal");
+    const selectAno = document.getElementById("filtroAnoReporte");
+    const inputCliente = document.getElementById("filtroClienteReporte");
 
     // Resetear
-    inputCliente.value = '';
+    inputCliente.value = "";
 
     // Obtener años únicos de las reservas
     const anos = new Set();
@@ -2432,9 +2422,9 @@ window.abrirReporteModal = function () {
     });
 
     // Llenar select
-    selectAno.innerHTML = '<option value="todos">Todos los años</option>';
+    selectAno.innerHTML = "<option value=\"todos\">Todos los años</option>";
     Array.from(anos).sort((a, b) => b - a).forEach(ano => {
-        const option = document.createElement('option');
+        const option = document.createElement("option");
         option.value = ano;
         option.textContent = ano;
         selectAno.appendChild(option);
@@ -2446,22 +2436,22 @@ window.abrirReporteModal = function () {
         selectAno.value = currentYear;
     }
 
-    modal.style.display = 'block';
+    modal.style.display = "block";
 
     // Generar reporte inicial
     generarReporte();
 };
 
 window.generarReporte = function () {
-    const selectAno = document.getElementById('filtroAnoReporte').value;
-    const inputCliente = document.getElementById('filtroClienteReporte').value.toLowerCase().trim();
-    const tbody = document.getElementById('tablaReporteCuerpo');
-    const subtitulo = document.getElementById('subtituloReporte');
-    const kpiTotal = document.getElementById('kpiTotal');
-    const kpiClientes = document.getElementById('kpiClientes');
-    const kpiCiudad = document.getElementById('kpiCiudad');
+    const selectAno = document.getElementById("filtroAnoReporte").value;
+    const inputCliente = document.getElementById("filtroClienteReporte").value.toLowerCase().trim();
+    const tbody = document.getElementById("tablaReporteCuerpo");
+    const subtitulo = document.getElementById("subtituloReporte");
+    const kpiTotal = document.getElementById("kpiTotal");
+    const kpiClientes = document.getElementById("kpiClientes");
+    const kpiCiudad = document.getElementById("kpiCiudad");
 
-    tbody.innerHTML = '';
+    tbody.innerHTML = "";
 
     // Filtrar globalReservas
     let reservasFiltradas = globalReservas.filter(r => {
@@ -2470,12 +2460,12 @@ window.generarReporte = function () {
         }
 
         let matchAno = true;
-        if (selectAno !== 'todos' && r.start) {
+        if (selectAno !== "todos" && r.start) {
             matchAno = r.start.getFullYear() === parseInt(selectAno);
         }
 
         let matchCliente = true;
-        if (inputCliente !== '') {
+        if (inputCliente !== "") {
             const clienteStr = (r.data.cliente || "").toLowerCase();
             matchCliente = clienteStr.includes(inputCliente);
         }
@@ -2496,8 +2486,8 @@ window.generarReporte = function () {
     let reservasAgrupadas = [];
 
     const calcDias = (res) => {
-        const startObj = new Date(res.data.fechaInicio + 'T12:00:00');
-        const endObj = new Date(res.data.fechaFin + 'T12:00:00');
+        const startObj = new Date(res.data.fechaInicio + "T12:00:00");
+        const endObj = new Date(res.data.fechaFin + "T12:00:00");
         let d = Math.floor((endObj - startObj) / (1000 * 60 * 60 * 24)) + 1;
         return d < 1 ? 1 : d;
     };
@@ -2542,7 +2532,7 @@ window.generarReporte = function () {
     reservasAgrupadas.sort((a, b) => a.start - b.start);
 
     // Preparar el subtítulo
-    let subtituloTexto = `Filtros aplicados - Año: ${selectAno === 'todos' ? 'Todos' : selectAno}`;
+    let subtituloTexto = `Filtros aplicados - Año: ${selectAno === "todos" ? "Todos" : selectAno}`;
     if (inputCliente) {
         subtituloTexto += ` | Cliente: "${inputCliente}"`;
     }
@@ -2552,9 +2542,9 @@ window.generarReporte = function () {
     kpiTotal.textContent = reservasAgrupadas.length;
 
     if (reservasAgrupadas.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; padding: 15px; color: var(--text-color-muted);">No hay reservaciones que coincidan con los filtros.</td></tr>';
-        kpiClientes.textContent = '0';
-        kpiCiudad.textContent = '-';
+        tbody.innerHTML = "<tr><td colspan=\"3\" style=\"text-align: center; padding: 15px; color: var(--text-color-muted);\">No hay reservaciones que coincidan con los filtros.</td></tr>";
+        kpiClientes.textContent = "0";
+        kpiCiudad.textContent = "-";
         return;
     }
 
@@ -2569,22 +2559,22 @@ window.generarReporte = function () {
         let numDias = r.diasReales || 1; // Usar los días puros consolidados
         totalDiasGlobales += numDias;
 
-        let ciudadDisplay = 'N/A';
+        let ciudadDisplay = "N/A";
         if (r.data.ciudad) {
-            ciudadDisplay = r.data.ciudad.split(',')[0].trim();
+            ciudadDisplay = r.data.ciudad.split(",")[0].trim();
             ciudadesCount[ciudadDisplay] = (ciudadesCount[ciudadDisplay] || 0) + numDias; // Sumar dias
         }
 
-        const tr = document.createElement('tr');
+        const tr = document.createElement("tr");
 
-        const fI = r.data.fechaInicio ? r.data.fechaInicio.split('-') : [];
-        const fF = r.data.fechaFin ? r.data.fechaFin.split('-') : [];
+        const fI = r.data.fechaInicio ? r.data.fechaInicio.split("-") : [];
+        const fF = r.data.fechaFin ? r.data.fechaFin.split("-") : [];
         const fechaInicioStr = fI.length === 3 ? `${fI[2]}/${fI[1]}/${fI[0]}` : r.data.fechaInicio;
         const fechaFinStr = fF.length === 3 ? `${fF[2]}/${fF[1]}/${fF[0]}` : r.data.fechaFin;
         const fechaDisplay = `${fechaInicioStr} - ${fechaFinStr}`;
 
         tr.innerHTML = `
-            <td>${r.data.cliente || 'N/A'}</td>
+            <td>${r.data.cliente || "N/A"}</td>
             <td>${ciudadDisplay}</td>
             <td>${fechaDisplay}</td>
             <td style="text-align: center; font-weight: 600;">${numDias}</td>
@@ -2596,7 +2586,7 @@ window.generarReporte = function () {
     kpiClientes.textContent = clientesSet.size;
 
     let maxCount = 0;
-    let ciudadMax = '-';
+    let ciudadMax = "-";
     for (const [c, count] of Object.entries(ciudadesCount)) {
         if (count > maxCount) {
             maxCount = count;
@@ -2605,14 +2595,14 @@ window.generarReporte = function () {
     }
     kpiCiudad.textContent = ciudadMax;
 
-    let kpiSemanas = document.getElementById('kpiSemanas');
+    let kpiSemanas = document.getElementById("kpiSemanas");
     if (kpiSemanas) {
         kpiSemanas.textContent = (totalDiasGlobales / 5).toFixed(1);
     }
 };
 
 window.exportarReportePDF = async function () {
-    const elemento = document.getElementById('reporteParaPdf');
+    const elemento = document.getElementById("reporteParaPdf");
     // Guardar estilos originales
     const colorOriginal = elemento.style.color;
     const bgOriginal = elemento.style.background;
@@ -2623,24 +2613,24 @@ window.exportarReportePDF = async function () {
             onclone: function (doc) {
                 // Set CSS variables only in the cloned document so the live UI doesn't flash transparent
                 const docRoot = doc.documentElement;
-                docRoot.style.setProperty('--text-color', '#000000');
-                docRoot.style.setProperty('--text-color-muted', '#333333');
-                docRoot.style.setProperty('--text-color-light', '#222222');
-                docRoot.style.setProperty('--bg-color', 'transparent');
-                docRoot.style.setProperty('--card-bg', 'transparent');
-                docRoot.style.setProperty('--hover-bg', 'rgba(0,0,0,0.03)');
-                docRoot.style.setProperty('--border-color', '#cccccc');
+                docRoot.style.setProperty("--text-color", "#000000");
+                docRoot.style.setProperty("--text-color-muted", "#333333");
+                docRoot.style.setProperty("--text-color-light", "#222222");
+                docRoot.style.setProperty("--bg-color", "transparent");
+                docRoot.style.setProperty("--card-bg", "transparent");
+                docRoot.style.setProperty("--hover-bg", "rgba(0,0,0,0.03)");
+                docRoot.style.setProperty("--border-color", "#cccccc");
 
-                doc.body.style.setProperty('background', 'transparent', 'important');
-                docRoot.style.setProperty('background', 'transparent', 'important');
+                doc.body.style.setProperty("background", "transparent", "important");
+                docRoot.style.setProperty("background", "transparent", "important");
 
-                const el = doc.getElementById('reporteParaPdf');
+                const el = doc.getElementById("reporteParaPdf");
                 if (el) {
-                    el.classList.add('pdf-export-mode'); // Sólo en el clon
+                    el.classList.add("pdf-export-mode"); // Sólo en el clon
                     let anc = el.parentElement;
                     while (anc && anc !== doc.body && anc !== docRoot) {
-                        anc.style.setProperty('background', 'transparent', 'important');
-                        anc.style.setProperty('background-color', 'transparent', 'important');
+                        anc.style.setProperty("background", "transparent", "important");
+                        anc.style.setProperty("background-color", "transparent", "important");
                         anc = anc.parentElement;
                     }
                 }
@@ -2648,21 +2638,22 @@ window.exportarReportePDF = async function () {
         }
     };
 
-    if (true) { // Ahora usamos módulos importados
-        const btn = document.querySelector('#reporteModal .btn-action');
-        const textOrig = btn.innerHTML;
-        btn.innerHTML = '<span class="loader" style="width:16px;height:16px;margin-right:8px;border-width:2px;vertical-align:middle;display:inline-block; border-top-color: white;"></span> Generando PDF...';
-        btn.disabled = true;
+    const btn = document.querySelector("#reporteModal .btn-action");
+    const textOrig = btn.innerHTML;
+    btn.innerHTML = "<span class=\"loader\" style=\"width:16px;height:16px;margin-right:8px;border-width:2px;vertical-align:middle;display:inline-block; border-top-color: white;\"></span> Generando PDF...";
+    btn.disabled = true;
 
-        try {
-            // Ceder el control al navegador para que dibuje el spinner antes del bloqueo
-            await new Promise(resolve => setTimeout(resolve, 50));
+    try {
+        // Ceder el control al navegador para que dibuje el spinner antes del bloqueo
+        await new Promise(resolve => setTimeout(resolve, 50));
+        
+        // ... resto del código ...
 
             // Obtenemos canvas saltandonos JS PDF y cualquier blanco por defecto
             const canvas = await html2canvas(elemento, opt.html2canvas);
 
             // Cargar la plantilla usando directamente pdf-lib
-            const resp = await fetch('template/TrackSIM Membretada.pdf');
+            const resp = await fetch("template/TrackSIM Membretada.pdf");
             if (!resp.ok) throw new Error("Plantilla no encontrada");
 
             const templateBytes = await resp.arrayBuffer();
@@ -2689,10 +2680,10 @@ window.exportarReportePDF = async function () {
 
             while (remainHeight > 0) {
                 const chunkHeightPx = Math.min(pagePxHeight, remainHeight);
-                const chunkCanvas = document.createElement('canvas');
+                const chunkCanvas = document.createElement("canvas");
                 chunkCanvas.width = canvas.width;
                 chunkCanvas.height = chunkHeightPx;
-                const ctx = chunkCanvas.getContext('2d');
+                const ctx = chunkCanvas.getContext("2d");
 
                 // Hack brutal si el fondo sigue blanco: Forzar alpha
                 ctx.drawImage(canvas, 0, yPos, canvas.width, chunkHeightPx, 0, 0, canvas.width, chunkHeightPx);
@@ -2706,7 +2697,7 @@ window.exportarReportePDF = async function () {
                 }
                 ctx.putImageData(imgData, 0, 0);
 
-                const pngData = chunkCanvas.toDataURL('image/png');
+                const pngData = chunkCanvas.toDataURL("image/png");
                 const pngImage = await mergedDoc.embedPng(pngData);
 
                 const drawHeight = chunkHeightPx * pxToPtRatio;
@@ -2733,9 +2724,9 @@ window.exportarReportePDF = async function () {
 
             const finalPdfBytes = await mergedDoc.save();
 
-            const blob = new Blob([finalPdfBytes], { type: 'application/pdf' });
+            const blob = new Blob([finalPdfBytes], { type: "application/pdf" });
             const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
+            const a = document.createElement("a");
             a.href = url;
             a.download = `Reporte_Reservaciones_${new Date().getTime()}.pdf`;
             a.click();
@@ -2743,43 +2734,40 @@ window.exportarReportePDF = async function () {
 
         } catch (err) {
             console.error("Error principal fusionando PDF exacto: ", err);
-            alert('Hubo un error crítico al procesar y montar el PNG en el membrete.');
+            alert("Hubo un error crítico al procesar y montar el PNG en el membrete.");
         } finally {
             btn.innerHTML = textOrig;
             btn.disabled = false;
-        }
-    } else {
-        alert("Las dependencias para PDF no están disponibles.");
     }
 };
 
 window.exportarReportePNG = async function () {
-    const elemento = document.getElementById('reporteParaPdf');
+    const elemento = document.getElementById("reporteParaPdf");
     const opt = {
         html2canvas: {
             scale: 2,
             backgroundColor: null, // Permitir transparencia original
             onclone: function (doc) {
                 const docRoot = doc.documentElement;
-                docRoot.style.setProperty('--text-color', '#000000');
-                docRoot.style.setProperty('--text-color-muted', '#333333');
-                docRoot.style.setProperty('--text-color-light', '#222222');
-                docRoot.style.setProperty('--bg-color', 'transparent');
-                docRoot.style.setProperty('--card-bg', 'transparent');
-                docRoot.style.setProperty('--hover-bg', 'transparent');
-                docRoot.style.setProperty('--border-color', '#cccccc');
+                docRoot.style.setProperty("--text-color", "#000000");
+                docRoot.style.setProperty("--text-color-muted", "#333333");
+                docRoot.style.setProperty("--text-color-light", "#222222");
+                docRoot.style.setProperty("--bg-color", "transparent");
+                docRoot.style.setProperty("--card-bg", "transparent");
+                docRoot.style.setProperty("--hover-bg", "transparent");
+                docRoot.style.setProperty("--border-color", "#cccccc");
 
-                doc.body.style.setProperty('background', 'transparent', 'important');
-                docRoot.style.setProperty('background', 'transparent', 'important');
+                doc.body.style.setProperty("background", "transparent", "important");
+                docRoot.style.setProperty("background", "transparent", "important");
 
-                const el = doc.getElementById('reporteParaPdf');
+                const el = doc.getElementById("reporteParaPdf");
                 if (el) {
-                    el.classList.add('pdf-export-mode'); 
+                    el.classList.add("pdf-export-mode"); 
 
                     let anc = el.parentElement;
                     while (anc && anc !== doc.body && anc !== docRoot) {
-                        anc.style.setProperty('background', 'transparent', 'important');
-                        anc.style.setProperty('background-color', 'transparent', 'important');
+                        anc.style.setProperty("background", "transparent", "important");
+                        anc.style.setProperty("background-color", "transparent", "important");
                         anc = anc.parentElement;
                     }
                 }
@@ -2787,11 +2775,11 @@ window.exportarReportePNG = async function () {
         }
     };
 
-    if (typeof html2canvas !== 'undefined') {
-        const btn = document.querySelector('#btnExportarPNG');
-        const textOrig = btn ? btn.innerHTML : '🖼️ Exportar a PNG';
+    if (typeof html2canvas !== "undefined") {
+        const btn = document.querySelector("#btnExportarPNG");
+        const textOrig = btn ? btn.innerHTML : "🖼️ Exportar a PNG";
         if (btn) {
-            btn.innerHTML = '<span class="loader" style="width:16px;height:16px;margin-right:8px;border-width:2px;vertical-align:middle;display:inline-block; border-top-color: white;"></span> Exportando...';
+            btn.innerHTML = "<span class=\"loader\" style=\"width:16px;height:16px;margin-right:8px;border-width:2px;vertical-align:middle;display:inline-block; border-top-color: white;\"></span> Exportando...";
             btn.disabled = true;
         }
 
@@ -2800,14 +2788,14 @@ window.exportarReportePNG = async function () {
             const canvas = await html2canvas(elemento, opt.html2canvas);
 
             // Crear canvas final con fondo transparente garantizado
-            const finalCanvas = document.createElement('canvas');
+            const finalCanvas = document.createElement("canvas");
             finalCanvas.width = canvas.width;
             finalCanvas.height = canvas.height;
-            const ctx = finalCanvas.getContext('2d');
+            const ctx = finalCanvas.getContext("2d");
 
             // 1. Dibujar la marca de agua primero (al fondo)
             const img = new Image();
-            img.src = 'icon-512.png';
+            img.src = "icon-512.png";
             img.crossOrigin = "Anonymous";
             
             await new Promise((resolve) => {
@@ -2830,15 +2818,15 @@ window.exportarReportePNG = async function () {
             // 2. Dibujar el contenido de html2canvas (que ahora tiene fondos transparentes) encima
             ctx.drawImage(canvas, 0, 0);
 
-            const dataUrl = finalCanvas.toDataURL('image/png');
+            const dataUrl = finalCanvas.toDataURL("image/png");
             
-            const a = document.createElement('a');
+            const a = document.createElement("a");
             a.href = dataUrl;
             a.download = `Reporte_Ejecutivo_${new Date().getTime()}.png`;
             a.click();
         } catch (err) {
             console.error("Error exportando PNG: ", err);
-            alert('Hubo un error al exportar como PNG.');
+            alert("Hubo un error al exportar como PNG.");
         } finally {
             if (btn) {
                 btn.innerHTML = textOrig;
@@ -2892,41 +2880,41 @@ function getDiasHabiles(startDateStr, endDateStr) {
 }
 
 function normalizeStr(str) {
-    if (!str) return '';
-    return str.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+    if (!str) return "";
+    return str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
 }
 
 let hojaRutaLeafletMap = null;
 let hojaRutaMarkers = [];
 
 window.mostrarHojaRutaView = function () {
-    document.getElementById('calendar-container').style.display = 'none';
-    document.getElementById('map-view').style.display = 'none';
-    document.getElementById('agenda-view').style.display = 'none';
+    document.getElementById("calendar-container").style.display = "none";
+    document.getElementById("map-view").style.display = "none";
+    document.getElementById("agenda-view").style.display = "none";
 
-    const view = document.getElementById('hoja-ruta-view');
-    if (view) view.style.display = 'block';
+    const view = document.getElementById("hoja-ruta-view");
+    if (view) view.style.display = "block";
 
-    const tbody = document.getElementById('tablaHojaRutaCuerpo');
-    tbody.innerHTML = '';
+    const tbody = document.getElementById("tablaHojaRutaCuerpo");
+    tbody.innerHTML = "";
 
     // 1. Fechas relativas
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const todayStr = today.toISOString().split('T')[0];
+    const todayStr = today.toISOString().split("T")[0];
 
     // 2. Separar reservas pasadas y futuras
-    const futuras = globalReservas.filter(r => (r.data.fechaInicio || '') >= todayStr).sort((a, b) => (a.data.fechaInicio > b.data.fechaInicio) ? 1 : ((b.data.fechaInicio > a.data.fechaInicio) ? -1 : 0));
+    const futuras = globalReservas.filter(r => (r.data.fechaInicio || "") >= todayStr).sort((a, b) => (a.data.fechaInicio > b.data.fechaInicio) ? 1 : ((b.data.fechaInicio > a.data.fechaInicio) ? -1 : 0));
 
     // Extraer clientes con reservas futuras para EXCLUIRLOS de las recomendaciones
     const clientesFuturos = new Set(futuras.map(r => normalizeStr(r.data.cliente)));
 
     // Filtramos pasadas (usaremos TODAS de todos los años disponibles para mayor precisión en ubicaciones)
-    const pasadasBase = globalReservas.filter(r => (r.data.fechaInicio || '') < todayStr);
+    const pasadasBase = globalReservas.filter(r => (r.data.fechaInicio || "") < todayStr);
     const pasadas = pasadasBase.filter(r => !clientesFuturos.has(normalizeStr(r.data.cliente)) && !r.data.esEspecial);
 
     if (futuras.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="2" style="text-align:center;">No hay reservas futuras para la Hoja de Ruta.</td></tr>';
+        tbody.innerHTML = "<tr><td colspan=\"2\" style=\"text-align:center;\">No hay reservas futuras para la Hoja de Ruta.</td></tr>";
         return;
     }
 
@@ -2935,11 +2923,11 @@ window.mostrarHojaRutaView = function () {
         const gapDays = getDiasHabiles(fechaIniStr, fechaFinStr);
         if (gapDays <= 5) return;
 
-        const trG = document.createElement('tr');
-        trG.className = 'row-tiempo-muerto';
+        const trG = document.createElement("tr");
+        trG.className = "row-tiempo-muerto";
 
-        const c1 = normalizeStr(ciudadRef1 || '');
-        const c2 = normalizeStr(ciudadRef2 || '');
+        const c1 = normalizeStr(ciudadRef1 || "");
+        const c2 = normalizeStr(ciudadRef2 || "");
 
         // --- Column 1: Match Exacto (City) ---
         let matchExacto = pasadas.filter(p => {
@@ -2962,7 +2950,7 @@ window.mostrarHojaRutaView = function () {
 
         // Helper to format suggestion items
         function renderSugs(list, type, color) {
-            if (list.length === 0) return `<div class="recomendacion-list"><small>No se encontraron.</small></div>`;
+            if (list.length === 0) return "<div class=\"recomendacion-list\"><small>No se encontraron.</small></div>";
 
             // Limit to 3 and unique by client
             const unique = new Map();
@@ -2974,14 +2962,14 @@ window.mostrarHojaRutaView = function () {
 
             let html = uniqueList.map(p => `
                 <div class="sugerencia-item">🤝 ${p.data.cliente} (<i>${p.data.ciudad}</i>) <span class="${color}">${type}</span></div>
-            `).join('');
+            `).join("");
             return `<div class="recomendacion-list">${html}</div>`;
         }
 
-        const colCityHtml = renderSugs(matchExacto, 'Exacto', 'badge-exacto');
-        const colNearHtml = renderSugs(matchCercano, '< 150km', 'badge-cerca');
+        const colCityHtml = renderSugs(matchExacto, "Exacto", "badge-exacto");
+        const colNearHtml = renderSugs(matchCercano, "< 150km", "badge-cerca");
 
-        let labelUbicacion = '';
+        let labelUbicacion = "";
         if (ciudadRef1 && ciudadRef2) labelUbicacion = `Entre ${ciudadRef1} y ${ciudadRef2}`;
         else if (ciudadRef1) labelUbicacion = `Desde ${ciudadRef1}`;
         else if (ciudadRef2) labelUbicacion = `Hacia ${ciudadRef2}`;
@@ -3014,8 +3002,8 @@ window.mostrarHojaRutaView = function () {
         const r1 = futuras[i];
 
         // Renderizar Reserva actual
-        const trR = document.createElement('tr');
-        trR.className = 'row-reserva';
+        const trR = document.createElement("tr");
+        trR.className = "row-reserva";
         const strFechaInicio = formatearFecha(r1.data.fechaInicio);
         const strFechaFin = r1.data.fechaFin ? formatearFecha(r1.data.fechaFin) : strFechaInicio;
 
@@ -3038,7 +3026,7 @@ window.mostrarHojaRutaView = function () {
     // 4. Inicializar y pintar Mapa Leaflet del Roadmap
     setTimeout(() => {
         if (!hojaRutaLeafletMap) {
-            hojaRutaLeafletMap = L.map('hojaRutaMap', {
+            hojaRutaLeafletMap = L.map("hojaRutaMap", {
                 dragging: false,
                 zoomControl: false,
                 scrollWheelZoom: false,
@@ -3048,8 +3036,8 @@ window.mostrarHojaRutaView = function () {
                 keyboard: false,
                 renderer: L.canvas() // Forzar renderizado Canvas para compatibilidad con PDF
             }).setView([23.6345, -102.5528], 5);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '© OpenStreetMap',
+            L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+                attribution: "© OpenStreetMap",
                 crossOrigin: true // Habilitar CORS para captura de imagen sin errores
             }).addTo(hojaRutaLeafletMap);
         } else {
@@ -3063,7 +3051,7 @@ window.mostrarHojaRutaView = function () {
             if (r.data.lat && r.data.lng) {
                 // Pin numerado cronológicamente
                 const numberedIcon = L.divIcon({
-                    className: 'numbered-pin',
+                    className: "numbered-pin",
                     html: `
                         <div class="pin-container">
                             <span class="pin-number">${idx + 1}</span>
@@ -3082,83 +3070,82 @@ window.mostrarHojaRutaView = function () {
 
         // Trazar línea de ruta
         if (navLatlngs.length > 1) {
-            const polyline = L.polyline(navLatlngs, { color: '#ffc107', weight: 4, dashArray: '10, 10' }).addTo(hojaRutaLeafletMap);
+            const polyline = L.polyline(navLatlngs, { color: "#ffc107", weight: 4, dashArray: "10, 10" }).addTo(hojaRutaLeafletMap);
             hojaRutaMarkers.push(polyline);
             hojaRutaLeafletMap.fitBounds(polyline.getBounds(), { padding: [30, 30] });
         }
 
 
     }, 300);
-}
+};
 
 // --- EXPORTACIÓN DE HOJA DE RUTA A PDF ---
 window.exportarHojaRutaPDF = async function () {
-    const elemento = document.getElementById('contenidoHojaRuta');
-    const btn = document.getElementById('btnExportRoadmap');
+    const elemento = document.getElementById("contenidoHojaRuta");
+    const btn = document.getElementById("btnExportRoadmap");
 
     if (!elemento) return;
 
-    if (true) { // Ahora usamos módulos importados
-        const textOrig = btn.innerHTML;
-        btn.innerHTML = '<span class="loader" style="width:16px;height:16px;margin-right:8px;border-width:2px;vertical-align:middle;display:inline-block; border-top-color: white;"></span> Generando PDF...';
-        btn.disabled = true;
+    const textOrig = btn.innerHTML;
+    btn.innerHTML = "<span class=\"loader\" style=\"width:16px;height:16px;margin-right:8px;border-width:2px;vertical-align:middle;display:inline-block; border-top-color: white;\"></span> Generando PDF...";
+    btn.disabled = true;
 
-        // --- ESTRATEGIA DE CONTENIDO PURO ---
-        // Para evitar CUALQUIER espacio en blanco o rastro del mapa, 
-        // creamos un contenedor virtual nuevo con solo lo que queremos exportar.
-        const exportContainer = document.createElement('div');
-        exportContainer.style.cssText = "width: 100%; height: auto !important; background: transparent !important; padding: 0 !important; margin: 0 !important; overflow: visible !important;";
+    // --- ESTRATEGIA DE CONTENIDO PURO ---
+    // Para evitar CUALQUIER espacio en blanco o rastro del mapa, 
+    // creamos un contenedor virtual nuevo con solo lo que queremos exportar.
+    const exportContainer = document.createElement("div");
+    exportContainer.style.cssText = "width: 100%; height: auto !important; background: transparent !important; padding: 0 !important; margin: 0 !important; overflow: visible !important;";
 
         // 1. Insertar Título profesional
-        const tituloPDF = document.createElement('h1');
+        const tituloPDF = document.createElement("h1");
         tituloPDF.innerText = "Roadmap TrackSIM";
         tituloPDF.style.cssText = "text-align: center; margin-bottom: 30px; font-size: 22pt; color: #000000; font-family: 'Montserrat', sans-serif; background: transparent !important;";
         exportContainer.appendChild(tituloPDF);
 
         // 2. Clonar SOLO el contenedor de la tabla (itinerario)
         // Ignoramos el mapa y cualquier otro hermano
-        const tableContainer = elemento.querySelector('.hoja-ruta-container');
+        const tableContainer = elemento.querySelector(".hoja-ruta-container");
         if (tableContainer) {
             const tableClone = tableContainer.cloneNode(true);
             // Limpieza de estilos del clon
             tableClone.style.cssText = "width: 100%; background: transparent !important; border: none !important; margin: 0 !important; padding: 0 !important;";
 
             // Forzar Montserrat y negro en todo el contenido de la tabla
-            tableClone.querySelectorAll('*').forEach(el => {
-                el.style.setProperty('color', '#000000', 'important');
-                el.style.setProperty('background', 'transparent', 'important');
-                el.style.setProperty('background-color', 'transparent', 'important');
-                el.style.setProperty('font-family', "'Montserrat', sans-serif", 'important');
-                el.style.setProperty('box-shadow', 'none', 'important');
+            tableClone.querySelectorAll("*").forEach(el => {
+                el.style.setProperty("color", "#000000", "important");
+                el.style.setProperty("background", "transparent", "important");
+                el.style.setProperty("background-color", "transparent", "important");
+                el.style.setProperty("font-family", "'Montserrat', sans-serif", "important");
+                el.style.setProperty("box-shadow", "none", "important");
             });
             exportContainer.appendChild(tableClone);
         }
 
         const opt = {
             margin: [100, 40, 60, 40], // [top, left, bottom, right] pt
-            filename: 'temp.pdf',
-            image: { type: 'png', quality: 0.98 },
+            filename: "temp.pdf",
+            image: { type: "png", quality: 0.98 },
             html2canvas: {
                 scale: 2,
                 useCORS: true,
                 backgroundColor: null,
                 logging: false
             },
-            jsPDF: { unit: 'pt', format: 'letter', orientation: 'portrait' },
-            pagebreak: { mode: 'css' }
+            jsPDF: { unit: "pt", format: "letter", orientation: "portrait" },
+            pagebreak: { mode: "css" }
         };
 
         try {
             await new Promise(resolve => setTimeout(resolve, 200));
 
             // 1. Generar el PDF usando el contenedor "puro"
-            const contentPdfBuffer = await html2pdf().from(exportContainer).set(opt).output('arraybuffer');
+            const contentPdfBuffer = await html2pdf().from(exportContainer).set(opt).output("arraybuffer");
 
             // 2. Cargar la plantilla y el contenido con pdf-lib
             // Usamos PDFDocument importado
             const contentDoc = await PDFDocument.load(contentPdfBuffer);
 
-            const respTemplate = await fetch('template/TrackSIM Membretada.pdf');
+            const respTemplate = await fetch("template/TrackSIM Membretada.pdf");
             if (!respTemplate.ok) throw new Error("Plantilla no encontrada");
             const templateBytes = await respTemplate.arrayBuffer();
             const templateDoc = await PDFDocument.load(templateBytes);
@@ -3186,10 +3173,10 @@ window.exportarHojaRutaPDF = async function () {
 
             // 4. Guardar y descargar
             const pdfBytes = await finalDoc.save();
-            const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-            const link = document.createElement('a');
+            const blob = new Blob([pdfBytes], { type: "application/pdf" });
+            const link = document.createElement("a");
             link.href = URL.createObjectURL(blob);
-            link.download = `Roadmap_TrackSIM_${new Date().toISOString().split('T')[0]}.pdf`;
+            link.download = `Roadmap_TrackSIM_${new Date().toISOString().split("T")[0]}.pdf`;
             link.click();
 
         } catch (e) {
@@ -3198,45 +3185,42 @@ window.exportarHojaRutaPDF = async function () {
         } finally {
             btn.innerHTML = textOrig;
             btn.disabled = false;
-        }
-    } else {
-        alert("Librerías de PDF no cargadas (html2pdf, html2canvas o PDFLib).");
     }
-}
+};
 
 // --- EXPORTACIÓN DE HOJA DE RUTA A PNG ---
 window.exportarHojaRutaPNG = async function () {
-    const elemento = document.getElementById('contenidoHojaRuta');
-    const btn = document.getElementById('btnExportRoadmapPNG');
+    const elemento = document.getElementById("contenidoHojaRuta");
+    const btn = document.getElementById("btnExportRoadmapPNG");
 
     if (!elemento) return;
 
-    if (typeof html2canvas !== 'undefined') {
+    if (typeof html2canvas !== "undefined") {
         const textOrig = btn.innerHTML;
-        btn.innerHTML = '<span class="loader" style="width:16px;height:16px;margin-right:8px;border-width:2px;vertical-align:middle;display:inline-block; border-top-color: white;"></span> Creando PNG...';
+        btn.innerHTML = "<span class=\"loader\" style=\"width:16px;height:16px;margin-right:8px;border-width:2px;vertical-align:middle;display:inline-block; border-top-color: white;\"></span> Creando PNG...";
         btn.disabled = true;
 
         // Crear contenedor virtual para exportar el contenido puro sin el mapa
-        const exportContainer = document.createElement('div');
+        const exportContainer = document.createElement("div");
         exportContainer.style.cssText = "position: absolute; left: -9999px; top: 0; width: 800px; height: auto; background: transparent !important; padding: 20px !important; margin: 0 !important; overflow: visible !important;";
         
         // 1. Insertar Título
-        const titulo = document.createElement('h1');
+        const titulo = document.createElement("h1");
         titulo.innerText = "Roadmap TrackSIM";
         titulo.style.cssText = "text-align: center; margin-bottom: 30px; font-size: 22pt; color: #000000; font-family: 'Montserrat', sans-serif; background: transparent !important;";
         exportContainer.appendChild(titulo);
 
         // 2. Clonar SOLO el contenedor de la tabla
-        const tableContainer = elemento.querySelector('.hoja-ruta-container');
+        const tableContainer = elemento.querySelector(".hoja-ruta-container");
         if (tableContainer) {
             const tableClone = tableContainer.cloneNode(true);
             tableClone.style.cssText = "width: 100%; background: transparent !important; border: none !important; margin: 0 !important; padding: 0 !important;";
-            tableClone.querySelectorAll('*').forEach(el => {
-                el.style.setProperty('color', '#000000', 'important');
-                el.style.setProperty('background', 'transparent', 'important');
-                el.style.setProperty('background-color', 'transparent', 'important');
-                el.style.setProperty('font-family', "'Montserrat', sans-serif", 'important');
-                el.style.setProperty('box-shadow', 'none', 'important');
+            tableClone.querySelectorAll("*").forEach(el => {
+                el.style.setProperty("color", "#000000", "important");
+                el.style.setProperty("background", "transparent", "important");
+                el.style.setProperty("background-color", "transparent", "important");
+                el.style.setProperty("font-family", "'Montserrat', sans-serif", "important");
+                el.style.setProperty("box-shadow", "none", "important");
             });
             exportContainer.appendChild(tableClone);
         }
@@ -3257,14 +3241,14 @@ window.exportarHojaRutaPNG = async function () {
             document.body.removeChild(exportContainer);
 
             // Crear el canvas definitivo para la marca de agua
-            const finalCanvas = document.createElement('canvas');
+            const finalCanvas = document.createElement("canvas");
             finalCanvas.width = canvas.width;
             finalCanvas.height = canvas.height;
-            const ctx = finalCanvas.getContext('2d');
+            const ctx = finalCanvas.getContext("2d");
 
             // Dibujar la marca de agua primero
             const img = new Image();
-            img.src = 'icon-512.png';
+            img.src = "icon-512.png";
             img.crossOrigin = "Anonymous";
             await new Promise((resolve) => {
                 img.onload = resolve;
@@ -3285,10 +3269,10 @@ window.exportarHojaRutaPNG = async function () {
             ctx.drawImage(canvas, 0, 0);
 
             // Descargar el PNG
-            const dataUrl = finalCanvas.toDataURL('image/png');
-            const a = document.createElement('a');
+            const dataUrl = finalCanvas.toDataURL("image/png");
+            const a = document.createElement("a");
             a.href = dataUrl;
-            a.download = `Roadmap_TrackSIM_${new Date().toISOString().split('T')[0]}.png`;
+            a.download = `Roadmap_TrackSIM_${new Date().toISOString().split("T")[0]}.png`;
             a.click();
 
         } catch (err) {
@@ -3304,4 +3288,4 @@ window.exportarHojaRutaPNG = async function () {
     } else {
         alert("Librerías de captura (html2canvas) no cargadas.");
     }
-}
+};

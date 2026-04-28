@@ -1,23 +1,22 @@
-import { defineConfig } from 'vite';
-import fs from 'fs';
-import { resolve } from 'path';
+import { defineConfig } from "vite";
+import { resolve } from "path";
 
 export default defineConfig({
   server: {
-    https: {
-      key: fs.readFileSync('./key.pem'),
-      cert: fs.readFileSync('./cert.pem'),
-    },
     port: 5173,
     host: true,
   },
-  publicDir: 'public',
+  publicDir: "public",
   build: {
-    outDir: 'dist',
+    outDir: "dist",
     rollupOptions: {
       input: {
-        main: resolve(__dirname, 'index.html'),
+        main: resolve(__dirname, "index.html"),
       },
     },
+  },
+  test: {
+    environment: "jsdom",
+    globals: true,
   },
 });
