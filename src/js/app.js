@@ -1604,46 +1604,47 @@ window.exportarCalendario = function () {
         alert("⚠️ No hay eventos para exportar.");
         return;
     }
-
-    let icsContent = `BEGIN:VCALENDAR
-VERSION:2.0
-PRODID:-//TrackSIM//Agenda//ES
-CALSCALE:GREGORIAN
-METHOD:PUBLISH
-`;
-
+ 
+    const icsLines = [
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        "PRODID:-//TrackSIM//Agenda//ES",
+        "CALSCALE:GREGORIAN",
+        "METHOD:PUBLISH"
+    ];
+ 
     globalReservas.forEach(reserva => {
         // Formatear fechas YYYYMMDD (Quitar guiones)
         const start = reserva.data.fechaInicio.replace(/-/g, "");
 
         // iCal requiere que la fecha final sea exclusiva (día siguiente), así que sumamos 1 día
-        let endDateObj = new Date(reserva.data.fechaFin + "T00:00:00");
+        const endDateObj = new Date(reserva.data.fechaFin + "T00:00:00");
         endDateObj.setDate(endDateObj.getDate() + 1);
         const end = endDateObj.toISOString().split("T")[0].replace(/-/g, "");
 
         const ciudad = reserva.data.ciudad || "Sin ciudad";
         const cliente = reserva.data.cliente || "Cliente";
         const direccion = reserva.data.direccion || "";
+        
+        // Escapar caracteres especiales para formato iCal
+        const escapeText = (text) => {
+            return text.replace(/\\/g, "\\\\").replace(/,/g, "\\,").replace(/;/g, "\\;").replace(/\n/g, "\\n");
+        };
 
-        icsContent += `BEGIN:VEVENT
-`;
-        icsContent += `DTSTART;VALUE=DATE:${start}
-        `;
-        icsContent += `DTEND;VALUE=DATE:${end}
-        `;
-        icsContent += `SUMMARY:${cliente} - ${ciudad}
-        `;
-        icsContent += `LOCATION:${ciudad}, ${direccion}
-        `;
-        icsContent += `DESCRIPTION:Gestionado desde Agenda TrackSIM. https://agendaservicios.web.app/index.html
-        `;
-        icsContent += `STATUS:CONFIRMED
-        `;
-        icsContent += `END:VEVENT
-        `;
+        icsLines.push(
+            "BEGIN:VEVENT",
+            `DTSTART;VALUE=DATE:${start}`,
+            `DTEND;VALUE=DATE:${end}`,
+            `SUMMARY:${escapeText(cliente)} - ${escapeText(ciudad)}`,
+            `LOCATION:${escapeText(ciudad + (direccion ? ", " + direccion : ""))}`,
+            "DESCRIPTION:Gestionado desde Agenda TrackSIM. https://agendaservicios.web.app/index.html",
+            "STATUS:CONFIRMED",
+            "END:VEVENT"
+        );
     });
 
-    icsContent += "END:VCALENDAR";
+    icsLines.push("END:VCALENDAR");
+    const icsContent = icsLines.join("\r\n");
 
     // Crear enlace de descarga virtual
     const blob = new Blob([icsContent], { type: "text/calendar;charset=utf-8" });
