@@ -1807,7 +1807,15 @@ window.mostrarDetalles = function (evento) {
 
     if (direccionTexto && direccionTexto.trim().length > 0) {
         // Escapamos comillas simples por seguridad para la función onclick
-        const textoSeguroParaCopiar = direccionTexto.replace(/'/g, "'");
+        const textoSeguroParaCopiar = direccionTexto.replace(/'/g, "\\\\'");
+
+        // Calcular la URL de Google Maps
+        let urlMaps = "";
+        if (lat && lng) {
+            urlMaps = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+        } else {
+            urlMaps = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(direccionTexto)}`;
+        }
 
         // NUEVA ESTRUCTURA HTML:
         // Usamos un contenedor flex para alinear texto e iconos
