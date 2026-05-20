@@ -1445,6 +1445,14 @@
             justify-content: center;
         }
 
+        .pin-container.actual {
+            background: #28a745;
+        }
+
+        .pin-container.actual .pin-number {
+            color: white !important;
+        }
+
         .pin-number {
             transform: rotate(45deg);
             color: #212529;
