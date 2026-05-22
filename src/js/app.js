@@ -2167,6 +2167,8 @@ MODO DE PRECISIÓN:
                 const direccionTexto = fila[4] ? fila[4].toString().trim() : "";
                 const rawLat = fila[5];
                 const rawLng = fila[6];
+                const rawEsp = fila[7] ? fila[7].toString().trim() : "";
+                const esEspecial = rawEsp.toUpperCase() === "X";
 
                 const fInicio = formatearFecha(rawInicio);
                 const fFin = formatearFecha(rawFin);
@@ -2209,7 +2211,8 @@ MODO DE PRECISIÓN:
                         lat: latFinal,
                         lng: lngFinal,
                         groupId: groupId,
-                        creado: new Date()
+                        creado: new Date(),
+                        esEspecial: esEspecial
                         // pdfUrl: null  <-- Mantenemos comentada esta línea para no borrar adjuntos
                     }, { merge: true });
 
