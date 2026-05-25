@@ -408,6 +408,68 @@
             opacity: 0.7;
         }
 
+        /* --- EVENTO ESPECIAL EN AGENDA --- */
+        .agenda-card.especial {
+            border-left-color: #7F00FF;
+            background: linear-gradient(135deg, #fdf6ff 0%, #f3e8ff 100%);
+            box-shadow: 0 4px 16px rgba(127, 0, 255, 0.15);
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Efecto shimmer sutil en la tarjeta especial */
+        .agenda-card.especial::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: -75%;
+            width: 50%;
+            height: 100%;
+            background: linear-gradient(
+                to right,
+                rgba(255, 255, 255, 0) 0%,
+                rgba(255, 255, 255, 0.35) 50%,
+                rgba(255, 255, 255, 0) 100%
+            );
+            animation: shimmer-especial 3s infinite;
+            pointer-events: none;
+        }
+
+        @keyframes shimmer-especial {
+            0%   { left: -75%; }
+            60%  { left: 125%; }
+            100% { left: 125%; }
+        }
+
+        .agenda-card.especial:hover {
+            box-shadow: 0 6px 22px rgba(127, 0, 255, 0.28);
+            transform: translateY(-3px);
+        }
+
+        .agenda-card.especial.pasada {
+            background: #f8f4ff;
+            border-left-color: #b89ecf;
+            opacity: 0.65;
+        }
+
+        /* Badge "⭐ Evento Especial" */
+        .badge-especial {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: linear-gradient(135deg, #7F00FF, #b44cff);
+            color: #fff;
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            padding: 3px 10px;
+            border-radius: 20px;
+            margin-bottom: 6px;
+            align-self: flex-start;
+            box-shadow: 0 2px 6px rgba(127, 0, 255, 0.3);
+            text-transform: uppercase;
+        }
+
         .ruta-ciudad {
             font-weight: bold;
             font-size: 1.1rem;
@@ -1158,6 +1220,27 @@
         body.dark-mode .agenda-card.pasada {
             background: var(--input-bg);
             opacity: 0.6;
+        }
+
+        body.dark-mode .agenda-card.especial {
+            background: linear-gradient(135deg, #1e1030 0%, #2a1650 100%);
+            border-left-color: #a855f7;
+            box-shadow: 0 4px 20px rgba(168, 85, 247, 0.25);
+        }
+
+        body.dark-mode .agenda-card.especial:hover {
+            box-shadow: 0 6px 28px rgba(168, 85, 247, 0.4);
+        }
+
+        body.dark-mode .agenda-card.especial.pasada {
+            background: #1a0f2e;
+            border-left-color: #7c4daf;
+            opacity: 0.6;
+        }
+
+        body.dark-mode .badge-especial {
+            background: linear-gradient(135deg, #6d28d9, #a855f7);
+            box-shadow: 0 2px 8px rgba(168, 85, 247, 0.4);
         }
 
         body.dark-mode .ruta-item.pasada {

@@ -1109,6 +1109,7 @@ function renderizarAgendaCustom() {
                 direccion: reserva.data.direccion,
                 inicio: reserva.data.fechaInicio,
                 fin: reserva.data.fechaFin,
+                esEspecial: reserva.data.esEspecial || false,
                 reservaObj: reserva
             });
             return;
@@ -1125,6 +1126,7 @@ function renderizarAgendaCustom() {
                 direccion: reserva.data.direccion,
                 inicio: reserva.data.fechaInicio,
                 fin: reserva.data.fechaFin,
+                esEspecial: reserva.data.esEspecial || false,
                 reservaObj: reserva
             });
         }
@@ -1143,7 +1145,8 @@ function renderizarAgendaCustom() {
         const esPasado = fechaFinObj < hoy;
 
         const card = document.createElement("li");
-        card.className = "agenda-card" + (esPasado ? " pasada" : "");
+        let claseEspecial = grupo.esEspecial ? " especial" : "";
+        card.className = "agenda-card" + (esPasado ? " pasada" : "") + claseEspecial;
 
         // NUEVO: Detectar el elemento objetivo para el Scroll
         // Si NO es pasado y aun no hemos encontrado el "próximo", este es el ganador.
@@ -1164,7 +1167,12 @@ function renderizarAgendaCustom() {
                </div>`
             : "";
 
+        const badgeEspecialHtml = grupo.esEspecial
+            ? `<span class="badge-especial">⭐ Evento Especial</span>`
+            : "";
+
         card.innerHTML = `
+            ${badgeEspecialHtml}
             <div class="ruta-ciudad">${grupo.ciudad}</div>
             <div class="ruta-cliente">👤 ${grupo.cliente} ${direccionHtml}</div>
             <div class="ruta-fechas">📅 ${formatearFecha(grupo.inicio)} ➝ ${formatearFecha(grupo.fin)}</div>
@@ -1172,8 +1180,6 @@ function renderizarAgendaCustom() {
         `;
 
         card.onclick = () => {
-            mostrarCalendario();
-            calendar.gotoDate(grupo.inicio);
             const evento = calendar.getEventById(grupo.reservaObj.id);
             if (evento) mostrarDetalles(evento);
         };
@@ -1845,8 +1851,21 @@ window.mostrarDetalles = function (evento) {
     }
     // --- FIN CAMBIOS DIRECCIÓN ---
 
-    // Fechas
-    document.getElementById("detFechas").innerText = `${evento.start.toISOString().split("T")[0]} al ${evento.extendedProps.fechaFinReal}`;
+    // Fechas — Clickeables para navegar al calendario
+    const fechaInicioStr = evento.start.toISOString().split("T")[0];
+    const fechaFinStr = evento.extendedProps.fechaFinReal || fechaInicioStr;
+    const detFechasEl = document.getElementById("detFechas");
+    detFechasEl.innerHTML = `
+        <span id="det-fecha-link"
+              title="📅 Ver en el calendario"
+              style="cursor:pointer; color:#007bff; text-decoration:underline; text-decoration-style:dotted;"
+              onclick="irAlCalendarioDesdeDetalle('${eventoSeleccionadoID}', '${fechaInicioStr}')"
+              onmouseover="this.style.textDecorationStyle='solid'"
+              onmouseout="this.style.textDecorationStyle='dotted'">
+            ${fechaInicioStr} ➝ ${fechaFinStr}
+        </span>
+        <span title="Ver en el calendario" style="font-size:0.8em; color:#999; margin-left:4px;">📅</span>
+    `;
 
     // ... (EL RESTO DE LA FUNCIÓN PERMANECE EXACTAMENTE IGUAL: Lógica de PDF, Admin, botones) ...
     const urlExistente = evento.extendedProps.pdfUrl;
@@ -1895,6 +1914,20 @@ window.mostrarDetalles = function (evento) {
 };
 
 window.cerrarModal = function (idModal) { document.getElementById(idModal).style.display = "none"; };
+
+// Navega al calendario desde la vista de detalles (al hacer clic en la fecha)
+window.irAlCalendarioDesdeDetalle = function (reservaId, fechaInicio) {
+    cerrarModal("detalleModal");
+    mostrarCalendario();
+    if (fechaInicio) {
+        calendar.gotoDate(fechaInicio);
+    }
+    if (reservaId) {
+        setTimeout(() => {
+            resaltarEventoEnCalendario(reservaId);
+        }, 350); // Esperar que el calendario termine de renderizar
+    }
+};
 
 window.borrarReserva = async function () {
     if (!eventoSeleccionadoID) return;
