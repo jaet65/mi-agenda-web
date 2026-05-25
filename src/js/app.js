@@ -2200,6 +2200,8 @@ MODO DE PRECISIÓN:
                 const direccionTexto = fila[4] ? fila[4].toString().trim() : "";
                 const rawLat = fila[5];
                 const rawLng = fila[6];
+                const rawEsp = fila[7] ? fila[7].toString().trim() : "";
+                const esEspecial = rawEsp.toUpperCase() === "X";
 
                 const fInicio = formatearFecha(rawInicio);
                 const fFin = formatearFecha(rawFin);
@@ -2242,7 +2244,8 @@ MODO DE PRECISIÓN:
                         lat: latFinal,
                         lng: lngFinal,
                         groupId: groupId,
-                        creado: new Date()
+                        creado: new Date(),
+                        esEspecial: esEspecial
                         // pdfUrl: null  <-- Mantenemos comentada esta línea para no borrar adjuntos
                     }, { merge: true });
 
@@ -2945,25 +2948,54 @@ window.mostrarHojaRutaView = function () {
     today.setHours(0, 0, 0, 0);
     const todayStr = today.toISOString().split("T")[0];
 
-    // 2. Separar reservas pasadas y futuras
-    const futuras = globalReservas.filter(r => (r.data.fechaInicio || "") >= todayStr).sort((a, b) => (a.data.fechaInicio > b.data.fechaInicio) ? 1 : ((b.data.fechaInicio > a.data.fechaInicio) ? -1 : 0));
+    // 1.5. Obtener Ubicación y Empresa Actual (activa hoy, o la última pasada)
+    let actual = globalReservas.find(r => r.data.fechaInicio <= todayStr && r.data.fechaFin >= todayStr && !r.data.esEspecial);
+    let esActivaHoy = true;
+
+    if (!actual) {
+        // Si no hay activa hoy, buscar la última reserva pasada (excluyendo especiales)
+        const pasadasOrdenadas = globalReservas
+            .filter(r => (r.data.fechaFin || r.data.fechaInicio || "") < todayStr && !r.data.esEspecial)
+            .sort((a, b) => (b.data.fechaFin || b.data.fechaInicio || "").localeCompare(a.data.fechaFin || a.data.fechaInicio || ""));
+        if (pasadasOrdenadas.length > 0) {
+            actual = pasadasOrdenadas[0];
+            esActivaHoy = false;
+        }
+    }
+
+    // 2. Separar reservas pasadas y futuras (excluyendo eventos especiales)
+    let futuras = globalReservas.filter(r => (r.data.fechaInicio || "") >= todayStr && !r.data.esEspecial);
+    
+    // Si actual es activa hoy, la excluimos de futuras para que no se duplique
+    if (actual && esActivaHoy) {
+        futuras = futuras.filter(r => r.id !== actual.id);
+    }
+    
+    // Volver a ordenar futuras por cronología
+    futuras.sort((a, b) => (a.data.fechaInicio > b.data.fechaInicio) ? 1 : ((b.data.fechaInicio > a.data.fechaInicio) ? -1 : 0));
 
     // Extraer clientes con reservas futuras para EXCLUIRLOS de las recomendaciones
     const clientesFuturos = new Set(futuras.map(r => normalizeStr(r.data.cliente)));
+    if (actual) {
+        clientesFuturos.add(normalizeStr(actual.data.cliente));
+    }
 
     // Filtramos pasadas (usaremos TODAS de todos los años disponibles para mayor precisión en ubicaciones)
     const pasadasBase = globalReservas.filter(r => (r.data.fechaInicio || "") < todayStr);
     const pasadas = pasadasBase.filter(r => !clientesFuturos.has(normalizeStr(r.data.cliente)) && !r.data.esEspecial);
 
-    if (futuras.length === 0) {
-        tbody.innerHTML = "<tr><td colspan=\"2\" style=\"text-align:center;\">No hay reservas futuras para la Hoja de Ruta.</td></tr>";
+    if (futuras.length === 0 && !actual) {
+        tbody.innerHTML = "<tr><td colspan=\"2\" style=\"text-align:center;\">No hay reservas para la Hoja de Ruta.</td></tr>";
         return;
     }
 
     // --- Helper function para buscar recomendaciones y crear la fila de Tiempo Muerto ---
     function agregarFilaTiempoMuerto(fechaIniStr, fechaFinStr, ref1, ref2, ciudadRef1, ciudadRef2) {
-        const gapDays = getDiasHabiles(fechaIniStr, fechaFinStr);
-        if (gapDays <= 5) return;
+        let gapDays = 0;
+        if (fechaFinStr) {
+            gapDays = getDiasHabiles(fechaIniStr, fechaFinStr);
+            if (gapDays <= 5) return;
+        }
 
         const trG = document.createElement("tr");
         trG.className = "row-tiempo-muerto";
@@ -3016,9 +3048,11 @@ window.mostrarHojaRutaView = function () {
         else if (ciudadRef1) labelUbicacion = `Desde ${ciudadRef1}`;
         else if (ciudadRef2) labelUbicacion = `Hacia ${ciudadRef2}`;
 
+        const diasTexto = fechaFinStr ? `(${gapDays - 1} días hábiles)` : "(Posterior)";
+
         trG.innerHTML = `
             <td colspan="2">
-                <span class="text-tiempo-muerto">⚠️ Espacio Disponible (${gapDays - 1} días hábiles)</span>
+                <span class="text-tiempo-muerto">⚠️ Espacio Disponible ${diasTexto}</span>
                 <div style="font-size: 0.85em; color: #555;">${labelUbicacion}</div>
                 
                 <div class="sugerencias-columns">
@@ -3036,8 +3070,44 @@ window.mostrarHojaRutaView = function () {
         tbody.appendChild(trG);
     }
 
-    // 2.5. Evaluar gap inicial (Desde Hoy hasta la primera reserva)
-    agregarFilaTiempoMuerto(todayStr, futuras[0].data.fechaInicio, null, futuras[0].data, null, futuras[0].data.ciudad);
+    // Renderizar Ubicación y Empresa Actual al inicio si existe
+    if (actual) {
+        const trAct = document.createElement("tr");
+        trAct.className = "row-reserva";
+        trAct.style.cssText = "background-color: rgba(40, 167, 69, 0.12) !important; border-left: 6px solid #28a745;";
+        
+        const strFechaInicio = formatearFecha(actual.data.fechaInicio);
+        const strFechaFin = actual.data.fechaFin ? formatearFecha(actual.data.fechaFin) : strFechaInicio;
+        
+        let labelDetalle = `<span style="background-color: #28a745; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.75em; font-weight: bold; display: inline-block; margin-bottom: 5px;">📍 UBICACIÓN Y EMPRESA ACTUAL</span><br>`;
+        labelDetalle += `<strong>👤 ${actual.data.cliente}</strong><br>📍 ${actual.data.ciudad}`;
+        if (actual.data.direccion) labelDetalle += `<br><small>🗺️ ${actual.data.direccion}</small>`;
+        
+        trAct.innerHTML = `
+            <td style="white-space: nowrap; font-weight: bold; color: #28a745;">
+                ⚡ ${esActivaHoy ? "Activo Ahora" : "Último Servicio"}<br>
+                <small style="color: var(--text-color-light); font-weight: normal;">${strFechaInicio} al ${strFechaFin}</small>
+            </td>
+            <td>${labelDetalle}</td>
+        `;
+        tbody.appendChild(trAct);
+    }
+
+    // 2.5. Evaluar gap inicial (Desde la ubicación actual / Hoy hasta la primera reserva)
+    if (futuras.length > 0) {
+        let fechaInicioGap = todayStr;
+        let refInicioGap = null;
+        let ciudadInicioGap = null;
+
+        if (actual) {
+            refInicioGap = actual.data;
+            ciudadInicioGap = actual.data.ciudad;
+            if (actual.data.fechaFin && actual.data.fechaFin > todayStr) {
+                fechaInicioGap = actual.data.fechaFin;
+            }
+        }
+        agregarFilaTiempoMuerto(fechaInicioGap, futuras[0].data.fechaInicio, refInicioGap, futuras[0].data, ciudadInicioGap, futuras[0].data.ciudad);
+    }
 
     // 3. Evaluar e iterar Tiempos Muertos
     for (let i = 0; i < futuras.length; i++) {
@@ -3065,6 +3135,18 @@ window.mostrarHojaRutaView = function () {
         }
     }
 
+    // 3.5. Evaluar recomendaciones después de la última reservación (Espacio Disponible Posterior)
+    let ultimoR = null;
+    if (futuras.length > 0) {
+        ultimoR = futuras[futuras.length - 1];
+    } else if (actual) {
+        ultimoR = actual;
+    }
+
+    if (ultimoR) {
+        agregarFilaTiempoMuerto(ultimoR.data.fechaFin || ultimoR.data.fechaInicio, null, ultimoR.data, null, ultimoR.data.ciudad, null);
+    }
+
     // 4. Inicializar y pintar Mapa Leaflet del Roadmap
     setTimeout(() => {
         if (!hojaRutaLeafletMap) {
@@ -3089,6 +3171,26 @@ window.mostrarHojaRutaView = function () {
         }
 
         const navLatlngs = [];
+
+        // 1. Mostrar ubicación actual en el mapa si existe
+        if (actual && actual.data.lat && actual.data.lng) {
+            const currentIcon = L.divIcon({
+                className: "numbered-pin",
+                html: `
+                    <div class="pin-container actual">
+                        <span class="pin-number" style="color: white;">📍</span>
+                    </div>
+                `,
+                iconSize: [30, 42],
+                iconAnchor: [15, 30]
+            });
+            const mkActual = L.marker([actual.data.lat, actual.data.lng], { icon: currentIcon }).addTo(hojaRutaLeafletMap);
+            mkActual.bindPopup(`<b>📍 Ubicación y Empresa Actual</b><br><b>${actual.data.cliente}</b><br>${actual.data.ciudad}`);
+            hojaRutaMarkers.push(mkActual);
+            navLatlngs.push([actual.data.lat, actual.data.lng]);
+        }
+
+        // 2. Mostrar las futuras
         futuras.forEach((r, idx) => {
             if (r.data.lat && r.data.lng) {
                 // Pin numerado cronológicamente
