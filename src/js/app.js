@@ -2940,6 +2940,15 @@ window.exportarReportePNG = async function () {
 // Distancia Haversine (en km)
 function calcularDistancia(lat1, lon1, lat2, lon2) {
     if (!lat1 || !lon1 || !lat2 || !lon2) return Infinity;
+
+    // Ensure coordinates are numbers
+    lat1 = parseFloat(lat1);
+    lon1 = parseFloat(lon1);
+    lat2 = parseFloat(lat2);
+    lon2 = parseFloat(lon2);
+
+    if (isNaN(lat1) || isNaN(lon1) || isNaN(lat2) || isNaN(lon2)) return Infinity;
+
     const R = 6371; // Radio de la Tierra en km
     const dLat = (lat2 - lat1) * Math.PI / 180;
     const dLon = (lon2 - lon1) * Math.PI / 180;
@@ -2983,6 +2992,76 @@ function normalizeStr(str) {
 
 let hojaRutaLeafletMap = null;
 let hojaRutaMarkers = [];
+let proximityRecommendationMarkers = [];
+let pasadasGlobal = [];
+let roadmapAnimationState = {
+    status: "stopped", // "playing", "paused", "stopped"
+    currentIndex: 0,
+    timeoutId: null
+};
+let roadmapWaypoints = [];
+
+function drawProximityRecommendations() {
+    if (!hojaRutaLeafletMap) return;
+
+    // First, clear any existing recommendation markers
+    proximityRecommendationMarkers.forEach(m => {
+        if (hojaRutaLeafletMap.hasLayer(m)) {
+            hojaRutaLeafletMap.removeLayer(m);
+        }
+    });
+    proximityRecommendationMarkers = [];
+
+    // Only show recommendations at zoom level 8 or higher
+    if (hojaRutaLeafletMap.getZoom() < 8) {
+        return;
+    }
+
+    const bounds = hojaRutaLeafletMap.getBounds();
+
+    const recommendations = pasadasGlobal.filter(p => {
+        if (!p.data.lat || !p.data.lng) return false;
+
+        const latLng = L.latLng(p.data.lat, p.data.lng);
+        if (!bounds.contains(latLng)) return false;
+
+        // Exclude if it's part of the main roadmap
+        const isWaypoint = roadmapWaypoints.some(wp =>
+            wp.lat && wp.lng &&
+            Math.abs(parseFloat(wp.lat) - parseFloat(p.data.lat)) < 0.0001 &&
+            Math.abs(parseFloat(wp.lng) - parseFloat(p.data.lng)) < 0.0001
+        );
+        if (isWaypoint) return false;
+        
+        // Exclude if it's already being shown as a recommendation (unlikely but safe)
+        const isAlreadyDrawn = proximityRecommendationMarkers.some(m => {
+            const mLatLng = m.getLatLng();
+            return Math.abs(mLatLng.lat - p.data.lat) < 0.0001 && Math.abs(mLatLng.lng - p.data.lng) < 0.0001;
+        });
+        if(isAlreadyDrawn) return false;
+
+        return true;
+    });
+    
+    // Limit number of recommendations to avoid clutter
+    const limitedRecommendations = recommendations.slice(0, 30);
+
+    const recommendationIcon = new L.Icon({
+        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-violet.png',
+        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41]
+    });
+
+    limitedRecommendations.forEach(rec => {
+        const marker = L.marker([rec.data.lat, rec.data.lng], { icon: recommendationIcon, zIndexOffset: 50, opacity: 0.8 });
+        marker.bindPopup(`<b>Sugerencia por cercanía</b><br><b>Cliente:</b> ${rec.data.cliente}<br><b>Ciudad:</b> ${rec.data.ciudad}`);
+        marker.addTo(hojaRutaLeafletMap);
+        proximityRecommendationMarkers.push(marker);
+    });
+}
 
 window.mostrarHojaRutaView = function () {
     document.getElementById("calendar-container").style.display = "none";
@@ -3034,7 +3113,9 @@ window.mostrarHojaRutaView = function () {
 
     // Filtramos pasadas (usaremos TODAS de todos los años disponibles para mayor precisión en ubicaciones)
     const pasadasBase = globalReservas.filter(r => (r.data.fechaInicio || "") < todayStr);
-    const pasadas = pasadasBase.filter(r => !clientesFuturos.has(normalizeStr(r.data.cliente)) && !r.data.esEspecial);
+    pasadasGlobal = pasadasBase.filter(r => !clientesFuturos.has(normalizeStr(r.data.cliente)) && !r.data.esEspecial);
+
+    const pasadas = pasadasGlobal;
 
     if (futuras.length === 0 && !actual) {
         tbody.innerHTML = "<tr><td colspan=\"2\" style=\"text-align:center;\">No hay reservas para la Hoja de Ruta.</td></tr>";
@@ -3203,77 +3284,202 @@ window.mostrarHojaRutaView = function () {
     setTimeout(() => {
         if (!hojaRutaLeafletMap) {
             hojaRutaLeafletMap = L.map("hojaRutaMap", {
-                dragging: false,
-                zoomControl: false,
-                scrollWheelZoom: false,
-                doubleClickZoom: false,
-                touchZoom: false,
-                boxZoom: false,
-                keyboard: false,
+                // dragging: false, // Re-enable for better UX
+                zoomControl: true, // Re-enable for better UX
+                scrollWheelZoom: true,
+                doubleClickZoom: true,
+                touchZoom: true,
+                boxZoom: true,
+                keyboard: true,
                 renderer: L.canvas() // Forzar renderizado Canvas para compatibilidad con PDF
             }).setView([23.6345, -102.5528], 5);
             L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
                 attribution: "© OpenStreetMap",
-                crossOrigin: true // Habilitar CORS para captura de imagen sin errores
+                crossOrigin: true
             }).addTo(hojaRutaLeafletMap);
+
+            hojaRutaLeafletMap.on('zoomend', drawProximityRecommendations);
+            hojaRutaLeafletMap.on('moveend', drawProximityRecommendations);
         } else {
-            hojaRutaLeafletMap.invalidateSize(); // Fix modal rendering
-            hojaRutaMarkers.forEach(m => hojaRutaLeafletMap.removeLayer(m));
-            hojaRutaMarkers = [];
+            hojaRutaLeafletMap.invalidateSize();
         }
-
-        const navLatlngs = [];
-
-        // 1. Mostrar ubicación actual en el mapa si existe
+        
+        // Populate waypoints for animation
+        roadmapWaypoints = [];
         if (actual && actual.data.lat && actual.data.lng) {
-            const currentIcon = L.divIcon({
-                className: "numbered-pin",
-                html: `
-                    <div class="pin-container actual">
-                        <span class="pin-number" style="color: white;">📍</span>
-                    </div>
-                `,
-                iconSize: [30, 42],
-                iconAnchor: [15, 30]
+            roadmapWaypoints.push({
+                lat: actual.data.lat,
+                lng: actual.data.lng,
+                popup: `<b>📍 Ubicación y Empresa Actual</b><br><b>${actual.data.cliente}</b><br>${actual.data.ciudad}`,
+                isCurrent: true
             });
-            const mkActual = L.marker([actual.data.lat, actual.data.lng], { icon: currentIcon }).addTo(hojaRutaLeafletMap);
-            mkActual.bindPopup(`<b>📍 Ubicación y Empresa Actual</b><br><b>${actual.data.cliente}</b><br>${actual.data.ciudad}`);
-            hojaRutaMarkers.push(mkActual);
-            navLatlngs.push([actual.data.lat, actual.data.lng]);
         }
-
-        // 2. Mostrar las futuras
         futuras.forEach((r, idx) => {
             if (r.data.lat && r.data.lng) {
-                // Pin numerado cronológicamente
-                const numberedIcon = L.divIcon({
-                    className: "numbered-pin",
-                    html: `
-                        <div class="pin-container">
-                            <span class="pin-number">${idx + 1}</span>
-                        </div>
-                    `,
-                    iconSize: [30, 42],
-                    iconAnchor: [15, 30]
+                roadmapWaypoints.push({
+                    lat: r.data.lat,
+                    lng: r.data.lng,
+                    popup: `<b>${idx + 1}. ${r.data.cliente}</b><br>${r.data.ciudad}<br>${formatearFecha(r.data.fechaInicio)}`,
+                    isCurrent: false
                 });
-
-                const mk = L.marker([r.data.lat, r.data.lng], { icon: numberedIcon }).addTo(hojaRutaLeafletMap);
-                mk.bindPopup(`<b>${idx + 1}. ${r.data.cliente}</b><br>${r.data.ciudad}<br>${formatearFecha(r.data.fechaInicio)}`);
-                hojaRutaMarkers.push(mk);
-                navLatlngs.push([r.data.lat, r.data.lng]);
             }
         });
 
-        // Trazar línea de ruta
-        if (navLatlngs.length > 1) {
-            const polyline = L.polyline(navLatlngs, { color: "#ffc107", weight: 4, dashArray: "10, 10" }).addTo(hojaRutaLeafletMap);
-            hojaRutaMarkers.push(polyline);
-            hojaRutaLeafletMap.fitBounds(polyline.getBounds(), { padding: [30, 30] });
-        }
-
+        // Initial static drawing
+        resetRoadmapAnimation();
 
     }, 300);
 };
+
+function drawStaticRoadmap() {
+    if (!hojaRutaLeafletMap) return;
+
+    // Clear previous items
+    hojaRutaMarkers.forEach(m => hojaRutaLeafletMap.removeLayer(m));
+    hojaRutaMarkers = [];
+
+    const navLatlngs = roadmapWaypoints.map(wp => [wp.lat, wp.lng]);
+
+    roadmapWaypoints.forEach((waypoint, idx) => {
+        let icon;
+        if (waypoint.isCurrent) {
+            icon = L.divIcon({
+                className: "numbered-pin",
+                html: `<div class="pin-container actual"><span class="pin-number" style="color: white;">📍</span></div>`,
+                iconSize: [30, 42],
+                iconAnchor: [15, 30]
+            });
+        } else {
+            const futureIndex = roadmapWaypoints.findIndex(wp => !wp.isCurrent);
+            const displayIndex = idx - futureIndex + 1;
+            icon = L.divIcon({
+                className: "numbered-pin",
+                html: `<div class="pin-container"><span class="pin-number">${displayIndex}</span></div>`,
+                iconSize: [30, 42],
+                iconAnchor: [15, 30]
+            });
+        }
+
+        const marker = L.marker([waypoint.lat, waypoint.lng], { icon: icon }).addTo(hojaRutaLeafletMap);
+        marker.bindPopup(waypoint.popup);
+        hojaRutaMarkers.push(marker);
+    });
+
+    if (navLatlngs.length > 1) {
+        const polyline = L.polyline(navLatlngs, { color: "#ffc107", weight: 4, dashArray: "10, 10" }).addTo(hojaRutaLeafletMap);
+        hojaRutaMarkers.push(polyline);
+        hojaRutaLeafletMap.fitBounds(polyline.getBounds(), { padding: [30, 30] });
+    } else if (navLatlngs.length === 1) {
+        hojaRutaLeafletMap.flyTo(navLatlngs[0], 10);
+    }
+}
+
+window.playRoadmapAnimation = function () {
+    const btnPlay = document.getElementById("playRoadmapAnimation");
+    const btnPause = document.getElementById("pauseRoadmapAnimation");
+    const btnReset = document.getElementById("resetRoadmapAnimation");
+
+    if (roadmapAnimationState.status === "paused") {
+        roadmapAnimationState.status = "playing";
+        if (btnPause) btnPause.innerHTML = "⏸️ Pausar";
+        animateNextStep(); // Resume from current index
+    } else {
+        roadmapAnimationState.status = "playing";
+        roadmapAnimationState.currentIndex = 0;
+        if (btnPlay) btnPlay.style.display = "none";
+        if (btnPause) btnPause.style.display = "inline-block";
+        if (btnReset) btnReset.style.display = "inline-block";
+        if (btnPause) btnPause.innerHTML = "⏸️ Pausar";
+        
+        hojaRutaMarkers.forEach(m => hojaRutaLeafletMap.removeLayer(m));
+        hojaRutaMarkers = [];
+        hojaRutaLeafletMap.closePopup();
+
+        animateNextStep();
+    }
+}
+
+window.pauseRoadmapAnimation = function () {
+    const btnPause = document.getElementById("pauseRoadmapAnimation");
+
+    if (roadmapAnimationState.status === "playing") {
+        roadmapAnimationState.status = "paused";
+        clearTimeout(roadmapAnimationState.timeoutId);
+        if (btnPause) btnPause.innerHTML = "▶️ Reanudar";
+    } else if (roadmapAnimationState.status === "paused") {
+        playRoadmapAnimation(); // Simply resume
+    }
+}
+
+window.resetRoadmapAnimation = function () {
+    const btnPlay = document.getElementById("playRoadmapAnimation");
+    const btnPause = document.getElementById("pauseRoadmapAnimation");
+    const btnReset = document.getElementById("resetRoadmapAnimation");
+
+    roadmapAnimationState.status = "stopped";
+    roadmapAnimationState.currentIndex = 0;
+    clearTimeout(roadmapAnimationState.timeoutId);
+    
+    if (btnPlay) btnPlay.style.display = "inline-block";
+    if (btnPause) btnPause.style.display = "none";
+    if (btnReset) btnReset.style.display = "none";
+
+    drawStaticRoadmap();
+}
+
+function animateNextStep() {
+    if (roadmapAnimationState.status !== "playing" || roadmapWaypoints.length === 0) {
+        return;
+    }
+
+    const index = roadmapAnimationState.currentIndex;
+    if (index >= roadmapWaypoints.length) {
+        resetRoadmapAnimation();
+        return;
+    }
+
+    const waypoint = roadmapWaypoints[index];
+    const latLng = [waypoint.lat, waypoint.lng];
+
+    hojaRutaLeafletMap.flyTo(latLng, 12, { duration: 2 });
+
+    hojaRutaLeafletMap.once('moveend', () => {
+        if (roadmapAnimationState.status !== "playing") return;
+
+        // Add polyline segment from previous point
+        if (index > 0) {
+            const prevWaypoint = roadmapWaypoints[index - 1];
+            const segment = L.polyline([[prevWaypoint.lat, prevWaypoint.lng], latLng], { color: "#ffc107", weight: 4 }).addTo(hojaRutaLeafletMap);
+            hojaRutaMarkers.push(segment);
+        }
+
+        let icon;
+        if (waypoint.isCurrent) {
+             icon = L.divIcon({
+                className: "numbered-pin",
+                html: `<div class="pin-container actual"><span class="pin-number" style="color: white;">📍</span></div>`,
+                iconSize: [30, 42],
+                iconAnchor: [15, 30]
+            });
+        } else {
+            const futureIndex = roadmapWaypoints.findIndex(wp => !wp.isCurrent);
+            const displayIndex = index - futureIndex + 1;
+            icon = L.divIcon({
+                className: "numbered-pin",
+                html: `<div class="pin-container"><span class="pin-number">${displayIndex}</span></div>`,
+                iconSize: [30, 42],
+                iconAnchor: [15, 30]
+            });
+        }
+        
+        const marker = L.marker(latLng, { icon: icon }).addTo(hojaRutaLeafletMap);
+        marker.bindPopup(waypoint.popup).openPopup();
+        hojaRutaMarkers.push(marker);
+
+        roadmapAnimationState.currentIndex++;
+        roadmapAnimationState.timeoutId = setTimeout(animateNextStep, 3000);
+    });
+}
 
 // --- EXPORTACIÓN DE HOJA DE RUTA A PDF ---
 window.exportarHojaRutaPDF = async function () {
