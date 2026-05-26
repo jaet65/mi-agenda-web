@@ -2663,6 +2663,7 @@ window.generarReporte = function () {
         });
 
         let clientePrincipal = "-";
+        let diasPrincipal = 0; // Initialize diasPrincipal
         const candidatos = Object.entries(clientesData);
 
         if (candidatos.length > 0) {
@@ -2685,9 +2686,10 @@ window.generarReporte = function () {
 
             // El ganador es el primero de la lista después de todas las ordenaciones
             clientePrincipal = empatadosPorDias[0][0];
+            diasPrincipal = empatadosPorDias[0][1].dias; // Get the days for the principal client
         }
 
-        kpiClientePrincipal.textContent = clientePrincipal;
+        kpiClientePrincipal.textContent = `${clientePrincipal} (${diasPrincipal} días)`;
     }
 
     let kpiSemanas = document.getElementById("kpiSemanas");
