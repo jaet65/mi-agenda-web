@@ -2495,6 +2495,7 @@ window.generarReporte = function () {
     const kpiTotal = document.getElementById("kpiTotal");
     const kpiClientes = document.getElementById("kpiClientes");
     const kpiCiudad = document.getElementById("kpiCiudad");
+    const kpiClientePrincipal = document.getElementById("kpiClientePrincipal");
 
     tbody.innerHTML = "";
 
@@ -2590,6 +2591,7 @@ window.generarReporte = function () {
         tbody.innerHTML = "<tr><td colspan=\"3\" style=\"text-align: center; padding: 15px; color: var(--text-color-muted);\">No hay reservaciones que coincidan con los filtros.</td></tr>";
         kpiClientes.textContent = "0";
         kpiCiudad.textContent = "-";
+        if (kpiClientePrincipal) kpiClientePrincipal.textContent = "-";
         return;
     }
 
@@ -2639,6 +2641,54 @@ window.generarReporte = function () {
         }
     }
     kpiCiudad.textContent = ciudadMax;
+
+    if (kpiClientePrincipal) {
+        const clientesData = {};
+        reservasAgrupadas.forEach(r => {
+            const cliente = r.data.cliente.trim();
+            if (cliente) {
+                if (!clientesData[cliente]) {
+                    clientesData[cliente] = {
+                        count: 0,
+                        dias: 0,
+                        sedes: new Set()
+                    };
+                }
+                clientesData[cliente].count++;
+                clientesData[cliente].dias += r.diasReales || 1;
+                if (r.data.ciudad) {
+                    clientesData[cliente].sedes.add(r.data.ciudad.split(",")[0].trim());
+                }
+            }
+        });
+
+        let clientePrincipal = "-";
+        const candidatos = Object.entries(clientesData);
+
+        if (candidatos.length > 0) {
+            // 1. Criterio principal: Más días contratados (descendente)
+            candidatos.sort((a, b) => b[1].dias - a[1].dias);
+            const maxDias = candidatos[0][1].dias;
+            let empatadosPorDias = candidatos.filter(c => c[1].dias === maxDias);
+
+            // 2. Primer desempate: Menos bloques de reserva (ascendente)
+            if (empatadosPorDias.length > 1) {
+                empatadosPorDias.sort((a, b) => a[1].count - b[1].count);
+                const minBloques = empatadosPorDias[0][1].count;
+                empatadosPorDias = empatadosPorDias.filter(c => c[1].count === minBloques);
+            }
+
+            // 3. Segundo desempate: Menos sedes distintas (ascendente)
+            if (empatadosPorDias.length > 1) {
+                empatadosPorDias.sort((a, b) => a[1].sedes.size - b[1].sedes.size);
+            }
+
+            // El ganador es el primero de la lista después de todas las ordenaciones
+            clientePrincipal = empatadosPorDias[0][0];
+        }
+
+        kpiClientePrincipal.textContent = clientePrincipal;
+    }
 
     let kpiSemanas = document.getElementById("kpiSemanas");
     if (kpiSemanas) {
