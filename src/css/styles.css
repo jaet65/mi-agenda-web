@@ -782,6 +782,34 @@
             }
         }
 
+        /* CIRCULAR PROGRESS SPINNER */
+        .circular-progress {
+            position: relative;
+            height: 24px;
+            width: 24px;
+            border-radius: 50%;
+            background: conic-gradient(var(--accent-color) 0deg, var(--border-color) 0deg);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+        .circular-progress::before {
+            content: "";
+            position: absolute;
+            height: 18px;
+            width: 18px;
+            border-radius: 50%;
+            background-color: var(--header-bg);
+        }
+        .progress-value {
+            position: relative;
+            font-size: 8px;
+            font-weight: bold;
+            color: var(--text-color);
+        }
+
         /* Media Queries Móvil */
         @media (max-width: 768px) {
             .header h1 {

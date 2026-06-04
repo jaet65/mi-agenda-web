@@ -1612,8 +1612,19 @@ window.exportarCalendario = async function () {
     }
 
     const btn = document.getElementById("mobile-btn-export");
-    const originalText = btn ? btn.innerHTML : "📅 Sincronizar Google Calendar";
-    if (btn) btn.innerHTML = "⏳ Sincronizando...";
+    const originalText = btn ? btn.innerHTML : "📅 Sync Calendar";
+    const headerSpinner = document.getElementById("sync-spinner");
+    
+    if (btn) {
+        btn.innerHTML = "⏳ Sincronizando...";
+        btn.disabled = true;
+    }
+    if (headerSpinner) {
+        headerSpinner.style.display = "inline-flex";
+        headerSpinner.style.background = `conic-gradient(var(--accent-color) 0deg, var(--border-color) 0deg)`;
+        const valEl = headerSpinner.querySelector('.progress-value');
+        if (valEl) valEl.innerText = "0%";
+    }
 
     try {
         // 1. Obtener token de acceso de Google con permisos de calendario
@@ -1673,6 +1684,9 @@ window.exportarCalendario = async function () {
 
         let sincronizados = 0;
         let actualizados = 0;
+        const totalReservas = globalReservas.length;
+        let procesados = 0;
+        const validGoogleIds = new Set();
 
         for (const reserva of globalReservas) {
             const ciudad = reserva.data.ciudad || "Sin ciudad";
@@ -1732,6 +1746,8 @@ window.exportarCalendario = async function () {
                     if (postResponse.ok) {
                         const data = await postResponse.json();
                         await updateDoc(doc(db, "reservas", reserva.id), { googleEventId: data.id });
+                        reserva.data.googleEventId = data.id;
+                        validGoogleIds.add(data.id);
                         sincronizados++;
                     }
                 } else {
@@ -1741,20 +1757,67 @@ window.exportarCalendario = async function () {
                 if (method === "POST") {
                     const data = await response.json();
                     await updateDoc(doc(db, "reservas", reserva.id), { googleEventId: data.id });
+                    reserva.data.googleEventId = data.id;
+                    validGoogleIds.add(data.id);
                     sincronizados++;
                 } else {
+                    validGoogleIds.add(existingEventId);
                     actualizados++;
                 }
             }
+            
+            procesados++;
+            if (headerSpinner) {
+                const percentage = Math.round((procesados / totalReservas) * 100);
+                headerSpinner.style.background = `conic-gradient(var(--accent-color) ${percentage * 3.6}deg, var(--border-color) 0deg)`;
+                const valEl = headerSpinner.querySelector('.progress-value');
+                if (valEl) valEl.innerText = `${percentage}%`;
+            }
         }
+        // 3. Limpiar eventos "huérfanos" (eliminados de Firebase o editados)
+        let pageToken = null;
+        let deletedOrphans = 0;
+        const calIdUrl = encodeURIComponent(targetCalendarId);
         
-        alert(`✅ Sincronización exitosa en el calendario "${calendarName}".\nCreados: ${sincronizados}\nActualizados: ${actualizados}`);
+        do {
+            let listUrl = `https://www.googleapis.com/calendar/v3/calendars/${calIdUrl}/events?maxResults=250`;
+            if (pageToken) listUrl += `&pageToken=${pageToken}`;
+            
+            const listResp = await fetch(listUrl, {
+                headers: { "Authorization": `Bearer ${token}` }
+            });
+            
+            if (listResp.ok) {
+                const listData = await listResp.json();
+                if (listData.items) {
+                    for (const ev of listData.items) {
+                        if (ev.id && !validGoogleIds.has(ev.id)) {
+                            await fetch(`https://www.googleapis.com/calendar/v3/calendars/${calIdUrl}/events/${ev.id}`, {
+                                method: "DELETE",
+                                headers: { "Authorization": `Bearer ${token}` }
+                            });
+                            deletedOrphans++;
+                        }
+                    }
+                }
+                pageToken = listData.nextPageToken;
+            } else {
+                break;
+            }
+        } while (pageToken);
+
+        const msjOrphans = deletedOrphans > 0 ? `\nLimpiados (antiguos): ${deletedOrphans}` : "";
+        alert(`✅ Sincronización exitosa en el calendario "${calendarName}".\nCreados: ${sincronizados}\nActualizados: ${actualizados}${msjOrphans}`);
 
     } catch (error) {
         console.error("Error en sincronización con Google Calendar:", error);
         alert(`❌ Error al sincronizar: ${error.message}`);
     } finally {
-        if (btn) btn.innerHTML = originalText;
+        if (btn) {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
+        if (headerSpinner) headerSpinner.style.display = "none";
     }
 };
 
