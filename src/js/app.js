@@ -238,7 +238,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // 1. Configuración del Calendario (Esto es ligero)
     calendar = new Calendar(calendarEl, {
-        plugins: [ multiMonthPlugin ], // Añadir el plugin si usamos imports individuales
+        plugins: [multiMonthPlugin], // Añadir el plugin si usamos imports individuales
         eventContent: function (arg) {
             let container = document.createElement("div");
             container.style.display = "flex";
@@ -1612,9 +1612,9 @@ window.exportarCalendario = async function () {
     }
 
     const btn = document.getElementById("mobile-btn-export");
-    const originalText = btn ? btn.innerHTML : "📅 Sync Calendar";
+    const originalText = btn ? btn.innerHTML : "🗓️ Sync Calendar";
     const headerSpinner = document.getElementById("sync-spinner");
-    
+
     if (btn) {
         btn.innerHTML = "⏳ Sincronizando...";
         btn.disabled = true;
@@ -1631,7 +1631,7 @@ window.exportarCalendario = async function () {
         const provider = new GoogleAuthProvider();
         provider.addScope('https://www.googleapis.com/auth/calendar.events');
         provider.addScope('https://www.googleapis.com/auth/calendar'); // Necesario para leer y crear calendarios
-        
+
         // Forzar siempre solicitar permisos
         provider.setCustomParameters({
             prompt: "consent select_account"
@@ -1648,16 +1648,16 @@ window.exportarCalendario = async function () {
         // 2. Buscar o crear el calendario "Agenda TrackSIM"
         let targetCalendarId = "primary";
         const calendarName = "Agenda TrackSIM";
-        
+
         try {
             const listResp = await fetch("https://www.googleapis.com/calendar/v3/users/me/calendarList", {
                 headers: { "Authorization": `Bearer ${token}` }
             });
-            
+
             if (listResp.ok) {
                 const listData = await listResp.json();
                 const existingCal = listData.items?.find(c => c.summary === calendarName);
-                
+
                 if (existingCal) {
                     targetCalendarId = existingCal.id;
                 } else {
@@ -1670,7 +1670,7 @@ window.exportarCalendario = async function () {
                         },
                         body: JSON.stringify({ summary: calendarName })
                     });
-                    
+
                     if (createResp.ok) {
                         const newCal = await createResp.json();
                         targetCalendarId = newCal.id;
@@ -1684,9 +1684,19 @@ window.exportarCalendario = async function () {
 
         let sincronizados = 0;
         let actualizados = 0;
+        let omitidos = 0;
         const totalReservas = globalReservas.length;
         let procesados = 0;
         const validGoogleIds = new Set();
+
+        // Función ligera para generar una firma del contenido del evento
+        const computeHash = (data) => [
+            data.cliente || "",
+            data.ciudad || "",
+            data.direccion || "",
+            data.fechaInicio || "",
+            data.fechaFin || ""
+        ].join("|");
 
         for (const reserva of globalReservas) {
             const ciudad = reserva.data.ciudad || "Sin ciudad";
@@ -1696,7 +1706,7 @@ window.exportarCalendario = async function () {
 
             // Formato de Google Calendar para eventos de todo el día: YYYY-MM-DD
             const startStr = reserva.data.fechaInicio;
-            
+
             // Google Calendar también requiere que la fecha de fin de un evento de todo el día sea el día siguiente
             const endDateObj = new Date(reserva.data.fechaFin + "T00:00:00");
             endDateObj.setDate(endDateObj.getDate() + 1);
@@ -1711,6 +1721,22 @@ window.exportarCalendario = async function () {
             };
 
             const existingEventId = reserva.data.googleEventId;
+            const currentHash = computeHash(reserva.data);
+            const savedHash = reserva.data.googleEventHash;
+
+            // Si ya existe en Google Calendar y el contenido no cambió, omitir
+            if (existingEventId && savedHash && savedHash === currentHash) {
+                validGoogleIds.add(existingEventId);
+                omitidos++;
+                procesados++;
+                if (headerSpinner) {
+                    const pct = Math.round((procesados / totalReservas) * 100);
+                    headerSpinner.style.background = `conic-gradient(var(--accent-color) ${pct * 3.6}deg, var(--border-color) 0deg)`;
+                    const valEl = headerSpinner.querySelector('.progress-value');
+                    if (valEl) valEl.innerText = `${pct}%`;
+                }
+                continue;
+            }
 
             // Asegurarnos de usar el calendario correcto en la URL (codificamos targetCalendarId por si acaso)
             const encodedCalId = encodeURIComponent(targetCalendarId);
@@ -1742,7 +1768,7 @@ window.exportarCalendario = async function () {
                         },
                         body: JSON.stringify(eventBody)
                     });
-                    
+
                     if (postResponse.ok) {
                         const data = await postResponse.json();
                         await updateDoc(doc(db, "reservas", reserva.id), { googleEventId: data.id });
@@ -1756,16 +1782,19 @@ window.exportarCalendario = async function () {
             } else {
                 if (method === "POST") {
                     const data = await response.json();
-                    await updateDoc(doc(db, "reservas", reserva.id), { googleEventId: data.id });
+                    await updateDoc(doc(db, "reservas", reserva.id), { googleEventId: data.id, googleEventHash: currentHash });
                     reserva.data.googleEventId = data.id;
+                    reserva.data.googleEventHash = currentHash;
                     validGoogleIds.add(data.id);
                     sincronizados++;
                 } else {
+                    await updateDoc(doc(db, "reservas", reserva.id), { googleEventHash: currentHash });
+                    reserva.data.googleEventHash = currentHash;
                     validGoogleIds.add(existingEventId);
                     actualizados++;
                 }
             }
-            
+
             procesados++;
             if (headerSpinner) {
                 const percentage = Math.round((procesados / totalReservas) * 100);
@@ -1778,15 +1807,15 @@ window.exportarCalendario = async function () {
         let pageToken = null;
         let deletedOrphans = 0;
         const calIdUrl = encodeURIComponent(targetCalendarId);
-        
+
         do {
             let listUrl = `https://www.googleapis.com/calendar/v3/calendars/${calIdUrl}/events?maxResults=250`;
             if (pageToken) listUrl += `&pageToken=${pageToken}`;
-            
+
             const listResp = await fetch(listUrl, {
                 headers: { "Authorization": `Bearer ${token}` }
             });
-            
+
             if (listResp.ok) {
                 const listData = await listResp.json();
                 if (listData.items) {
@@ -1807,7 +1836,8 @@ window.exportarCalendario = async function () {
         } while (pageToken);
 
         const msjOrphans = deletedOrphans > 0 ? `\nLimpiados (antiguos): ${deletedOrphans}` : "";
-        alert(`✅ Sincronización exitosa en el calendario "${calendarName}".\nCreados: ${sincronizados}\nActualizados: ${actualizados}${msjOrphans}`);
+        const msjOmitidos = omitidos > 0 ? `\nSin cambios (omitidos): ${omitidos}` : "";
+        alert(`✅ Sincronización exitosa en el calendario "${calendarName}".\nCreados: ${sincronizados}\nActualizados: ${actualizados}${msjOmitidos}${msjOrphans}`);
 
     } catch (error) {
         console.error("Error en sincronización con Google Calendar:", error);
@@ -2902,98 +2932,98 @@ window.exportarReportePDF = async function () {
     try {
         // Ceder el control al navegador para que dibuje el spinner antes del bloqueo
         await new Promise(resolve => setTimeout(resolve, 50));
-        
+
         // ... resto del código ...
 
-            // Obtenemos canvas saltandonos JS PDF y cualquier blanco por defecto
-            const canvas = await html2canvas(elemento, opt.html2canvas);
+        // Obtenemos canvas saltandonos JS PDF y cualquier blanco por defecto
+        const canvas = await html2canvas(elemento, opt.html2canvas);
 
-            // Cargar la plantilla usando directamente pdf-lib
-            const resp = await fetch("template/TrackSIM Membretada.pdf");
-            if (!resp.ok) throw new Error("Plantilla no encontrada");
+        // Cargar la plantilla usando directamente pdf-lib
+        const resp = await fetch("template/TrackSIM Membretada.pdf");
+        if (!resp.ok) throw new Error("Plantilla no encontrada");
 
-            const templateBytes = await resp.arrayBuffer();
-            // Usamos PDFDocument importado
+        const templateBytes = await resp.arrayBuffer();
+        // Usamos PDFDocument importado
 
-            const mergedDoc = await PDFDocument.load(templateBytes);
-            const templateDoc = await PDFDocument.load(templateBytes);
+        const mergedDoc = await PDFDocument.load(templateBytes);
+        const templateDoc = await PDFDocument.load(templateBytes);
 
-            const [templatePage] = mergedDoc.getPages();
-            const { width, height } = templatePage.getSize();
+        const [templatePage] = mergedDoc.getPages();
+        const { width, height } = templatePage.getSize();
 
-            const marginX = 36;
-            const marginYTop = 36;
-            const marginYBottom = 36;
-            const drawWidth = width - marginX * 2;
-            const pageMaxHeight = height - marginYTop - marginYBottom;
+        const marginX = 36;
+        const marginYTop = 36;
+        const marginYBottom = 36;
+        const drawWidth = width - marginX * 2;
+        const pageMaxHeight = height - marginYTop - marginYBottom;
 
-            const pxToPtRatio = drawWidth / canvas.width;
-            const pagePxHeight = pageMaxHeight / pxToPtRatio;
+        const pxToPtRatio = drawWidth / canvas.width;
+        const pagePxHeight = pageMaxHeight / pxToPtRatio;
 
-            let remainHeight = canvas.height;
-            let yPos = 0;
-            let pageIdx = 0;
+        let remainHeight = canvas.height;
+        let yPos = 0;
+        let pageIdx = 0;
 
-            while (remainHeight > 0) {
-                const chunkHeightPx = Math.min(pagePxHeight, remainHeight);
-                const chunkCanvas = document.createElement("canvas");
-                chunkCanvas.width = canvas.width;
-                chunkCanvas.height = chunkHeightPx;
-                const ctx = chunkCanvas.getContext("2d");
+        while (remainHeight > 0) {
+            const chunkHeightPx = Math.min(pagePxHeight, remainHeight);
+            const chunkCanvas = document.createElement("canvas");
+            chunkCanvas.width = canvas.width;
+            chunkCanvas.height = chunkHeightPx;
+            const ctx = chunkCanvas.getContext("2d");
 
-                // Hack brutal si el fondo sigue blanco: Forzar alpha
-                ctx.drawImage(canvas, 0, yPos, canvas.width, chunkHeightPx, 0, 0, canvas.width, chunkHeightPx);
+            // Hack brutal si el fondo sigue blanco: Forzar alpha
+            ctx.drawImage(canvas, 0, yPos, canvas.width, chunkHeightPx, 0, 0, canvas.width, chunkHeightPx);
 
-                const imgData = ctx.getImageData(0, 0, chunkCanvas.width, chunkCanvas.height);
-                const data = imgData.data;
-                for (let i = 0; i < data.length; i += 4) {
-                    if (data[i] > 240 && data[i + 1] > 240 && data[i + 2] > 240) {
-                        data[i + 3] = 0; // Transparencia pura a los blancos
-                    }
+            const imgData = ctx.getImageData(0, 0, chunkCanvas.width, chunkCanvas.height);
+            const data = imgData.data;
+            for (let i = 0; i < data.length; i += 4) {
+                if (data[i] > 240 && data[i + 1] > 240 && data[i + 2] > 240) {
+                    data[i + 3] = 0; // Transparencia pura a los blancos
                 }
-                ctx.putImageData(imgData, 0, 0);
+            }
+            ctx.putImageData(imgData, 0, 0);
 
-                const pngData = chunkCanvas.toDataURL("image/png");
-                const pngImage = await mergedDoc.embedPng(pngData);
+            const pngData = chunkCanvas.toDataURL("image/png");
+            const pngImage = await mergedDoc.embedPng(pngData);
 
-                const drawHeight = chunkHeightPx * pxToPtRatio;
+            const drawHeight = chunkHeightPx * pxToPtRatio;
 
-                let targetPage;
-                if (pageIdx === 0) {
-                    targetPage = templatePage;
-                } else {
-                    const [copiedPage] = await mergedDoc.copyPages(templateDoc, [0]);
-                    targetPage = mergedDoc.addPage(copiedPage);
-                }
-
-                targetPage.drawImage(pngImage, {
-                    x: marginX,
-                    y: height - marginYTop - drawHeight,
-                    width: drawWidth,
-                    height: drawHeight
-                });
-
-                remainHeight -= chunkHeightPx;
-                yPos += chunkHeightPx;
-                pageIdx++;
+            let targetPage;
+            if (pageIdx === 0) {
+                targetPage = templatePage;
+            } else {
+                const [copiedPage] = await mergedDoc.copyPages(templateDoc, [0]);
+                targetPage = mergedDoc.addPage(copiedPage);
             }
 
-            const finalPdfBytes = await mergedDoc.save();
+            targetPage.drawImage(pngImage, {
+                x: marginX,
+                y: height - marginYTop - drawHeight,
+                width: drawWidth,
+                height: drawHeight
+            });
 
-            const blob = new Blob([finalPdfBytes], { type: "application/pdf" });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = `Reporte_Reservaciones_${new Date().getTime()}.pdf`;
-            a.click();
-            URL.revokeObjectURL(url);
+            remainHeight -= chunkHeightPx;
+            yPos += chunkHeightPx;
+            pageIdx++;
+        }
 
-        } catch (err) {
-            console.error("Error principal fusionando PDF exacto: ", err);
-            alert("Hubo un error crítico al procesar y montar el PNG en el membrete.");
-        } finally {
-            btn.innerHTML = textOrig;
-            btn.disabled = false;
+        const finalPdfBytes = await mergedDoc.save();
+
+        const blob = new Blob([finalPdfBytes], { type: "application/pdf" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `Reporte_Reservaciones_${new Date().getTime()}.pdf`;
+        a.click();
+        URL.revokeObjectURL(url);
+
+    } catch (err) {
+        console.error("Error principal fusionando PDF exacto: ", err);
+        alert("Hubo un error crítico al procesar y montar el PNG en el membrete.");
+    } finally {
+        btn.innerHTML = textOrig;
+        btn.disabled = false;
     }
 };
 
@@ -3018,7 +3048,7 @@ window.exportarReportePNG = async function () {
 
                 const el = doc.getElementById("reporteParaPdf");
                 if (el) {
-                    el.classList.add("pdf-export-mode"); 
+                    el.classList.add("pdf-export-mode");
 
                     let anc = el.parentElement;
                     while (anc && anc !== doc.body && anc !== docRoot) {
@@ -3053,7 +3083,7 @@ window.exportarReportePNG = async function () {
             const img = new Image();
             img.src = "icon-512.png";
             img.crossOrigin = "Anonymous";
-            
+
             await new Promise((resolve) => {
                 img.onload = resolve;
                 img.onerror = resolve; // Ignorar fallo para no bloquear
@@ -3065,17 +3095,17 @@ window.exportarReportePNG = async function () {
                 const sizeH = sizeW; // Asumiendo que el icono es un cuadrado perfecto
                 const x = (canvas.width - sizeW) / 2;
                 const y = (canvas.height - sizeH) / 2;
-                
+
                 ctx.globalAlpha = 0.10; // Opacidad reducida 
                 ctx.drawImage(img, x, y, sizeW, sizeH);
-                ctx.globalAlpha = 1.0; 
+                ctx.globalAlpha = 1.0;
             }
 
             // 2. Dibujar el contenido de html2canvas (que ahora tiene fondos transparentes) encima
             ctx.drawImage(canvas, 0, 0);
 
             const dataUrl = finalCanvas.toDataURL("image/png");
-            
+
             const a = document.createElement("a");
             a.href = dataUrl;
             a.download = `Reporte_Ejecutivo_${new Date().getTime()}.png`;
@@ -3191,17 +3221,17 @@ function drawProximityRecommendations() {
             Math.abs(parseFloat(wp.lng) - parseFloat(p.data.lng)) < 0.0001
         );
         if (isWaypoint) return false;
-        
+
         // Exclude if it's already being shown as a recommendation (unlikely but safe)
         const isAlreadyDrawn = proximityRecommendationMarkers.some(m => {
             const mLatLng = m.getLatLng();
             return Math.abs(mLatLng.lat - p.data.lat) < 0.0001 && Math.abs(mLatLng.lng - p.data.lng) < 0.0001;
         });
-        if(isAlreadyDrawn) return false;
+        if (isAlreadyDrawn) return false;
 
         return true;
     });
-    
+
     // Limit number of recommendations to avoid clutter
     const limitedRecommendations = recommendations.slice(0, 30);
 
@@ -3255,12 +3285,12 @@ window.mostrarHojaRutaView = function () {
 
     // 2. Separar reservas pasadas y futuras (excluyendo eventos especiales)
     let futuras = globalReservas.filter(r => (r.data.fechaInicio || "") >= todayStr && !r.data.esEspecial);
-    
+
     // Si actual es activa hoy, la excluimos de futuras para que no se duplique
     if (actual && esActivaHoy) {
         futuras = futuras.filter(r => r.id !== actual.id);
     }
-    
+
     // Volver a ordenar futuras por cronología
     futuras.sort((a, b) => (a.data.fechaInicio > b.data.fechaInicio) ? 1 : ((b.data.fechaInicio > a.data.fechaInicio) ? -1 : 0));
 
@@ -3367,14 +3397,14 @@ window.mostrarHojaRutaView = function () {
         const trAct = document.createElement("tr");
         trAct.className = "row-reserva";
         trAct.style.cssText = "background-color: rgba(40, 167, 69, 0.12) !important; border-left: 6px solid #28a745;";
-        
+
         const strFechaInicio = formatearFecha(actual.data.fechaInicio);
         const strFechaFin = actual.data.fechaFin ? formatearFecha(actual.data.fechaFin) : strFechaInicio;
-        
+
         let labelDetalle = `<span style="background-color: #28a745; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.75em; font-weight: bold; display: inline-block; margin-bottom: 5px;">📍 UBICACIÓN Y EMPRESA ACTUAL</span><br>`;
         labelDetalle += `<strong>👤 ${actual.data.cliente}</strong><br>📍 ${actual.data.ciudad}`;
         if (actual.data.direccion) labelDetalle += `<br><small>🗺️ ${actual.data.direccion}</small>`;
-        
+
         trAct.innerHTML = `
             <td style="white-space: nowrap; font-weight: bold; color: #28a745;">
                 ⚡ ${esActivaHoy ? "Activo Ahora" : "Último Servicio"}<br>
@@ -3462,7 +3492,7 @@ window.mostrarHojaRutaView = function () {
         } else {
             hojaRutaLeafletMap.invalidateSize();
         }
-        
+
         // Populate waypoints for animation
         roadmapWaypoints = [];
         if (actual && actual.data.lat && actual.data.lng) {
@@ -3549,7 +3579,7 @@ window.playRoadmapAnimation = function () {
         if (btnPause) btnPause.style.display = "inline-block";
         if (btnReset) btnReset.style.display = "inline-block";
         if (btnPause) btnPause.innerHTML = "⏸️ Pausar";
-        
+
         hojaRutaMarkers.forEach(m => hojaRutaLeafletMap.removeLayer(m));
         hojaRutaMarkers = [];
         hojaRutaLeafletMap.closePopup();
@@ -3578,7 +3608,7 @@ window.resetRoadmapAnimation = function () {
     roadmapAnimationState.status = "stopped";
     roadmapAnimationState.currentIndex = 0;
     clearTimeout(roadmapAnimationState.timeoutId);
-    
+
     if (btnPlay) btnPlay.style.display = "inline-block";
     if (btnPause) btnPause.style.display = "none";
     if (btnReset) btnReset.style.display = "none";
@@ -3614,7 +3644,7 @@ function animateNextStep() {
 
         let icon;
         if (waypoint.isCurrent) {
-             icon = L.divIcon({
+            icon = L.divIcon({
                 className: "numbered-pin",
                 html: `<div class="pin-container actual"><span class="pin-number" style="color: white;">📍</span></div>`,
                 iconSize: [30, 42],
@@ -3630,7 +3660,7 @@ function animateNextStep() {
                 iconAnchor: [15, 30]
             });
         }
-        
+
         const marker = L.marker(latLng, { icon: icon }).addTo(hojaRutaLeafletMap);
         marker.bindPopup(waypoint.popup).openPopup();
         hojaRutaMarkers.push(marker);
@@ -3657,95 +3687,95 @@ window.exportarHojaRutaPDF = async function () {
     const exportContainer = document.createElement("div");
     exportContainer.style.cssText = "width: 100%; height: auto !important; background: transparent !important; padding: 0 !important; margin: 0 !important; overflow: visible !important;";
 
-        // 1. Insertar Título profesional
-        const tituloPDF = document.createElement("h1");
-        tituloPDF.innerText = "Roadmap TrackSIM";
-        tituloPDF.style.cssText = "text-align: center; margin-bottom: 30px; font-size: 22pt; color: #000000; font-family: 'Montserrat', sans-serif; background: transparent !important;";
-        exportContainer.appendChild(tituloPDF);
+    // 1. Insertar Título profesional
+    const tituloPDF = document.createElement("h1");
+    tituloPDF.innerText = "Roadmap TrackSIM";
+    tituloPDF.style.cssText = "text-align: center; margin-bottom: 30px; font-size: 22pt; color: #000000; font-family: 'Montserrat', sans-serif; background: transparent !important;";
+    exportContainer.appendChild(tituloPDF);
 
-        // 2. Clonar SOLO el contenedor de la tabla (itinerario)
-        // Ignoramos el mapa y cualquier otro hermano
-        const tableContainer = elemento.querySelector(".hoja-ruta-container");
-        if (tableContainer) {
-            const tableClone = tableContainer.cloneNode(true);
-            // Limpieza de estilos del clon
-            tableClone.style.cssText = "width: 100%; background: transparent !important; border: none !important; margin: 0 !important; padding: 0 !important;";
+    // 2. Clonar SOLO el contenedor de la tabla (itinerario)
+    // Ignoramos el mapa y cualquier otro hermano
+    const tableContainer = elemento.querySelector(".hoja-ruta-container");
+    if (tableContainer) {
+        const tableClone = tableContainer.cloneNode(true);
+        // Limpieza de estilos del clon
+        tableClone.style.cssText = "width: 100%; background: transparent !important; border: none !important; margin: 0 !important; padding: 0 !important;";
 
-            // Forzar Montserrat y negro en todo el contenido de la tabla
-            tableClone.querySelectorAll("*").forEach(el => {
-                el.style.setProperty("color", "#000000", "important");
-                el.style.setProperty("background", "transparent", "important");
-                el.style.setProperty("background-color", "transparent", "important");
-                el.style.setProperty("font-family", "'Montserrat', sans-serif", "important");
-                el.style.setProperty("box-shadow", "none", "important");
+        // Forzar Montserrat y negro en todo el contenido de la tabla
+        tableClone.querySelectorAll("*").forEach(el => {
+            el.style.setProperty("color", "#000000", "important");
+            el.style.setProperty("background", "transparent", "important");
+            el.style.setProperty("background-color", "transparent", "important");
+            el.style.setProperty("font-family", "'Montserrat', sans-serif", "important");
+            el.style.setProperty("box-shadow", "none", "important");
+        });
+        exportContainer.appendChild(tableClone);
+    }
+
+    const opt = {
+        margin: [100, 40, 60, 40], // [top, left, bottom, right] pt
+        filename: "temp.pdf",
+        image: { type: "png", quality: 0.98 },
+        html2canvas: {
+            scale: 2,
+            useCORS: true,
+            backgroundColor: null,
+            logging: false
+        },
+        jsPDF: { unit: "pt", format: "letter", orientation: "portrait" },
+        pagebreak: { mode: "css" }
+    };
+
+    try {
+        await new Promise(resolve => setTimeout(resolve, 200));
+
+        // 1. Generar el PDF usando el contenedor "puro"
+        const contentPdfBuffer = await html2pdf().from(exportContainer).set(opt).output("arraybuffer");
+
+        // 2. Cargar la plantilla y el contenido con pdf-lib
+        // Usamos PDFDocument importado
+        const contentDoc = await PDFDocument.load(contentPdfBuffer);
+
+        const respTemplate = await fetch("template/TrackSIM Membretada.pdf");
+        if (!respTemplate.ok) throw new Error("Plantilla no encontrada");
+        const templateBytes = await respTemplate.arrayBuffer();
+        const templateDoc = await PDFDocument.load(templateBytes);
+        const [templatePageSource] = templateDoc.getPages();
+
+        // 3. Crear el documento final mezclando ambos
+        const finalDoc = await PDFDocument.create();
+        const contentPages = await finalDoc.copyPages(contentDoc, contentDoc.getPageIndices());
+
+        for (const contentPage of contentPages) {
+            // Agregar una página basada en la plantilla
+            const [newTemplatePage] = await finalDoc.copyPages(templateDoc, [0]);
+            finalDoc.addPage(newTemplatePage);
+            const { width, height } = newTemplatePage.getSize();
+
+            // Embeber la página de contenido sobre la plantilla
+            const embeddedContentPage = await finalDoc.embedPage(contentPage);
+            newTemplatePage.drawPage(embeddedContentPage, {
+                x: 0,
+                y: 0,
+                width: width,
+                height: height
             });
-            exportContainer.appendChild(tableClone);
         }
 
-        const opt = {
-            margin: [100, 40, 60, 40], // [top, left, bottom, right] pt
-            filename: "temp.pdf",
-            image: { type: "png", quality: 0.98 },
-            html2canvas: {
-                scale: 2,
-                useCORS: true,
-                backgroundColor: null,
-                logging: false
-            },
-            jsPDF: { unit: "pt", format: "letter", orientation: "portrait" },
-            pagebreak: { mode: "css" }
-        };
+        // 4. Guardar y descargar
+        const pdfBytes = await finalDoc.save();
+        const blob = new Blob([pdfBytes], { type: "application/pdf" });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = `Roadmap_TrackSIM_${new Date().toISOString().split("T")[0]}.pdf`;
+        link.click();
 
-        try {
-            await new Promise(resolve => setTimeout(resolve, 200));
-
-            // 1. Generar el PDF usando el contenedor "puro"
-            const contentPdfBuffer = await html2pdf().from(exportContainer).set(opt).output("arraybuffer");
-
-            // 2. Cargar la plantilla y el contenido con pdf-lib
-            // Usamos PDFDocument importado
-            const contentDoc = await PDFDocument.load(contentPdfBuffer);
-
-            const respTemplate = await fetch("template/TrackSIM Membretada.pdf");
-            if (!respTemplate.ok) throw new Error("Plantilla no encontrada");
-            const templateBytes = await respTemplate.arrayBuffer();
-            const templateDoc = await PDFDocument.load(templateBytes);
-            const [templatePageSource] = templateDoc.getPages();
-
-            // 3. Crear el documento final mezclando ambos
-            const finalDoc = await PDFDocument.create();
-            const contentPages = await finalDoc.copyPages(contentDoc, contentDoc.getPageIndices());
-
-            for (const contentPage of contentPages) {
-                // Agregar una página basada en la plantilla
-                const [newTemplatePage] = await finalDoc.copyPages(templateDoc, [0]);
-                finalDoc.addPage(newTemplatePage);
-                const { width, height } = newTemplatePage.getSize();
-
-                // Embeber la página de contenido sobre la plantilla
-                const embeddedContentPage = await finalDoc.embedPage(contentPage);
-                newTemplatePage.drawPage(embeddedContentPage, {
-                    x: 0,
-                    y: 0,
-                    width: width,
-                    height: height
-                });
-            }
-
-            // 4. Guardar y descargar
-            const pdfBytes = await finalDoc.save();
-            const blob = new Blob([pdfBytes], { type: "application/pdf" });
-            const link = document.createElement("a");
-            link.href = URL.createObjectURL(blob);
-            link.download = `Roadmap_TrackSIM_${new Date().toISOString().split("T")[0]}.pdf`;
-            link.click();
-
-        } catch (e) {
-            console.error(e);
-            alert("Error al generar PDF: " + e.message);
-        } finally {
-            btn.innerHTML = textOrig;
-            btn.disabled = false;
+    } catch (e) {
+        console.error(e);
+        alert("Error al generar PDF: " + e.message);
+    } finally {
+        btn.innerHTML = textOrig;
+        btn.disabled = false;
     }
 };
 
@@ -3764,7 +3794,7 @@ window.exportarHojaRutaPNG = async function () {
         // Crear contenedor virtual para exportar el contenido puro sin el mapa
         const exportContainer = document.createElement("div");
         exportContainer.style.cssText = "position: absolute; left: -9999px; top: 0; width: 800px; height: auto; background: transparent !important; padding: 20px !important; margin: 0 !important; overflow: visible !important;";
-        
+
         // 1. Insertar Título
         const titulo = document.createElement("h1");
         titulo.innerText = "Roadmap TrackSIM";
@@ -3823,7 +3853,7 @@ window.exportarHojaRutaPNG = async function () {
                 const y = (canvas.height - sizeH) / 2;
                 ctx.globalAlpha = 0.10; // Opacidad reducida
                 ctx.drawImage(img, x, y, sizeW, sizeH);
-                ctx.globalAlpha = 1.0; 
+                ctx.globalAlpha = 1.0;
             }
 
             // Encimar el texto renderizado
