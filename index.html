@@ -55,7 +55,7 @@
             <div class="mobile-section-title">Compartir</div>
             <button onclick="compartirApp(); toggleMenu()">🔗 Enviar Vínculo</button>
             <button onclick="verQR(); toggleMenu()">📱 Ver Código QR</button>
-            <button id="mobile-btn-export" onclick="exportarCalendario(); toggleMenu()">📅 Exportar Calendario</button>
+            <button id="mobile-btn-export" onclick="exportarCalendario(); toggleMenu()">📅 Sync Calendar</button>
 
             <div class="mobile-section-title">Navegación</div>
             <button id="mobile-btn-map" onclick="mostrarMapa(); toggleMenu()">🗺️ Mapa</button>
@@ -179,10 +179,14 @@
             <h3 data-html2canvas-ignore="true"
                 style="margin-top: 20px; text-align: center; font-size: 1.1rem; border-top: 1px solid #ccc; padding-top: 10px;">
                 Vista Mapa de los Servicios</h3>
-            <div id="roadmap-animation-controls" data-html2canvas-ignore="true" style="text-align: center; margin-bottom: 10px;">
-                <button id="playRoadmapAnimation" onclick="playRoadmapAnimation()" class="btn-action" style="background-color: #27ae60;">▶️ Iniciar Tour</button>
-                <button id="pauseRoadmapAnimation" onclick="pauseRoadmapAnimation()" class="btn-secondary" style="display: none;">⏸️ Pausar</button>
-                <button id="resetRoadmapAnimation" onclick="resetRoadmapAnimation()" class="btn-secondary" style="display: none;">🔄 Reiniciar</button>
+            <div id="roadmap-animation-controls" data-html2canvas-ignore="true"
+                style="text-align: center; margin-bottom: 10px;">
+                <button id="playRoadmapAnimation" onclick="playRoadmapAnimation()" class="btn-action"
+                    style="background-color: #27ae60;">▶️ Iniciar Tour</button>
+                <button id="pauseRoadmapAnimation" onclick="pauseRoadmapAnimation()" class="btn-secondary"
+                    style="display: none;">⏸️ Pausar</button>
+                <button id="resetRoadmapAnimation" onclick="resetRoadmapAnimation()" class="btn-secondary"
+                    style="display: none;">🔄 Reiniciar</button>
             </div>
             <div id="hojaRutaMap" data-html2canvas-ignore="true"
                 style="width: 100%; height: 400px; border-radius: 8px; border: 1px solid #ccc; margin-top: 10px;"></div>

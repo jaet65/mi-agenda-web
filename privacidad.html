@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Política de Privacidad - Agenda TrackSIM</title>
+    <link rel="stylesheet" href="src/css/styles.css">
+    <style>
+        html,
+        body {
+            overflow: auto !important;
+            height: auto !important;
+        }
+
+        .legal-container {
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 20px;
+            background-color: var(--card-bg, #fff);
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            color: var(--text-color, #333);
+        }
+
+        .legal-container h1,
+        .legal-container h2 {
+            color: var(--primary-color, #2c3e50);
+        }
+
+        .legal-container p,
+        .legal-container li {
+            line-height: 1.6;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="legal-container">
+        <h1>Política de Privacidad</h1>
+        <p><strong>Última actualización:</strong> Junio 2026</p>
+
+        <h2>1. Introducción</h2>
+        <p>En <strong>Agenda TrackSIM</strong>, valoramos y respetamos tu privacidad. Esta Política de Privacidad
+            explica cómo recopilamos, utilizamos y compartimos información sobre ti, así como los permisos que
+            solicitamos al interactuar con nuestra plataforma y servicios de terceros, incluyendo las API de Google.</p>
+
+        <h2>2. Uso de Datos de Google (Google API Services)</h2>
+        <p>Nuestra aplicación hace uso de la integración con <strong>Google Calendar API</strong> para sincronizar los
+            eventos y reservas de la agenda directamente con tu calendario personal o de trabajo. Para proporcionar esta
+            funcionalidad, solicitamos los siguientes permisos (scopes):</p>
+        <ul>
+            <li><code>https://www.googleapis.com/auth/calendar</code></li>
+            <li><code>https://www.googleapis.com/auth/calendar.events</code></li>
+        </ul>
+
+        <h3>2.1. ¿Qué datos de Google recopilamos y cómo los utilizamos?</h3>
+        <ul>
+            <li><strong>Creación y Modificación de Eventos:</strong> Usamos la API de Google para crear un calendario
+                llamado "Agenda TrackSIM" y para insertar, leer y actualizar eventos (reservas) en dicho calendario.
+            </li>
+            <li><strong>Almacenamiento:</strong> Solo guardamos en nuestra base de datos (Firebase) el identificador
+                único del evento de Google (<code>googleEventId</code>) para evitar crear eventos duplicados en futuras
+                sincronizaciones.</li>
+            <li><strong>Restricciones de Uso:</strong> El uso que hace <strong>Agenda TrackSIM</strong> de la
+                información recibida de las API de Google cumple estrictamente con la <a
+                    href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank"
+                    rel="noopener noreferrer">Política de datos de usuario de los servicios API de Google</a>, incluidos
+                los requisitos de uso limitado. Los datos de Google Calendar no se comparten con terceros, no se venden,
+                y solo se utilizan para proporcionar la funcionalidad de sincronización de la agenda a nuestros
+                administradores autorizados.</li>
+        </ul>
+
+        <h2>3. Datos proporcionados por el usuario</h2>
+        <p>Al utilizar nuestra aplicación, podemos solicitar información como: nombre de cliente, direcciones y datos de
+            contacto para gestionar las reservas. Esta información se almacena de manera segura en nuestra
+            infraestructura proporcionada por Google Firebase y solo tienen acceso los administradores autorizados (ej.
+            <code>magraz@corporativomaf.com</code>).</p>
+
+        <h2>4. Compartir Información</h2>
+        <p>No compartimos, vendemos, ni alquilamos tu información personal a terceros. El acceso a la plataforma está
+            estrictamente limitado a personal administrativo autorizado de TrackSIM.</p>
+
+        <h2>5. Seguridad</h2>
+        <p>Implementamos medidas de seguridad estándar de la industria (incluyendo la infraestructura de seguridad de
+            Firebase y Google Cloud) para proteger la información contra acceso no autorizado, alteración, divulgación o
+            destrucción.</p>
+
+        <h2>6. Contacto</h2>
+        <p>Si tienes alguna pregunta sobre esta Política de Privacidad o el uso de tus datos, por favor contáctanos en:
+            <br>
+            <strong>Correo electrónico:</strong> magraz@corporativomaf.com
+        </p>
+
+        <br>
+        <a href="index.html" class="btn-action">← Volver a la Agenda</a>
+    </div>
+</body>
+
+</html>

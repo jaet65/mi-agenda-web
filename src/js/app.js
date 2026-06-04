@@ -1605,61 +1605,157 @@ window.actualizarMapaYLista = function (centrarHoy = false) {
 };
 
 // --- FUNCIÓN RECUPERADA: EXPORTAR CALENDARIO ---
-window.exportarCalendario = function () {
+window.exportarCalendario = async function () {
     if (globalReservas.length === 0) {
-        alert("⚠️ No hay eventos para exportar.");
+        alert("⚠️ No hay eventos para sincronizar.");
         return;
     }
- 
-    const icsLines = [
-        "BEGIN:VCALENDAR",
-        "VERSION:2.0",
-        "PRODID:-//TrackSIM//Agenda//ES",
-        "CALSCALE:GREGORIAN",
-        "METHOD:PUBLISH"
-    ];
- 
-    globalReservas.forEach(reserva => {
-        // Formatear fechas YYYYMMDD (Quitar guiones)
-        const start = reserva.data.fechaInicio.replace(/-/g, "");
 
-        // iCal requiere que la fecha final sea exclusiva (día siguiente), así que sumamos 1 día
-        const endDateObj = new Date(reserva.data.fechaFin + "T00:00:00");
-        endDateObj.setDate(endDateObj.getDate() + 1);
-        const end = endDateObj.toISOString().split("T")[0].replace(/-/g, "");
+    const btn = document.getElementById("mobile-btn-export");
+    const originalText = btn ? btn.innerHTML : "📅 Sincronizar Google Calendar";
+    if (btn) btn.innerHTML = "⏳ Sincronizando...";
 
-        const ciudad = reserva.data.ciudad || "Sin ciudad";
-        const cliente = reserva.data.cliente || "Cliente";
-        const direccion = reserva.data.direccion || "";
+    try {
+        // 1. Obtener token de acceso de Google con permisos de calendario
+        const provider = new GoogleAuthProvider();
+        provider.addScope('https://www.googleapis.com/auth/calendar.events');
+        provider.addScope('https://www.googleapis.com/auth/calendar'); // Necesario para leer y crear calendarios
         
-        // Escapar caracteres especiales para formato iCal
-        const escapeText = (text) => {
-            return text.replace(/\\/g, "\\\\").replace(/,/g, "\\,").replace(/;/g, "\\;").replace(/\n/g, "\\n");
-        };
+        // Forzar siempre solicitar permisos
+        provider.setCustomParameters({
+            prompt: "consent select_account"
+        });
 
-        icsLines.push(
-            "BEGIN:VEVENT",
-            `DTSTART;VALUE=DATE:${start}`,
-            `DTEND;VALUE=DATE:${end}`,
-            `SUMMARY:${escapeText(cliente)} - ${escapeText(ciudad)}`,
-            `LOCATION:${escapeText(ciudad + (direccion ? ", " + direccion : ""))}`,
-            "DESCRIPTION:Gestionado desde Agenda TrackSIM. https://agendaservicios.web.app/index.html",
-            "STATUS:CONFIRMED",
-            "END:VEVENT"
-        );
-    });
+        const result = await signInWithPopup(auth, provider);
+        const credential = GoogleAuthProvider.credentialFromResult(result);
+        const token = credential.accessToken;
 
-    icsLines.push("END:VCALENDAR");
-    const icsContent = icsLines.join("\r\n");
+        if (!token) {
+            throw new Error("No se pudo obtener el token de acceso.");
+        }
 
-    // Crear enlace de descarga virtual
-    const blob = new Blob([icsContent], { type: "text/calendar;charset=utf-8" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = `agenda_tracksim_${new Date().toISOString().split("T")[0]}.ics`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+        // 2. Buscar o crear el calendario "Agenda TrackSIM"
+        let targetCalendarId = "primary";
+        const calendarName = "Agenda TrackSIM";
+        
+        try {
+            const listResp = await fetch("https://www.googleapis.com/calendar/v3/users/me/calendarList", {
+                headers: { "Authorization": `Bearer ${token}` }
+            });
+            
+            if (listResp.ok) {
+                const listData = await listResp.json();
+                const existingCal = listData.items?.find(c => c.summary === calendarName);
+                
+                if (existingCal) {
+                    targetCalendarId = existingCal.id;
+                } else {
+                    // Crear el calendario
+                    const createResp = await fetch("https://www.googleapis.com/calendar/v3/calendars", {
+                        method: "POST",
+                        headers: {
+                            "Authorization": `Bearer ${token}`,
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify({ summary: calendarName })
+                    });
+                    
+                    if (createResp.ok) {
+                        const newCal = await createResp.json();
+                        targetCalendarId = newCal.id;
+                    }
+                }
+            }
+        } catch (e) {
+            console.error("Error al buscar/crear el calendario secundario:", e);
+            // Fallback a 'primary' en caso de error o falta de permisos
+        }
+
+        let sincronizados = 0;
+        let actualizados = 0;
+
+        for (const reserva of globalReservas) {
+            const ciudad = reserva.data.ciudad || "Sin ciudad";
+            const cliente = reserva.data.cliente || "Cliente";
+            const direccion = reserva.data.direccion || "";
+            const descripcion = "Gestionado desde Agenda TrackSIM. https://agendaservicios.web.app/index.html";
+
+            // Formato de Google Calendar para eventos de todo el día: YYYY-MM-DD
+            const startStr = reserva.data.fechaInicio;
+            
+            // Google Calendar también requiere que la fecha de fin de un evento de todo el día sea el día siguiente
+            const endDateObj = new Date(reserva.data.fechaFin + "T00:00:00");
+            endDateObj.setDate(endDateObj.getDate() + 1);
+            const endStr = endDateObj.toISOString().split("T")[0];
+
+            const eventBody = {
+                summary: `${cliente} - ${ciudad}`,
+                location: ciudad + (direccion ? ", " + direccion : ""),
+                description: descripcion,
+                start: { date: startStr },
+                end: { date: endStr }
+            };
+
+            const existingEventId = reserva.data.googleEventId;
+
+            // Asegurarnos de usar el calendario correcto en la URL (codificamos targetCalendarId por si acaso)
+            const encodedCalId = encodeURIComponent(targetCalendarId);
+            let url = `https://www.googleapis.com/calendar/v3/calendars/${encodedCalId}/events`;
+            let method = "POST";
+
+            if (existingEventId) {
+                url = `https://www.googleapis.com/calendar/v3/calendars/${encodedCalId}/events/${existingEventId}`;
+                method = "PUT";
+            }
+
+            const response = await fetch(url, {
+                method: method,
+                headers: {
+                    "Authorization": `Bearer ${token}`,
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(eventBody)
+            });
+
+            if (!response.ok) {
+                // Si el PUT falla (ej. evento borrado manualmente o en otro calendario), intentar crearlo de nuevo
+                if (method === "PUT" && response.status === 404) {
+                    const postResponse = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodedCalId}/events`, {
+                        method: "POST",
+                        headers: {
+                            "Authorization": `Bearer ${token}`,
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify(eventBody)
+                    });
+                    
+                    if (postResponse.ok) {
+                        const data = await postResponse.json();
+                        await updateDoc(doc(db, "reservas", reserva.id), { googleEventId: data.id });
+                        sincronizados++;
+                    }
+                } else {
+                    console.error("Error al sincronizar evento:", await response.text());
+                }
+            } else {
+                if (method === "POST") {
+                    const data = await response.json();
+                    await updateDoc(doc(db, "reservas", reserva.id), { googleEventId: data.id });
+                    sincronizados++;
+                } else {
+                    actualizados++;
+                }
+            }
+        }
+        
+        alert(`✅ Sincronización exitosa en el calendario "${calendarName}".\nCreados: ${sincronizados}\nActualizados: ${actualizados}`);
+
+    } catch (error) {
+        console.error("Error en sincronización con Google Calendar:", error);
+        alert(`❌ Error al sincronizar: ${error.message}`);
+    } finally {
+        if (btn) btn.innerHTML = originalText;
+    }
 };
 
 window.compartirApp = async function () {
