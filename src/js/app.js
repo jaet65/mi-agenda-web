@@ -2047,6 +2047,7 @@ window.mostrarDetalles = function (evento) {
     const spanDireccion = document.getElementById("detDireccion");
 
     if (direccionTexto && direccionTexto.trim().length > 0) {
+        const urlMaps = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(direccionTexto)}`;
         // Escapamos comillas simples por seguridad para la función onclick
         const textoSeguroParaCopiar = direccionTexto.replace(/'/g, "\\\\'");
 
