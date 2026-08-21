@@ -34,6 +34,6 @@
     "html2pdf.js": "^0.14.0",
     "leaflet": "^1.9.4",
     "pdf-lib": "^1.17.1",
-    "xlsx": "^0.18.5"
+    "xlsx": "https://cdn.sheetjs.com/xlsx-latest/xlsx-latest.tgz"
   }
 }

@@ -1168,7 +1168,7 @@ function renderizarAgendaCustom() {
             : "";
 
         const badgeEspecialHtml = grupo.esEspecial
-            ? `<span class="badge-especial">⭐ Evento Especial</span>`
+            ? "<span class=\"badge-especial\">⭐ Evento Especial</span>"
             : "";
 
         card.innerHTML = `
@@ -1621,16 +1621,16 @@ window.exportarCalendario = async function () {
     }
     if (headerSpinner) {
         headerSpinner.style.display = "inline-flex";
-        headerSpinner.style.background = `conic-gradient(var(--accent-color) 0deg, var(--border-color) 0deg)`;
-        const valEl = headerSpinner.querySelector('.progress-value');
+        headerSpinner.style.background = "conic-gradient(var(--accent-color) 0deg, var(--border-color) 0deg)";
+        const valEl = headerSpinner.querySelector(".progress-value");
         if (valEl) valEl.innerText = "0%";
     }
 
     try {
         // 1. Obtener token de acceso de Google con permisos de calendario
         const provider = new GoogleAuthProvider();
-        provider.addScope('https://www.googleapis.com/auth/calendar.events');
-        provider.addScope('https://www.googleapis.com/auth/calendar'); // Necesario para leer y crear calendarios
+        provider.addScope("https://www.googleapis.com/auth/calendar.events");
+        provider.addScope("https://www.googleapis.com/auth/calendar"); // Necesario para leer y crear calendarios
 
         // Forzar siempre solicitar permisos
         provider.setCustomParameters({
@@ -1647,6 +1647,7 @@ window.exportarCalendario = async function () {
 
         // 2. Buscar o crear el calendario "Agenda TrackSIM"
         let targetCalendarId = "primary";
+        let calendarWasCreated = false;
         const calendarName = "Agenda TrackSIM";
 
         try {
@@ -1674,6 +1675,7 @@ window.exportarCalendario = async function () {
                     if (createResp.ok) {
                         const newCal = await createResp.json();
                         targetCalendarId = newCal.id;
+                        calendarWasCreated = true;
                     }
                 }
             }
@@ -1698,6 +1700,35 @@ window.exportarCalendario = async function () {
             data.fechaFin || ""
         ].join("|");
 
+        let targetCalendarEventIds = null;
+        if (!calendarWasCreated) {
+            targetCalendarEventIds = new Set();
+            let eventPageToken = null;
+            let eventListFailed = false;
+
+            do {
+                let eventListUrl = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(targetCalendarId)}/events?maxResults=250`;
+                if (eventPageToken) eventListUrl += `&pageToken=${encodeURIComponent(eventPageToken)}`;
+
+                const eventListResponse = await fetch(eventListUrl, {
+                    headers: { "Authorization": `Bearer ${token}` }
+                });
+
+                if (!eventListResponse.ok) {
+                    eventListFailed = true;
+                    break;
+                }
+
+                const eventListData = await eventListResponse.json();
+                for (const event of eventListData.items || []) {
+                    if (event.id) targetCalendarEventIds.add(event.id);
+                }
+                eventPageToken = eventListData.nextPageToken;
+            } while (eventPageToken);
+
+            if (eventListFailed) targetCalendarEventIds = null;
+        }
+
         for (const reserva of globalReservas) {
             const ciudad = reserva.data.ciudad || "Sin ciudad";
             const cliente = reserva.data.cliente || "Cliente";
@@ -1720,26 +1751,39 @@ window.exportarCalendario = async function () {
                 end: { date: endStr }
             };
 
-            const existingEventId = reserva.data.googleEventId;
+            const savedEventId = reserva.data.googleEventId;
+            const eventWasFound = targetCalendarEventIds?.has(savedEventId);
+            const existingEventId = calendarWasCreated || (targetCalendarEventIds && !eventWasFound)
+                ? null
+                : savedEventId;
             const currentHash = computeHash(reserva.data);
             const savedHash = reserva.data.googleEventHash;
+            const encodedCalId = encodeURIComponent(targetCalendarId);
+
+            let existingEventIsInTargetCalendar = false;
+            if (existingEventId && targetCalendarEventIds === null && savedHash === currentHash) {
+                const existingEventResponse = await fetch(
+                    `https://www.googleapis.com/calendar/v3/calendars/${encodedCalId}/events/${encodeURIComponent(existingEventId)}`,
+                    { headers: { "Authorization": `Bearer ${token}` } }
+                );
+                existingEventIsInTargetCalendar = existingEventResponse.ok;
+            }
 
             // Si ya existe en Google Calendar y el contenido no cambió, omitir
-            if (existingEventId && savedHash && savedHash === currentHash) {
+            if (existingEventId && savedHash && savedHash === currentHash && existingEventIsInTargetCalendar) {
                 validGoogleIds.add(existingEventId);
                 omitidos++;
                 procesados++;
                 if (headerSpinner) {
                     const pct = Math.round((procesados / totalReservas) * 100);
                     headerSpinner.style.background = `conic-gradient(var(--accent-color) ${pct * 3.6}deg, var(--border-color) 0deg)`;
-                    const valEl = headerSpinner.querySelector('.progress-value');
+                    const valEl = headerSpinner.querySelector(".progress-value");
                     if (valEl) valEl.innerText = `${pct}%`;
                 }
                 continue;
             }
 
             // Asegurarnos de usar el calendario correcto en la URL (codificamos targetCalendarId por si acaso)
-            const encodedCalId = encodeURIComponent(targetCalendarId);
             let url = `https://www.googleapis.com/calendar/v3/calendars/${encodedCalId}/events`;
             let method = "POST";
 
@@ -1758,8 +1802,8 @@ window.exportarCalendario = async function () {
             });
 
             if (!response.ok) {
-                // Si el PUT falla (ej. evento borrado manualmente o en otro calendario), intentar crearlo de nuevo
-                if (method === "PUT" && response.status === 404) {
+                // Si el evento fue borrado manualmente, intentar crearlo de nuevo
+                if (method === "PUT" && (response.status === 404 || response.status === 410)) {
                     const postResponse = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodedCalId}/events`, {
                         method: "POST",
                         headers: {
@@ -1771,8 +1815,12 @@ window.exportarCalendario = async function () {
 
                     if (postResponse.ok) {
                         const data = await postResponse.json();
-                        await updateDoc(doc(db, "reservas", reserva.id), { googleEventId: data.id });
+                        await updateDoc(doc(db, "reservas", reserva.id), {
+                            googleEventId: data.id,
+                            googleEventHash: currentHash
+                        });
                         reserva.data.googleEventId = data.id;
+                        reserva.data.googleEventHash = currentHash;
                         validGoogleIds.add(data.id);
                         sincronizados++;
                     }
@@ -1799,7 +1847,7 @@ window.exportarCalendario = async function () {
             if (headerSpinner) {
                 const percentage = Math.round((procesados / totalReservas) * 100);
                 headerSpinner.style.background = `conic-gradient(var(--accent-color) ${percentage * 3.6}deg, var(--border-color) 0deg)`;
-                const valEl = headerSpinner.querySelector('.progress-value');
+                const valEl = headerSpinner.querySelector(".progress-value");
                 if (valEl) valEl.innerText = `${percentage}%`;
             }
         }
@@ -1996,21 +2044,11 @@ window.mostrarDetalles = function (evento) {
 
     // --- INICIO CAMBIOS DIRECCIÓN E ICONOS ---
     const direccionTexto = evento.extendedProps.direccion;
-    const lat = evento.extendedProps.lat;
-    const lng = evento.extendedProps.lng;
     const spanDireccion = document.getElementById("detDireccion");
 
     if (direccionTexto && direccionTexto.trim().length > 0) {
         // Escapamos comillas simples por seguridad para la función onclick
         const textoSeguroParaCopiar = direccionTexto.replace(/'/g, "\\\\'");
-
-        // Calcular la URL de Google Maps
-        let urlMaps = "";
-        if (lat && lng) {
-            urlMaps = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
-        } else {
-            urlMaps = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(direccionTexto)}`;
-        }
 
         // NUEVA ESTRUCTURA HTML:
         // Usamos un contenedor flex para alinear texto e iconos
@@ -3236,8 +3274,8 @@ function drawProximityRecommendations() {
     const limitedRecommendations = recommendations.slice(0, 30);
 
     const recommendationIcon = new L.Icon({
-        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-violet.png',
-        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+        iconUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-violet.png",
+        shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png",
         iconSize: [25, 41],
         iconAnchor: [12, 41],
         popupAnchor: [1, -34],
@@ -3401,7 +3439,7 @@ window.mostrarHojaRutaView = function () {
         const strFechaInicio = formatearFecha(actual.data.fechaInicio);
         const strFechaFin = actual.data.fechaFin ? formatearFecha(actual.data.fechaFin) : strFechaInicio;
 
-        let labelDetalle = `<span style="background-color: #28a745; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.75em; font-weight: bold; display: inline-block; margin-bottom: 5px;">📍 UBICACIÓN Y EMPRESA ACTUAL</span><br>`;
+        let labelDetalle = "<span style=\"background-color: #28a745; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.75em; font-weight: bold; display: inline-block; margin-bottom: 5px;\">📍 UBICACIÓN Y EMPRESA ACTUAL</span><br>";
         labelDetalle += `<strong>👤 ${actual.data.cliente}</strong><br>📍 ${actual.data.ciudad}`;
         if (actual.data.direccion) labelDetalle += `<br><small>🗺️ ${actual.data.direccion}</small>`;
 
@@ -3487,8 +3525,8 @@ window.mostrarHojaRutaView = function () {
                 crossOrigin: true
             }).addTo(hojaRutaLeafletMap);
 
-            hojaRutaLeafletMap.on('zoomend', drawProximityRecommendations);
-            hojaRutaLeafletMap.on('moveend', drawProximityRecommendations);
+            hojaRutaLeafletMap.on("zoomend", drawProximityRecommendations);
+            hojaRutaLeafletMap.on("moveend", drawProximityRecommendations);
         } else {
             hojaRutaLeafletMap.invalidateSize();
         }
@@ -3534,7 +3572,7 @@ function drawStaticRoadmap() {
         if (waypoint.isCurrent) {
             icon = L.divIcon({
                 className: "numbered-pin",
-                html: `<div class="pin-container actual"><span class="pin-number" style="color: white;">📍</span></div>`,
+                html: "<div class=\"pin-container actual\"><span class=\"pin-number\" style=\"color: white;\">📍</span></div>",
                 iconSize: [30, 42],
                 iconAnchor: [15, 30]
             });
@@ -3586,7 +3624,7 @@ window.playRoadmapAnimation = function () {
 
         animateNextStep();
     }
-}
+};
 
 window.pauseRoadmapAnimation = function () {
     const btnPause = document.getElementById("pauseRoadmapAnimation");
@@ -3598,7 +3636,7 @@ window.pauseRoadmapAnimation = function () {
     } else if (roadmapAnimationState.status === "paused") {
         playRoadmapAnimation(); // Simply resume
     }
-}
+};
 
 window.resetRoadmapAnimation = function () {
     const btnPlay = document.getElementById("playRoadmapAnimation");
@@ -3614,7 +3652,7 @@ window.resetRoadmapAnimation = function () {
     if (btnReset) btnReset.style.display = "none";
 
     drawStaticRoadmap();
-}
+};
 
 function animateNextStep() {
     if (roadmapAnimationState.status !== "playing" || roadmapWaypoints.length === 0) {
@@ -3632,7 +3670,7 @@ function animateNextStep() {
 
     hojaRutaLeafletMap.flyTo(latLng, 12, { duration: 2 });
 
-    hojaRutaLeafletMap.once('moveend', () => {
+    hojaRutaLeafletMap.once("moveend", () => {
         if (roadmapAnimationState.status !== "playing") return;
 
         // Add polyline segment from previous point
@@ -3646,7 +3684,7 @@ function animateNextStep() {
         if (waypoint.isCurrent) {
             icon = L.divIcon({
                 className: "numbered-pin",
-                html: `<div class="pin-container actual"><span class="pin-number" style="color: white;">📍</span></div>`,
+                html: "<div class=\"pin-container actual\"><span class=\"pin-number\" style=\"color: white;\">📍</span></div>",
                 iconSize: [30, 42],
                 iconAnchor: [15, 30]
             });
