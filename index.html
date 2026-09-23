@@ -294,6 +294,45 @@
             <p><strong>Dirección:</strong> <span id="detDireccion"></span></p>
             <p><strong>Fechas:</strong> <span id="detFechas"></span></p>
 
+            <!-- SECCIÓN FINANZAS Y FACTURACIÓN (VISTA ADMINISTRADOR) -->
+            <div id="seccionAdminFinanzas" class="seccion-admin-finanzas" style="display: block;">
+                <div id="adminFinanzasHeader" class="admin-finanzas-header" onclick="toggleColapsoAdminFinanzas()">
+                    <p class="admin-finanzas-title" style="margin: 0;"><strong>💼 Control Administrativo</strong></p>
+                    <span id="adminFinanzasResumen" class="admin-finanzas-resumen"></span>
+                    <span id="iconoColapsoAdminFinanzas" class="admin-finanzas-chevron">▼</span>
+                </div>
+
+                <div id="adminFinanzasBody" class="admin-finanzas-body" style="display: none; margin-top: 12px;">
+                    <div class="form-group" style="margin-bottom: 12px;">
+                        <label for="detCostoInput"><strong>Costo de la Reservación:</strong></label>
+                        <div class="input-currency-wrapper">
+                            <span class="currency-symbol">$</span>
+                            <input type="number" id="detCostoInput" placeholder="0.00" step="1.00" min="0"
+                                class="input-costo" onkeydown="if(event.key==='Enter') guardarAdminFinanzas()">
+                        </div>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 12px;">
+                        <label><strong>Estado de Facturación:</strong></label>
+
+                        <div class="factura-pills-row">
+                            <button type="button" class="factura-pill" id="pillSinFacturar"
+                                onclick="seleccionarEstadoFactura('Sin facturar')">⚪ Sin facturar</button>
+                            <button type="button" class="factura-pill" id="pillSolicitada"
+                                onclick="seleccionarEstadoFactura('Factura solicitada')">🟡 Factura solicitada</button>
+                            <button type="button" class="factura-pill" id="pillFacturada"
+                                onclick="seleccionarEstadoFactura('Facturada')">🟢 Facturada</button>
+                        </div>
+                    </div>
+
+                    <button id="btnGuardarFinanzas" type="button" onclick="guardarAdminFinanzas()"
+                        class="btn-save-finanzas">
+                        💾 Guardar Costo y Factura
+                    </button>
+                    <div id="finanzasFeedback" class="finanzas-feedback" style="display: none;"></div>
+                </div>
+            </div>
+
             <div id="seccionPDF"
                 style="margin-top: 15px; padding: 10px; background: #f8f9fa18; border-radius: 8px; display: none;">
                 <p style="margin:0 0 10px 0;"><strong>Documentación:</strong></p>

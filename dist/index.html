@@ -16,8 +16,8 @@
     <meta property="og:description" content="Gestión de itinerarios y servicios TrackSIM.">
     <meta property="og:image" content="favicon.ico">
 
-  <script type="module" crossorigin src="/assets/main-Dj2BmeKa.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/main-DJ11UkVA.css">
+  <script type="module" crossorigin src="/assets/main-DjukUrgX.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/main-CbYJeNHP.css">
 </head>
 
 <body>
@@ -294,6 +294,43 @@
             <p><strong>Ciudad:</strong> <span id="detCiudad"></span></p>
             <p><strong>Dirección:</strong> <span id="detDireccion"></span></p>
             <p><strong>Fechas:</strong> <span id="detFechas"></span></p>
+
+            <!-- SECCIÓN FINANZAS Y FACTURACIÓN (VISTA ADMINISTRADOR) -->
+            <div id="seccionAdminFinanzas" class="seccion-admin-finanzas" style="display: none;">
+                <p class="admin-finanzas-title"><strong>💼 Control Administrativo:</strong></p>
+
+                <div class="form-group" style="margin-bottom: 12px;">
+                    <label for="detCostoInput"><strong>Costo de la Reservación:</strong></label>
+                    <div class="input-currency-wrapper">
+                        <span class="currency-symbol">$</span>
+                        <input type="number" id="detCostoInput" placeholder="0.00" step="0.01" min="0" class="input-costo" onkeydown="if(event.key==='Enter') guardarAdminFinanzas()">
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 12px;">
+                    <label><strong>Estado de Facturación:</strong></label>
+                    <div id="tristateCheckboxContainer" class="tristate-container" tabindex="0" role="checkbox" aria-checked="false" onclick="avanzarEstadoFactura()" onkeydown="teclaEstadoFactura(event)" title="Haz clic para alternar estado">
+                        <div id="tristateBox" class="tristate-box">
+                            <span id="tristateIcon">⬜</span>
+                        </div>
+                        <div class="tristate-label-group">
+                            <span id="tristateStatusBadge" class="factura-badge badge-sin-facturar">Sin facturar</span>
+                            <small class="tristate-hint">(Clic para cambiar)</small>
+                        </div>
+                    </div>
+
+                    <div class="factura-pills-row">
+                        <button type="button" class="factura-pill" id="pillSinFacturar" onclick="seleccionarEstadoFactura('Sin facturar')">⚪ Sin facturar</button>
+                        <button type="button" class="factura-pill" id="pillSolicitada" onclick="seleccionarEstadoFactura('Factura solicitada')">🟡 Factura solicitada</button>
+                        <button type="button" class="factura-pill" id="pillFacturada" onclick="seleccionarEstadoFactura('Facturada')">🟢 Facturada</button>
+                    </div>
+                </div>
+
+                <button id="btnGuardarFinanzas" type="button" onclick="guardarAdminFinanzas()" class="btn-save-finanzas">
+                    💾 Guardar Costo y Factura
+                </button>
+                <div id="finanzasFeedback" class="finanzas-feedback" style="display: none;"></div>
+            </div>
 
             <div id="seccionPDF"
                 style="margin-top: 15px; padding: 10px; background: #f8f9fa18; border-radius: 8px; display: none;">

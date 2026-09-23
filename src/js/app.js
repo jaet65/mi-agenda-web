@@ -184,6 +184,9 @@ let statsPorAno = {};
 let modoEdicion = false;
 let idGrupoEdicion = null;
 let urlEdicion = null;
+let costoEdicion = null;
+let estadoFacturaEdicion = "Sin facturar";
+let estadoFacturaActual = "Sin facturar";
 let globalReservas = []; // Inicializar como array vacío
 let currentMapYear = new Date().getFullYear();
 
@@ -872,7 +875,9 @@ window.guardarReserva = async function () {
                 groupId: grupoId,
                 creado: new Date(),
                 pdfUrl: urlEdicion,
-                esEspecial: esEspecial
+                esEspecial: esEspecial,
+                costo: (costoEdicion !== undefined && costoEdicion !== null) ? costoEdicion : null,
+                estadoFactura: estadoFacturaEdicion || "Sin facturar"
             });
         }
 
@@ -1346,7 +1351,9 @@ async function cargarReservas(forzarRecarga = false) {
                     pdfUrl: item.data.pdfUrl,
                     lat: item.data.lat,
                     lng: item.data.lng,
-                    esEspecial: esEspecial
+                    esEspecial: esEspecial,
+                    costo: (item.data.costo !== undefined && item.data.costo !== null) ? item.data.costo : null,
+                    estadoFactura: item.data.estadoFactura || "Sin facturar"
                 }
             });
         });
@@ -1397,7 +1404,9 @@ function agregarEventoAlCalendario(data, id) {
             pdfUrl: data.pdfUrl,
             esEspecial: esEspecial,
             lat: data.lat,
-            lng: data.lng
+            lng: data.lng,
+            costo: (data.costo !== undefined && data.costo !== null) ? data.costo : null,
+            estadoFactura: data.estadoFactura || "Sin facturar"
         }
     });
 }
@@ -1927,6 +1936,8 @@ window.abrirModalCrear = function (fecha) {
     modoEdicion = false;
     idGrupoEdicion = null;
     urlEdicion = null; // <--- LIMPIAMOS LA VARIABLE AQUÍ
+    costoEdicion = null;
+    estadoFacturaEdicion = "Sin facturar";
 
     // Limpiar campos
     document.getElementById("fechaInicio").value = fecha;
@@ -1957,6 +1968,8 @@ window.prepararEdicion = function () {
     modoEdicion = true;
     idGrupoEdicion = evento.extendedProps.groupId;
     urlEdicion = evento.extendedProps.pdfUrl || null; // <--- CAPTURAMOS EL LINK AQUÍ
+    costoEdicion = (evento.extendedProps.costo !== undefined && evento.extendedProps.costo !== null) ? evento.extendedProps.costo : null;
+    estadoFacturaEdicion = evento.extendedProps.estadoFactura || "Sin facturar";
 
     // Llenar el formulario
     document.getElementById("fechaInicio").value = evento.start.toISOString().split("T")[0];
@@ -2023,11 +2036,241 @@ window.habilitarEdicionDrive = function () {
     // Mantener visible el botón de eliminar
     btnEliminar.style.display = "block";
 };
+// --- FUNCIONES DE FINANZAS Y FACTURACIÓN (VISTA ADMINISTRADOR) ---
+window.toggleColapsoAdminFinanzas = function () {
+    const body = document.getElementById("adminFinanzasBody");
+    const icono = document.getElementById("iconoColapsoAdminFinanzas");
+    if (!body) return;
+    const estaOculto = window.getComputedStyle(body).display === "none";
+    body.style.display = estaOculto ? "block" : "none";
+    if (icono) {
+        icono.style.transform = estaOculto ? "rotate(180deg)" : "rotate(0deg)";
+    }
+};
+
+window.setColapsoAdminFinanzas = function (abierto) {
+    const body = document.getElementById("adminFinanzasBody");
+    const icono = document.getElementById("iconoColapsoAdminFinanzas");
+    if (!body) return;
+    body.style.display = abierto ? "block" : "none";
+    if (icono) {
+        icono.style.transform = abierto ? "rotate(180deg)" : "rotate(0deg)";
+    }
+};
+
+window.actualizarResumenAdminFinanzas = function () {
+    const resumenEl = document.getElementById("adminFinanzasResumen");
+    if (!resumenEl) return;
+    const inputCosto = document.getElementById("detCostoInput");
+    const valCosto = inputCosto ? inputCosto.value.trim() : "";
+    const estado = estadoFacturaActual || "Sin facturar";
+
+    let textoCosto = "";
+    if (valCosto !== "") {
+        const num = parseFloat(valCosto);
+        if (!isNaN(num)) {
+            textoCosto = `$${num.toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        }
+    }
+
+    if (textoCosto || estado !== "Sin facturar") {
+        resumenEl.textContent = `${textoCosto ? textoCosto + " • " : ""}${estado}`;
+        resumenEl.style.display = "inline-block";
+    } else {
+        resumenEl.textContent = "";
+        resumenEl.style.display = "none";
+    }
+};
+
+window.seleccionarEstadoFactura = function (nuevoEstado) {
+    const estadosValidos = ["Sin facturar", "Factura solicitada", "Facturada"];
+    if (!estadosValidos.includes(nuevoEstado)) {
+        nuevoEstado = "Sin facturar";
+    }
+    estadoFacturaActual = nuevoEstado;
+
+    const box = document.getElementById("tristateBox");
+    const icon = document.getElementById("tristateIcon");
+    const badge = document.getElementById("tristateStatusBadge");
+    const container = document.getElementById("tristateCheckboxContainer");
+
+    const pillSin = document.getElementById("pillSinFacturar");
+    const pillSol = document.getElementById("pillSolicitada");
+    const pillFac = document.getElementById("pillFacturada");
+
+    [pillSin, pillSol, pillFac].forEach(p => p && p.classList.remove("active"));
+
+    if (box) {
+        box.classList.remove("state-sin-facturar", "state-solicitada", "state-facturada");
+    }
+    if (badge) {
+        badge.classList.remove("badge-sin-facturar", "badge-solicitada", "badge-facturada");
+    }
+
+    if (nuevoEstado === "Sin facturar") {
+        if (box) box.classList.add("state-sin-facturar");
+        if (icon) icon.textContent = "⬜";
+        if (badge) {
+            badge.classList.add("badge-sin-facturar");
+            badge.textContent = "Sin facturar";
+        }
+        if (container) container.setAttribute("aria-checked", "false");
+        if (pillSin) pillSin.classList.add("active");
+    } else if (nuevoEstado === "Factura solicitada") {
+        if (box) box.classList.add("state-solicitada");
+        if (icon) icon.textContent = "🟡";
+        if (badge) {
+            badge.classList.add("badge-solicitada");
+            badge.textContent = "Factura solicitada";
+        }
+        if (container) container.setAttribute("aria-checked", "mixed");
+        if (pillSol) pillSol.classList.add("active");
+    } else if (nuevoEstado === "Facturada") {
+        if (box) box.classList.add("state-facturada");
+        if (icon) icon.textContent = "✅";
+        if (badge) {
+            badge.classList.add("badge-facturada");
+            badge.textContent = "Facturada";
+        }
+        if (container) container.setAttribute("aria-checked", "true");
+        if (pillFac) pillFac.classList.add("active");
+    }
+};
+
+window.avanzarEstadoFactura = function () {
+    const orden = ["Sin facturar", "Factura solicitada", "Facturada"];
+    const indice = orden.indexOf(estadoFacturaActual);
+    const siguienteIndice = (indice + 1) % orden.length;
+    window.seleccionarEstadoFactura(orden[siguienteIndice]);
+};
+
+window.teclaEstadoFactura = function (event) {
+    if (event.key === " " || event.key === "Enter") {
+        event.preventDefault();
+        window.avanzarEstadoFactura();
+    }
+};
+
+window.guardarAdminFinanzas = async function () {
+    if (!eventoSeleccionadoID) return;
+
+    const inputCosto = document.getElementById("detCostoInput");
+    const valCosto = inputCosto ? inputCosto.value.trim() : "";
+    let costoFinal = null;
+    if (valCosto !== "") {
+        const num = parseFloat(valCosto);
+        if (isNaN(num) || num < 0) {
+            alert("⚠️ Por favor ingresa un monto válido mayor o igual a 0.");
+            if (inputCosto) inputCosto.focus();
+            return;
+        }
+        costoFinal = Math.round(num * 100) / 100;
+    }
+
+    const estadoFacturaFinal = estadoFacturaActual || "Sin facturar";
+    const btn = document.getElementById("btnGuardarFinanzas");
+    const feedback = document.getElementById("finanzasFeedback");
+
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = "⏳ Guardando...";
+    }
+
+    try {
+        const datosActualizar = {
+            costo: costoFinal,
+            estadoFactura: estadoFacturaFinal
+        };
+
+        // Si pertenece a un grupo, actualizar todos los documentos del grupo
+        if (grupoSeleccionadoID) {
+            const q = query(collection(db, "reservas"), where("groupId", "==", grupoSeleccionadoID));
+            const querySnapshot = await getDocs(q);
+            const batch = writeBatch(db);
+            querySnapshot.forEach(docSnap => {
+                batch.update(docSnap.ref, datosActualizar);
+            });
+            await batch.commit();
+
+            // Actualizar memoria global
+            globalReservas.forEach(r => {
+                if (r.data.groupId === grupoSeleccionadoID) {
+                    r.data.costo = costoFinal;
+                    r.data.estadoFactura = estadoFacturaFinal;
+                    const ev = calendar.getEventById(r.id);
+                    if (ev) {
+                        ev.setExtendedProp("costo", costoFinal);
+                        ev.setExtendedProp("estadoFactura", estadoFacturaFinal);
+                    }
+                }
+            });
+        } else {
+            const docRef = doc(db, "reservas", eventoSeleccionadoID);
+            await updateDoc(docRef, datosActualizar);
+
+            const r = globalReservas.find(res => res.id === eventoSeleccionadoID);
+            if (r) {
+                r.data.costo = costoFinal;
+                r.data.estadoFactura = estadoFacturaFinal;
+            }
+            const ev = calendar.getEventById(eventoSeleccionadoID);
+            if (ev) {
+                ev.setExtendedProp("costo", costoFinal);
+                ev.setExtendedProp("estadoFactura", estadoFacturaFinal);
+            }
+        }
+
+        // Actualizar caché de localStorage para que persista inmediatamente
+        try {
+            localStorage.setItem("agenda_reservas_cache", JSON.stringify(globalReservas.map(item => ({
+                id: item.id,
+                data: item.data,
+                start: item.data.fechaInicio,
+                end: item.data.fechaFin
+            }))));
+            localStorage.setItem("agenda_reservas_timestamp", Date.now().toString());
+        } catch (e) {
+            console.warn("No se pudo actualizar localStorage:", e);
+        }
+
+        if (btn) {
+            btn.innerHTML = "✅ ¡Guardado!";
+            btn.style.background = "#198754";
+        }
+        if (feedback) {
+            feedback.style.display = "block";
+            feedback.style.color = "#28a745";
+            feedback.textContent = "Datos guardados correctamente.";
+        }
+
+        setTimeout(() => {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = "💾 Guardar Costo y Factura";
+                btn.style.background = "#28a745";
+            }
+            if (feedback) {
+                feedback.style.display = "none";
+            }
+        }, 2200);
+
+    } catch (err) {
+        console.error("Error al guardar finanzas:", err);
+        alert("❌ Error al guardar datos en la base de datos.");
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = "💾 Guardar Costo y Factura";
+            btn.style.background = "#28a745";
+        }
+    }
+};
+
 // 3. Función actualizada mostrarDetalles (Controla qué botones se ven)
 window.mostrarDetalles = function (evento) {
     eventoSeleccionadoID = evento.id;
     grupoSeleccionadoID = evento.extendedProps.groupId || null;
 
+    const seccionAdminFinanzas = document.getElementById("seccionAdminFinanzas");
     const seccionPDF = document.getElementById("seccionPDF");
     const pdfInfo = document.getElementById("pdfInfo");
     const linkPDF = document.getElementById("linkPDF");
@@ -2095,7 +2338,33 @@ window.mostrarDetalles = function (evento) {
         <span title="Ver en el calendario" style="font-size:0.8em; color:#999; margin-left:4px;">📅</span>
     `;
 
-    // ... (EL RESTO DE LA FUNCIÓN PERMANECE EXACTAMENTE IGUAL: Lógica de PDF, Admin, botones) ...
+    // Lógica de Finanzas y Facturación (Exclusivo Administrador)
+    if (esAdmin) {
+        if (seccionAdminFinanzas) {
+            seccionAdminFinanzas.style.display = "block";
+            const inputCosto = document.getElementById("detCostoInput");
+            if (inputCosto) {
+                const c = evento.extendedProps.costo;
+                inputCosto.value = (c !== undefined && c !== null) ? c : "";
+            }
+            const estadoF = evento.extendedProps.estadoFactura || "Sin facturar";
+            window.seleccionarEstadoFactura(estadoF);
+            const feedback = document.getElementById("finanzasFeedback");
+            if (feedback) feedback.style.display = "none";
+            const btnGuardarFin = document.getElementById("btnGuardarFinanzas");
+            if (btnGuardarFin) {
+                btnGuardarFin.innerHTML = "💾 Guardar Costo y Factura";
+                btnGuardarFin.disabled = false;
+                btnGuardarFin.style.background = "#28a745";
+            }
+        }
+    } else {
+        if (seccionAdminFinanzas) {
+            seccionAdminFinanzas.style.display = "none";
+        }
+    }
+
+    // Lógica de PDF, Admin, botones
     const urlExistente = evento.extendedProps.pdfUrl;
     if (esAdmin) {
         seccionPDF.style.display = "block";

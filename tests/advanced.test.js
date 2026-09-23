@@ -131,4 +131,44 @@ describe("Pruebas Avanzadas - Interacción y Lógica", () => {
         expect(resultsList.style.display).toBe("none");
         expect(resultsList.innerHTML).toBe("");
     });
+
+    it("debería contener los elementos de costo y estado de facturación en el modal de detalles", () => {
+        expect(document.getElementById("seccionAdminFinanzas")).not.toBeNull();
+        expect(document.getElementById("detCostoInput")).not.toBeNull();
+        expect(document.getElementById("tristateCheckboxContainer")).not.toBeNull();
+        expect(document.getElementById("tristateBox")).not.toBeNull();
+        expect(document.getElementById("tristateStatusBadge")).not.toBeNull();
+        expect(document.getElementById("btnGuardarFinanzas")).not.toBeNull();
+    });
+
+    it("la casilla de facturación tri-estado debería alternar entre los 3 estados correctamente", () => {
+        // Estado inicial
+        window.seleccionarEstadoFactura("Sin facturar");
+        const container = document.getElementById("tristateCheckboxContainer");
+        const badge = document.getElementById("tristateStatusBadge");
+        const box = document.getElementById("tristateBox");
+
+        expect(container.getAttribute("aria-checked")).toBe("false");
+        expect(badge.textContent).toBe("Sin facturar");
+        expect(box.classList.contains("state-sin-facturar")).toBe(true);
+
+        // Avanzar a Factura solicitada
+        window.avanzarEstadoFactura();
+        expect(container.getAttribute("aria-checked")).toBe("mixed");
+        expect(badge.textContent).toBe("Factura solicitada");
+        expect(box.classList.contains("state-solicitada")).toBe(true);
+
+        // Avanzar a Facturada
+        window.avanzarEstadoFactura();
+        expect(container.getAttribute("aria-checked")).toBe("true");
+        expect(badge.textContent).toBe("Facturada");
+        expect(box.classList.contains("state-facturada")).toBe(true);
+
+        // Ciclar de regreso a Sin facturar
+        window.avanzarEstadoFactura();
+        expect(container.getAttribute("aria-checked")).toBe("false");
+        expect(badge.textContent).toBe("Sin facturar");
+        expect(box.classList.contains("state-sin-facturar")).toBe(true);
+    });
 });
+

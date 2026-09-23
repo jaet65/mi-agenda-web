@@ -1135,6 +1135,272 @@
             /* Verde más oscuro al pasar el mouse */
         }
 
+        /* --- SECCIÓN ADMINISTRACIÓN: COSTO Y FACTURACIÓN --- */
+        .seccion-admin-finanzas {
+            margin-top: 15px;
+            padding: 12px;
+            background: var(--hover-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .admin-finanzas-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            user-select: none;
+            padding: 2px 0;
+            transition: opacity 0.2s ease;
+        }
+
+        .admin-finanzas-header:hover {
+            opacity: 0.85;
+        }
+
+        .admin-finanzas-chevron {
+            font-size: 0.8rem;
+            color: var(--text-color-muted);
+            transition: transform 0.25s ease;
+            margin-left: 6px;
+        }
+
+        .admin-finanzas-resumen {
+            font-size: 0.72rem;
+            font-weight: 600;
+            color: var(--text-color-muted);
+            margin-left: auto;
+            padding: 2px 8px;
+            border-radius: 10px;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            display: none;
+        }
+
+        .admin-finanzas-title {
+            margin: 0;
+            font-size: 0.9rem;
+            color: var(--text-color);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .input-currency-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .currency-symbol {
+            position: absolute;
+            left: 10px;
+            font-weight: 700;
+            color: var(--text-color-muted);
+            pointer-events: none;
+            user-select: none;
+        }
+
+        .input-costo {
+            padding-left: 26px !important;
+            font-weight: 600;
+        }
+
+        /* Casilla de verificación de 3 estados (Tri-state) */
+        .tristate-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 12px;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            cursor: pointer;
+            user-select: none;
+            transition: all 0.2s ease;
+            outline: none;
+        }
+
+        .tristate-container:hover,
+        .tristate-container:focus-visible {
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.15);
+        }
+
+        .tristate-box {
+            width: 22px;
+            height: 22px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            flex-shrink: 0;
+            border: 2px solid var(--border-color);
+            background: var(--input-bg);
+            transition: all 0.2s ease;
+        }
+
+        .tristate-box.state-sin-facturar {
+            border-color: #a0aec0;
+            background: var(--input-bg);
+            color: #718096;
+        }
+
+        .tristate-box.state-solicitada {
+            border-color: #f39c12;
+            background: #fff8e1;
+            color: #d68910;
+        }
+
+        body.dark-mode .tristate-box.state-solicitada {
+            background: #4a3810;
+            border-color: #f39c12;
+            color: #f9ca24;
+        }
+
+        .tristate-box.state-facturada {
+            border-color: #28a745;
+            background: #e8f5e9;
+            color: #28a745;
+        }
+
+        body.dark-mode .tristate-box.state-facturada {
+            background: #1b4324;
+            border-color: #2ecc71;
+            color: #2ecc71;
+        }
+
+        .tristate-label-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-grow: 1;
+            flex-wrap: wrap;
+        }
+
+        .factura-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+
+        .badge-sin-facturar {
+            background: #e2e8f0;
+            color: #4a5568;
+        }
+
+        body.dark-mode .badge-sin-facturar {
+            background: #2d3748;
+            color: #cbd5e0;
+        }
+
+        .badge-solicitada {
+            background: #fef3c7;
+            color: #b45309;
+            border: 1px solid #fde68a;
+        }
+
+        body.dark-mode .badge-solicitada {
+            background: #451a03;
+            color: #fcd34d;
+            border-color: #78350f;
+        }
+
+        .badge-facturada {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #a7f3d0;
+        }
+
+        body.dark-mode .badge-facturada {
+            background: #064e3b;
+            color: #6ee7b7;
+            border-color: #047857;
+        }
+
+        .tristate-hint {
+            font-size: 0.75rem;
+            color: var(--text-color-muted);
+        }
+
+        /* Píldoras de selección directa */
+        .factura-pills-row {
+            display: flex;
+            gap: 5px;
+            margin-top: 8px;
+        }
+
+        .factura-pill {
+            flex: 1;
+            padding: 5px 4px;
+            font-size: 0.72rem;
+            font-weight: 600;
+            border: 1px solid var(--border-color);
+            background: var(--input-bg);
+            color: var(--text-color);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: center;
+            white-space: nowrap;
+        }
+
+        .factura-pill:hover {
+            border-color: var(--accent-color);
+            background: var(--hover-bg);
+        }
+
+        .factura-pill.active {
+            border-color: var(--accent-color);
+            background: var(--accent-color);
+            color: white;
+            box-shadow: 0 2px 4px var(--shadow-color);
+        }
+
+        /* Botón Guardar Finanzas */
+        .btn-save-finanzas {
+            width: 100%;
+            padding: 9px 12px;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.88rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            margin-top: 6px;
+        }
+
+        .btn-save-finanzas:hover {
+            background: #218838;
+            transform: translateY(-1px);
+        }
+
+        .btn-save-finanzas:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .finanzas-feedback {
+            font-size: 0.8rem;
+            margin-top: 6px;
+            text-align: center;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
         .fc-header-toolbar {
             font-size: 0.85em;
         }
