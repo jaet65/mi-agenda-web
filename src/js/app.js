@@ -1063,7 +1063,7 @@ function actualizarHeaderAdmin() {
             } else {
                 const ultimoAnoMonto = mYears[mYears.length - 1];
                 const montoUltimo = montosPorAno[ultimoAnoMonto] || 0;
-                const montoFormatted = Number(montoUltimo).toLocaleString('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+                const montoFormatted = Number(montoUltimo).toLocaleString("es-MX", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
                 montoStatsDiv.innerHTML = `💰 ${ultimoAnoMonto}: $${montoFormatted} MXN <span style="font-size:0.8em">ℹ️</span>`;
                 montoStatsDiv.title = "Ver Reporte Ejecutivo";
                 montoStatsDiv.onclick = function () {
@@ -3191,7 +3191,7 @@ window.generarReporte = function () {
             <td>${ciudadDisplay}</td>
             <td>${fechaDisplay}</td>
             <td style="text-align: center; font-weight: 600;">${numDias}</td>
-            <td style="text-align: right;">${Number(r.data.costo || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} MXN</td>
+            <td style="text-align: right;">${Number(r.data.costo || 0).toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} MXN</td>
             <td style="text-align: center;" title="${esEstadoFacturada(r.data.estadoFactura) ? "Facturada" : "Sin facturar"}">${iconoEstadoFactura(r.data.estadoFactura)}</td>
         `;
         tbody.appendChild(tr);
@@ -3284,7 +3284,7 @@ window.generarReporte = function () {
         }
 
         if (kpiClientePrincipalMonto) {
-            const montoFormatted = `$${Number(montoPrincipal).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} MXN`;
+            const montoFormatted = `$${Number(montoPrincipal).toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} MXN`;
             kpiClientePrincipalMonto.innerHTML = clientePrincipalMonto !== "-"
                 ? `${clientePrincipalMonto} <span class="kpi-dual-subtext">(${montoFormatted})</span>`
                 : "-";
@@ -3295,7 +3295,7 @@ window.generarReporte = function () {
     if (kpiSemanas) {
         kpiSemanas.textContent = (totalDiasGlobales / 5).toFixed(1);
         const kpiTotalAdmin = document.getElementById("kpiTotalAdmin");
-        if (kpiTotalAdmin) { kpiTotalAdmin.textContent = `$${Number(totalAdmin).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} MXN`; }
+        if (kpiTotalAdmin) { kpiTotalAdmin.textContent = `$${Number(totalAdmin).toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} MXN`; }
     }
 };
 
@@ -3434,7 +3434,7 @@ window.exportarReportePDF = async function () {
         const blob = new Blob([finalPdfBytes], { type: "application/pdf" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
-        const fechaActual = new Date().toISOString().split('T')[0];
+        const fechaActual = new Date().toISOString().split("T")[0];
         a.href = url;
         a.download = `Summary_${fechaActual}.pdf`;
         a.click();
@@ -3538,7 +3538,7 @@ window.exportarReportePNG = async function () {
             const dataUrl = finalCanvas.toDataURL("image/png");
 
             const a = document.createElement("a");
-            const fechaActual = new Date().toISOString().split('T')[0];
+            const fechaActual = new Date().toISOString().split("T")[0];
             a.href = dataUrl;
             a.download = `Summary_${fechaActual}.png`;
             a.click();
