@@ -135,10 +135,13 @@ describe("Pruebas Avanzadas - Interacción y Lógica", () => {
     it("debería contener los elementos de costo y estado de facturación en el modal de detalles", () => {
         expect(document.getElementById("seccionAdminFinanzas")).not.toBeNull();
         expect(document.getElementById("detCostoInput")).not.toBeNull();
-        expect(document.getElementById("tristateCheckboxContainer")).not.toBeNull();
-        expect(document.getElementById("tristateBox")).not.toBeNull();
-        expect(document.getElementById("tristateStatusBadge")).not.toBeNull();
+        expect(document.getElementById("pillSinFacturar")).not.toBeNull();
+        expect(document.getElementById("pillFacturada")).not.toBeNull();
         expect(document.getElementById("btnGuardarFinanzas")).not.toBeNull();
+    });
+
+    it("debería contener el botón/tarjeta de monto total de reservaciones por año en el encabezado", () => {
+        expect(document.getElementById("admin-monto-stats")).not.toBeNull();
     });
 
     it("las pills de facturación deben marcarse según Sin facturar o Facturada", () => {

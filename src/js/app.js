@@ -180,6 +180,7 @@ const HERE_STYLE_DARK = "lite.night"; // Estilo oscuro de HERE Maps
 let eventoSeleccionadoID = null;
 let grupoSeleccionadoID = null;
 let statsPorAno = {};
+let montosPorAno = {};
 
 let modoEdicion = false;
 let idGrupoEdicion = null;
@@ -965,6 +966,8 @@ window.reintentarDireccion = function () {
 
 function calcularEstadisticas() {
     statsPorAno = {};
+    montosPorAno = {};
+    const gruposProcesadosPorAno = {};
 
     globalReservas.forEach(item => {
         if (item.data.esEspecial === true) {
@@ -973,6 +976,7 @@ function calcularEstadisticas() {
 
         const fechaStringInicio = item.data.fechaInicio;
         const fechaStringFin = item.data.fechaFin;
+        if (!fechaStringInicio) return;
 
         const current = new Date(fechaStringInicio + "T12:00:00");
         const fechaLimite = new Date(fechaStringFin + "T12:00:00");
@@ -981,13 +985,25 @@ function calcularEstadisticas() {
         if (diasTotales < 1) diasTotales = 1;
 
         const semanas = diasTotales / 5;
-
         const yearInicio = new Date(fechaStringInicio + "T12:00:00").getFullYear();
 
+        // 1. Semanas por año
         if (!statsPorAno[yearInicio]) {
             statsPorAno[yearInicio] = 0;
         }
         statsPorAno[yearInicio] += semanas;
+
+        // 2. Monto total por año (evitar duplicar el costo del mismo groupId en el mismo año)
+        if (!montosPorAno[yearInicio]) {
+            montosPorAno[yearInicio] = 0;
+            gruposProcesadosPorAno[yearInicio] = new Set();
+        }
+
+        const gid = item.data.groupId || item.id;
+        if (gid && !gruposProcesadosPorAno[yearInicio].has(gid)) {
+            gruposProcesadosPorAno[yearInicio].add(gid);
+            montosPorAno[yearInicio] += Number(item.data.costo || 0);
+        }
     });
 
     actualizarHeaderAdmin();
@@ -995,48 +1011,70 @@ function calcularEstadisticas() {
 
 function actualizarHeaderAdmin() {
     const statsDiv = document.getElementById("admin-stats");
+    const montoStatsDiv = document.getElementById("admin-monto-stats");
 
     if (esAdmin) {
-        const years = Object.keys(statsPorAno).sort(); // Ordenar años (ascendente)
+        // --- 1. Tarjeta Reporte de Semanas ---
+        const years = Object.keys(statsPorAno).sort();
 
         if (years.length === 0) {
-            statsDiv.textContent = "0 Semanas";
-            statsDiv.onclick = null;
+            if (statsDiv) {
+                statsDiv.textContent = "0 Semanas";
+                statsDiv.onclick = null;
+            }
         } else {
-            // 1. Mostrar resumen corto en el encabezado (Último año)
             const ultimoAno = years[years.length - 1];
             const semanasUltimo = statsPorAno[ultimoAno].toFixed(1);
 
-            statsDiv.innerHTML = `📊 ${ultimoAno}: ${semanasUltimo} Sem <span style="font-size:0.8em">ℹ️</span>`;
+            if (statsDiv) {
+                statsDiv.innerHTML = `📊 ${ultimoAno}: ${semanasUltimo} Sem <span style="font-size:0.8em">ℹ️</span>`;
+                statsDiv.onclick = function () {
+                    const listaUl = document.getElementById("listaStats");
+                    listaUl.innerHTML = "";
 
-            // 2. Evento Click: Abrir Modal
-            statsDiv.onclick = function () {
-                const listaUl = document.getElementById("listaStats");
-                listaUl.innerHTML = ""; // Limpiar lista anterior
+                    years.slice().reverse().forEach(y => {
+                        const li = document.createElement("li");
+                        li.className = "match-item";
+                        li.style.display = "flex";
+                        li.style.justifyContent = "space-between";
+                        li.style.cursor = "default";
 
-                // Recorremos los años (invertimos para ver el más reciente arriba)
-                years.slice().reverse().forEach(y => {
-                    const li = document.createElement("li");
-                    li.className = "match-item"; // Reusamos estilo de lista existente
-                    li.style.display = "flex";
-                    li.style.justifyContent = "space-between";
-                    li.style.cursor = "default"; // No es clicable
+                        li.innerHTML = `
+                            <strong style="color:#2c3e50;">Año ${y}</strong>
+                            <span style="color:#007bff; font-weight:bold;">${statsPorAno[y].toFixed(1)} Semanas</span>
+                        `;
+                        listaUl.appendChild(li);
+                    });
 
-                    // Contenido de la fila
-                    li.innerHTML = `
-                        <strong style="color:#2c3e50;">Año ${y}</strong>
-                        <span style="color:#007bff; font-weight:bold;">${statsPorAno[y].toFixed(1)} Semanas</span>
-                    `;
-                    listaUl.appendChild(li);
-                });
-
-                // Mostrar el modal
-                document.getElementById("statsModal").style.display = "block";
-            };
+                    document.getElementById("statsModal").style.display = "block";
+                };
+            }
         }
-        statsDiv.style.display = "inline-block";
+        if (statsDiv) statsDiv.style.display = "inline-block";
+
+        // --- 2. Tarjeta Monto Total Por Año (Abre Summary / Reporte Ejecutivo) ---
+        if (montoStatsDiv) {
+            const mYears = Object.keys(montosPorAno).sort();
+            if (mYears.length === 0) {
+                montoStatsDiv.textContent = "💰 $0 MXN";
+                montoStatsDiv.onclick = function () {
+                    window.abrirReporteModal();
+                };
+            } else {
+                const ultimoAnoMonto = mYears[mYears.length - 1];
+                const montoUltimo = montosPorAno[ultimoAnoMonto] || 0;
+                const montoFormatted = Number(montoUltimo).toLocaleString('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+                montoStatsDiv.innerHTML = `💰 ${ultimoAnoMonto}: $${montoFormatted} MXN <span style="font-size:0.8em">ℹ️</span>`;
+                montoStatsDiv.title = "Ver Reporte Ejecutivo";
+                montoStatsDiv.onclick = function () {
+                    window.abrirReporteModal(ultimoAnoMonto);
+                };
+            }
+            montoStatsDiv.style.display = "inline-block";
+        }
     } else {
-        statsDiv.style.display = "none";
+        if (statsDiv) statsDiv.style.display = "none";
+        if (montoStatsDiv) montoStatsDiv.style.display = "none";
     }
 }
 
@@ -2227,6 +2265,8 @@ window.guardarAdminFinanzas = async function () {
             console.warn("No se pudo actualizar localStorage:", e);
         }
 
+        calcularEstadisticas();
+
         if (btn) {
             btn.innerHTML = "✅ ¡Guardado!";
             btn.style.background = "#198754";
@@ -2941,7 +2981,7 @@ async function instalarApp() {
 
 // --- REPORTES EJECUTIVOS ---
 
-window.abrirReporteModal = function () {
+window.abrirReporteModal = function (anoSeleccionado = null) {
     const modal = document.getElementById("reporteModal");
     const selectAno = document.getElementById("filtroAnoReporte");
     const inputCliente = document.getElementById("filtroClienteReporte");
@@ -2966,9 +3006,12 @@ window.abrirReporteModal = function () {
         selectAno.appendChild(option);
     });
 
-    // Seleccionar el año actual si está en la lista
+    // Seleccionar el año deseado o el año actual si está en la lista
     const currentYear = new Date().getFullYear();
-    if (anos.has(currentYear)) {
+    const anoTarget = anoSeleccionado ? parseInt(anoSeleccionado) : null;
+    if (anoSeleccionado && (anoSeleccionado === "todos" || anos.has(anoTarget))) {
+        selectAno.value = anoSeleccionado;
+    } else if (anos.has(currentYear)) {
         selectAno.value = currentYear;
     }
 

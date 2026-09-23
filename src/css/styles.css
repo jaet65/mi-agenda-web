@@ -305,7 +305,8 @@
             font-weight: bold;
         }
 
-        #admin-stats {
+        #admin-stats,
+        #admin-monto-stats {
             display: none;
             font-size: 0.85rem;
             color: var(--text-color-light);
@@ -316,10 +317,10 @@
             margin-right: 10px;
             font-weight: 600;
             cursor: pointer;
-            /* <--- AGREGAR ESTO */
         }
 
-        #admin-stats:hover {
+        #admin-stats:hover,
+        #admin-monto-stats:hover {
             background-color: var(--hover-bg);
         }
 
