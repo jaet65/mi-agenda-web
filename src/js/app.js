@@ -2946,12 +2946,22 @@ function testNotificaciones() {
 }
 
 // 1. Registrar Service Worker
-if ("serviceWorker" in navigator) {
-    window.addEventListener("load", () => {
-        navigator.serviceWorker.register("sw.js") // Ruta corregida
-            .then(reg => console.log("Service Worker registrado: ", reg.scope))
-            .catch(err => console.log("Service Worker falló: ", err));
-    });
+// Registra el Service Worker de forma condicional
+if ('serviceWorker' in navigator) {
+    // Comprueba si estás en HTTPS o en localhost seguro
+    const isSecureOrigin = window.location.protocol === 'https:' || window.location.hostname === 'localhost';
+
+    if (isSecureOrigin) {
+        navigator.serviceWorker.register('/sw.js')
+            .then((registration) => {
+                console.log('Service Worker registrado:', registration.scope);
+            })
+            .catch((error) => {
+                console.warn('Service Worker no se registró (Modo desarrollo):', error);
+            });
+    } else {
+        console.log('Service Worker omitido en HTTP local.');
+    }
 }
 
 // 2. Lógica del Botón de Instalación (Opcional pero recomendado)
