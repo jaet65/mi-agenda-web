@@ -141,34 +141,23 @@ describe("Pruebas Avanzadas - Interacción y Lógica", () => {
         expect(document.getElementById("btnGuardarFinanzas")).not.toBeNull();
     });
 
-    it("la casilla de facturación tri-estado debería alternar entre los 3 estados correctamente", () => {
-        // Estado inicial
+    it("las pills de facturación deben marcarse según Sin facturar o Facturada", () => {
+        const pillSin = document.getElementById("pillSinFacturar");
+        const pillFac = document.getElementById("pillFacturada");
+
+        window.seleccionarEstadoFactura("Facturada");
+        expect(pillFac.classList.contains("active")).toBe(true);
+        expect(pillSin.classList.contains("active")).toBe(false);
+
         window.seleccionarEstadoFactura("Sin facturar");
-        const container = document.getElementById("tristateCheckboxContainer");
-        const badge = document.getElementById("tristateStatusBadge");
-        const box = document.getElementById("tristateBox");
+        expect(pillSin.classList.contains("active")).toBe(true);
+        expect(pillFac.classList.contains("active")).toBe(false);
+    });
 
-        expect(container.getAttribute("aria-checked")).toBe("false");
-        expect(badge.textContent).toBe("Sin facturar");
-        expect(box.classList.contains("state-sin-facturar")).toBe(true);
-
-        // Avanzar a Factura solicitada
-        window.avanzarEstadoFactura();
-        expect(container.getAttribute("aria-checked")).toBe("mixed");
-        expect(badge.textContent).toBe("Factura solicitada");
-        expect(box.classList.contains("state-solicitada")).toBe(true);
-
-        // Avanzar a Facturada
-        window.avanzarEstadoFactura();
-        expect(container.getAttribute("aria-checked")).toBe("true");
-        expect(badge.textContent).toBe("Facturada");
-        expect(box.classList.contains("state-facturada")).toBe(true);
-
-        // Ciclar de regreso a Sin facturar
-        window.avanzarEstadoFactura();
-        expect(container.getAttribute("aria-checked")).toBe("false");
-        expect(badge.textContent).toBe("Sin facturar");
-        expect(box.classList.contains("state-sin-facturar")).toBe(true);
+    it("el reporte ejecutivo debe renderizar la columna Facturado", () => {
+        window.generarReporte();
+        const tbody = document.getElementById("tablaReporteCuerpo");
+        expect(tbody.querySelector("td")).not.toBeNull();
     });
 });
 

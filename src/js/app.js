@@ -2083,7 +2083,7 @@ window.actualizarResumenAdminFinanzas = function () {
 };
 
 window.seleccionarEstadoFactura = function (nuevoEstado) {
-    const estadosValidos = ["Sin facturar", "Factura solicitada", "Facturada"];
+    const estadosValidos = ["Sin facturar", "Facturada"];
     if (!estadosValidos.includes(nuevoEstado)) {
         nuevoEstado = "Sin facturar";
     }
@@ -2095,10 +2095,9 @@ window.seleccionarEstadoFactura = function (nuevoEstado) {
     const container = document.getElementById("tristateCheckboxContainer");
 
     const pillSin = document.getElementById("pillSinFacturar");
-    const pillSol = document.getElementById("pillSolicitada");
     const pillFac = document.getElementById("pillFacturada");
 
-    [pillSin, pillSol, pillFac].forEach(p => p && p.classList.remove("active"));
+    [pillSin, pillFac].forEach(p => p && p.classList.remove("active"));
 
     if (box) {
         box.classList.remove("state-sin-facturar", "state-solicitada", "state-facturada");
@@ -2116,15 +2115,6 @@ window.seleccionarEstadoFactura = function (nuevoEstado) {
         }
         if (container) container.setAttribute("aria-checked", "false");
         if (pillSin) pillSin.classList.add("active");
-    } else if (nuevoEstado === "Factura solicitada") {
-        if (box) box.classList.add("state-solicitada");
-        if (icon) icon.textContent = "🟡";
-        if (badge) {
-            badge.classList.add("badge-solicitada");
-            badge.textContent = "Factura solicitada";
-        }
-        if (container) container.setAttribute("aria-checked", "mixed");
-        if (pillSol) pillSol.classList.add("active");
     } else if (nuevoEstado === "Facturada") {
         if (box) box.classList.add("state-facturada");
         if (icon) icon.textContent = "✅";
@@ -2135,10 +2125,14 @@ window.seleccionarEstadoFactura = function (nuevoEstado) {
         if (container) container.setAttribute("aria-checked", "true");
         if (pillFac) pillFac.classList.add("active");
     }
+
+    if (typeof window.actualizarResumenAdminFinanzas === "function") {
+        window.actualizarResumenAdminFinanzas();
+    }
 };
 
 window.avanzarEstadoFactura = function () {
-    const orden = ["Sin facturar", "Factura solicitada", "Facturada"];
+    const orden = ["Sin facturar", "Facturada"];
     const indice = orden.indexOf(estadoFacturaActual);
     const siguienteIndice = (indice + 1) % orden.length;
     window.seleccionarEstadoFactura(orden[siguienteIndice]);
@@ -2984,6 +2978,18 @@ window.abrirReporteModal = function () {
     generarReporte();
 };
 
+function esEstadoFacturada(estado) {
+    return estado === "Facturada";
+}
+
+function consolidarEstadoFactura(estados) {
+    return (estados || []).some(esEstadoFacturada) ? "Facturada" : "Sin facturar";
+}
+
+function iconoEstadoFactura(estado) {
+    return esEstadoFacturada(estado) ? "✅" : "⬜";
+}
+
 window.generarReporte = function () {
     const selectAno = document.getElementById("filtroAnoReporte").value;
     const inputCliente = document.getElementById("filtroClienteReporte").value.toLowerCase().trim();
@@ -2992,7 +2998,8 @@ window.generarReporte = function () {
     const kpiTotal = document.getElementById("kpiTotal");
     const kpiClientes = document.getElementById("kpiClientes");
     const kpiCiudad = document.getElementById("kpiCiudad");
-    const kpiClientePrincipal = document.getElementById("kpiClientePrincipal");
+    const kpiClientePrincipalDias = document.getElementById("kpiClientePrincipalDias");
+    const kpiClientePrincipalMonto = document.getElementById("kpiClientePrincipalMonto");
 
     tbody.innerHTML = "";
 
@@ -3035,17 +3042,25 @@ window.generarReporte = function () {
         return d < 1 ? 1 : d;
     };
 
+    const prepararReservaReporte = (res) => {
+        const copy = JSON.parse(JSON.stringify(res));
+        copy.start = new Date(copy.start);
+        copy.end = new Date(copy.end);
+        copy.diasReales = calcDias(copy);
+        copy.estadosFactura = [copy.data.estadoFactura || "Sin facturar"];
+        copy.data.estadoFactura = consolidarEstadoFactura(copy.estadosFactura);
+        copy.gruposCosto = {};
+        const gidCosto = copy.data.groupId || copy.id;
+        copy.gruposCosto[gidCosto] = true;
+        copy.data.costo = Number(copy.data.costo || 0);
+        return copy;
+    };
+
     if (reservasFiltradas.length > 0) {
-        let current = JSON.parse(JSON.stringify(reservasFiltradas[0])); // Deep copy simple
-        current.start = new Date(current.start);
-        current.end = new Date(current.end);
-        current.diasReales = calcDias(current);
+        let current = prepararReservaReporte(reservasFiltradas[0]);
 
         for (let i = 1; i < reservasFiltradas.length; i++) {
-            let next = JSON.parse(JSON.stringify(reservasFiltradas[i]));
-            next.start = new Date(next.start);
-            next.end = new Date(next.end);
-            next.diasReales = calcDias(next);
+            let next = prepararReservaReporte(reservasFiltradas[i]);
 
             const currentC = (current.data.cliente || "").toLowerCase().trim();
             const nextC = (next.data.cliente || "").toLowerCase().trim();
@@ -3062,6 +3077,14 @@ window.generarReporte = function () {
                         current.end = next.end;
                     }
                     current.diasReales += next.diasReales; // Acumular días sin inflarlos
+                    current.estadosFactura.push(...next.estadosFactura);
+                    current.data.estadoFactura = consolidarEstadoFactura(current.estadosFactura);
+
+                    const nextGidCosto = next.data.groupId || next.id;
+                    if (!current.gruposCosto[nextGidCosto]) {
+                        current.gruposCosto[nextGidCosto] = true;
+                        current.data.costo = Number(current.data.costo || 0) + Number(next.data.costo || 0);
+                    }
                     continue;
                 }
             }
@@ -3088,19 +3111,22 @@ window.generarReporte = function () {
         tbody.innerHTML = "<tr><td colspan=\"3\" style=\"text-align: center; padding: 15px; color: var(--text-color-muted);\">No hay reservaciones que coincidan con los filtros.</td></tr>";
         kpiClientes.textContent = "0";
         kpiCiudad.textContent = "-";
-        if (kpiClientePrincipal) kpiClientePrincipal.textContent = "-";
+        if (kpiClientePrincipalDias) kpiClientePrincipalDias.textContent = "-";
+        if (kpiClientePrincipalMonto) kpiClientePrincipalMonto.textContent = "-";
         return;
     }
 
     const clientesSet = new Set();
     const ciudadesCount = {};
     let totalDiasGlobales = 0;
+    let totalAdmin = 0;
 
     // Poblar la tabla
     reservasAgrupadas.forEach(r => {
         if (r.data.cliente) clientesSet.add(r.data.cliente.trim().toLowerCase());
 
         let numDias = r.diasReales || 1; // Usar los días puros consolidados
+        totalAdmin += Number(r.data.costo || 0);
         totalDiasGlobales += numDias;
 
         let ciudadDisplay = "N/A";
@@ -3122,6 +3148,8 @@ window.generarReporte = function () {
             <td>${ciudadDisplay}</td>
             <td>${fechaDisplay}</td>
             <td style="text-align: center; font-weight: 600;">${numDias}</td>
+            <td style="text-align: right;">${Number(r.data.costo || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} MXN</td>
+            <td style="text-align: center;" title="${esEstadoFacturada(r.data.estadoFactura) ? "Facturada" : "Sin facturar"}">${iconoEstadoFactura(r.data.estadoFactura)}</td>
         `;
         tbody.appendChild(tr);
     });
@@ -3139,59 +3167,92 @@ window.generarReporte = function () {
     }
     kpiCiudad.textContent = ciudadMax;
 
-    if (kpiClientePrincipal) {
+    if (kpiClientePrincipalDias || kpiClientePrincipalMonto) {
         const clientesData = {};
         reservasAgrupadas.forEach(r => {
-            const cliente = r.data.cliente.trim();
+            const cliente = r.data.cliente ? r.data.cliente.trim() : "";
             if (cliente) {
                 if (!clientesData[cliente]) {
                     clientesData[cliente] = {
                         count: 0,
                         dias: 0,
+                        monto: 0,
                         sedes: new Set()
                     };
                 }
                 clientesData[cliente].count++;
                 clientesData[cliente].dias += r.diasReales || 1;
+                clientesData[cliente].monto += Number(r.data.costo || 0);
                 if (r.data.ciudad) {
                     clientesData[cliente].sedes.add(r.data.ciudad.split(",")[0].trim());
                 }
             }
         });
 
-        let clientePrincipal = "-";
-        let diasPrincipal = 0; // Initialize diasPrincipal
+        let clientePrincipalDias = "-";
+        let diasPrincipal = 0;
+        let clientePrincipalMonto = "-";
+        let montoPrincipal = 0;
+
         const candidatos = Object.entries(clientesData);
 
         if (candidatos.length > 0) {
-            // 1. Criterio principal: Más días contratados (descendente)
-            candidatos.sort((a, b) => b[1].dias - a[1].dias);
-            const maxDias = candidatos[0][1].dias;
-            let empatadosPorDias = candidatos.filter(c => c[1].dias === maxDias);
+            // 1. Cliente Principal por DÍAS (descendente por días, desempate por menos bloques y menos sedes)
+            const candidatosDias = [...candidatos];
+            candidatosDias.sort((a, b) => b[1].dias - a[1].dias);
+            const maxDias = candidatosDias[0][1].dias;
+            let empatadosPorDias = candidatosDias.filter(c => c[1].dias === maxDias);
 
-            // 2. Primer desempate: Menos bloques de reserva (ascendente)
             if (empatadosPorDias.length > 1) {
                 empatadosPorDias.sort((a, b) => a[1].count - b[1].count);
                 const minBloques = empatadosPorDias[0][1].count;
                 empatadosPorDias = empatadosPorDias.filter(c => c[1].count === minBloques);
             }
-
-            // 3. Segundo desempate: Menos sedes distintas (ascendente)
             if (empatadosPorDias.length > 1) {
                 empatadosPorDias.sort((a, b) => a[1].sedes.size - b[1].sedes.size);
             }
 
-            // El ganador es el primero de la lista después de todas las ordenaciones
-            clientePrincipal = empatadosPorDias[0][0];
-            diasPrincipal = empatadosPorDias[0][1].dias; // Get the days for the principal client
+            clientePrincipalDias = empatadosPorDias[0][0];
+            diasPrincipal = empatadosPorDias[0][1].dias;
+
+            // 2. Cliente Principal por MONTO (descendente por monto, desempate por más días y menos bloques)
+            const candidatosMonto = [...candidatos];
+            candidatosMonto.sort((a, b) => b[1].monto - a[1].monto);
+            const maxMonto = candidatosMonto[0][1].monto;
+            let empatadosPorMonto = candidatosMonto.filter(c => c[1].monto === maxMonto);
+
+            if (empatadosPorMonto.length > 1) {
+                empatadosPorMonto.sort((a, b) => b[1].dias - a[1].dias);
+                const maxDiasM = empatadosPorMonto[0][1].dias;
+                empatadosPorMonto = empatadosPorMonto.filter(c => c[1].dias === maxDiasM);
+            }
+            if (empatadosPorMonto.length > 1) {
+                empatadosPorMonto.sort((a, b) => a[1].count - b[1].count);
+            }
+
+            clientePrincipalMonto = empatadosPorMonto[0][0];
+            montoPrincipal = empatadosPorMonto[0][1].monto;
         }
 
-        kpiClientePrincipal.textContent = `${clientePrincipal} (${diasPrincipal} días)`;
+        if (kpiClientePrincipalDias) {
+            kpiClientePrincipalDias.innerHTML = clientePrincipalDias !== "-"
+                ? `${clientePrincipalDias} <span class="kpi-dual-subtext">(${diasPrincipal} días)</span>`
+                : "-";
+        }
+
+        if (kpiClientePrincipalMonto) {
+            const montoFormatted = `$${Number(montoPrincipal).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} MXN`;
+            kpiClientePrincipalMonto.innerHTML = clientePrincipalMonto !== "-"
+                ? `${clientePrincipalMonto} <span class="kpi-dual-subtext">(${montoFormatted})</span>`
+                : "-";
+        }
     }
 
     let kpiSemanas = document.getElementById("kpiSemanas");
     if (kpiSemanas) {
         kpiSemanas.textContent = (totalDiasGlobales / 5).toFixed(1);
+        const kpiTotalAdmin = document.getElementById("kpiTotalAdmin");
+        if (kpiTotalAdmin) { kpiTotalAdmin.textContent = `$${Number(totalAdmin).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} MXN`; }
     }
 };
 
@@ -3321,8 +3382,9 @@ window.exportarReportePDF = async function () {
         const blob = new Blob([finalPdfBytes], { type: "application/pdf" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
+        const fechaActual = new Date().toISOString().split('T')[0];
         a.href = url;
-        a.download = `Reporte_Reservaciones_${new Date().getTime()}.pdf`;
+        a.download = `Summary_${fechaActual}.pdf`;
         a.click();
         URL.revokeObjectURL(url);
 
@@ -3415,8 +3477,9 @@ window.exportarReportePNG = async function () {
             const dataUrl = finalCanvas.toDataURL("image/png");
 
             const a = document.createElement("a");
+            const fechaActual = new Date().toISOString().split('T')[0];
             a.href = dataUrl;
-            a.download = `Reporte_Ejecutivo_${new Date().getTime()}.png`;
+            a.download = `Summary_${fechaActual}.png`;
             a.click();
         } catch (err) {
             console.error("Error exportando PNG: ", err);

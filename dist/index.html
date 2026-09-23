@@ -16,8 +16,8 @@
     <meta property="og:description" content="Gestión de itinerarios y servicios TrackSIM.">
     <meta property="og:image" content="favicon.ico">
 
-  <script type="module" crossorigin src="/assets/main-DjukUrgX.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/main-CbYJeNHP.css">
+  <script type="module" crossorigin src="/assets/main-9RKh9d0U.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/main-DeoMrlvh.css">
 </head>
 
 <body>
@@ -287,7 +287,7 @@
     </div>
 
     <div id="detalleModal" class="modal">
-        <div class="modal-content">
+        <div class="modal-content" style="max-width: 500px;">
             <span class="close-x" onclick="cerrarModal('detalleModal')">×</span>
             <h2 style="margin-top:0;">Detalles</h2>
             <p><strong>Cliente:</strong> <span id="detCliente"></span></p>
@@ -296,40 +296,40 @@
             <p><strong>Fechas:</strong> <span id="detFechas"></span></p>
 
             <!-- SECCIÓN FINANZAS Y FACTURACIÓN (VISTA ADMINISTRADOR) -->
-            <div id="seccionAdminFinanzas" class="seccion-admin-finanzas" style="display: none;">
-                <p class="admin-finanzas-title"><strong>💼 Control Administrativo:</strong></p>
-
-                <div class="form-group" style="margin-bottom: 12px;">
-                    <label for="detCostoInput"><strong>Costo de la Reservación:</strong></label>
-                    <div class="input-currency-wrapper">
-                        <span class="currency-symbol">$</span>
-                        <input type="number" id="detCostoInput" placeholder="0.00" step="0.01" min="0" class="input-costo" onkeydown="if(event.key==='Enter') guardarAdminFinanzas()">
-                    </div>
+            <div id="seccionAdminFinanzas" class="seccion-admin-finanzas" style="display: block;">
+                <div id="adminFinanzasHeader" class="admin-finanzas-header" onclick="toggleColapsoAdminFinanzas()">
+                    <p class="admin-finanzas-title" style="margin: 0;"><strong>💼 Control Administrativo</strong></p>
+                    <span id="adminFinanzasResumen" class="admin-finanzas-resumen"></span>
+                    <span id="iconoColapsoAdminFinanzas" class="admin-finanzas-chevron">▼</span>
                 </div>
 
-                <div class="form-group" style="margin-bottom: 12px;">
-                    <label><strong>Estado de Facturación:</strong></label>
-                    <div id="tristateCheckboxContainer" class="tristate-container" tabindex="0" role="checkbox" aria-checked="false" onclick="avanzarEstadoFactura()" onkeydown="teclaEstadoFactura(event)" title="Haz clic para alternar estado">
-                        <div id="tristateBox" class="tristate-box">
-                            <span id="tristateIcon">⬜</span>
-                        </div>
-                        <div class="tristate-label-group">
-                            <span id="tristateStatusBadge" class="factura-badge badge-sin-facturar">Sin facturar</span>
-                            <small class="tristate-hint">(Clic para cambiar)</small>
+                <div id="adminFinanzasBody" class="admin-finanzas-body" style="display: none; margin-top: 12px;">
+                    <div class="form-group" style="margin-bottom: 12px;">
+                        <label for="detCostoInput"><strong>Costo de la Reservación:</strong></label>
+                        <div class="input-currency-wrapper">
+                            <span class="currency-symbol">$</span>
+                            <input type="number" id="detCostoInput" placeholder="0.00" step="1.00" min="0"
+                                class="input-costo" onkeydown="if(event.key==='Enter') guardarAdminFinanzas()">
                         </div>
                     </div>
 
-                    <div class="factura-pills-row">
-                        <button type="button" class="factura-pill" id="pillSinFacturar" onclick="seleccionarEstadoFactura('Sin facturar')">⚪ Sin facturar</button>
-                        <button type="button" class="factura-pill" id="pillSolicitada" onclick="seleccionarEstadoFactura('Factura solicitada')">🟡 Factura solicitada</button>
-                        <button type="button" class="factura-pill" id="pillFacturada" onclick="seleccionarEstadoFactura('Facturada')">🟢 Facturada</button>
-                    </div>
-                </div>
+                    <div class="form-group" style="margin-bottom: 12px;">
+                        <label><strong>Estado de Facturación:</strong></label>
 
-                <button id="btnGuardarFinanzas" type="button" onclick="guardarAdminFinanzas()" class="btn-save-finanzas">
-                    💾 Guardar Costo y Factura
-                </button>
-                <div id="finanzasFeedback" class="finanzas-feedback" style="display: none;"></div>
+                        <div class="factura-pills-row">
+                            <button type="button" class="factura-pill" id="pillSinFacturar"
+                                onclick="seleccionarEstadoFactura('Sin facturar')">⚪ Sin facturar</button>
+                            <button type="button" class="factura-pill" id="pillFacturada"
+                                onclick="seleccionarEstadoFactura('Facturada')">🟢 Facturada</button>
+                        </div>
+                    </div>
+
+                    <button id="btnGuardarFinanzas" type="button" onclick="guardarAdminFinanzas()"
+                        class="btn-save-finanzas">
+                        💾 Guardar Costo y Factura
+                    </button>
+                    <div id="finanzasFeedback" class="finanzas-feedback" style="display: none;"></div>
+                </div>
             </div>
 
             <div id="seccionPDF"
@@ -390,7 +390,7 @@
     <!-- Modal para Reporte Ejecutivo -->
     <div id="reporteModal" class="modal">
         <div class="modal-content"
-            style="max-width: 650px; max-height: 80vh; display: flex; flex-direction: column; overflow: hidden !important;">
+            style="max-width: 850px; max-height: 80vh; display: flex; flex-direction: column; overflow: hidden !important;">
             <span class="close-x" onclick="cerrarModal('reporteModal')">×</span>
 
             <div style="display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap;">
@@ -434,11 +434,24 @@
                         </div>
                         <div class="kpi-card">
                             <h3>Cliente Principal</h3>
-                            <p id="kpiClientePrincipal" style="font-size: 1.1rem; margin-top: 15px;">-</p>
+                            <div class="kpi-dual-container">
+                                <div class="kpi-dual-item">
+                                    <span class="kpi-dual-label">Por Días</span>
+                                    <span class="kpi-dual-value" id="kpiClientePrincipalDias">-</span>
+                                </div>
+                                <div class="kpi-dual-item">
+                                    <span class="kpi-dual-label">Por Monto</span>
+                                    <span class="kpi-dual-value" id="kpiClientePrincipalMonto">-</span>
+                                </div>
+                            </div>
                         </div>
                         <div class="kpi-card">
                             <h3>Semanas Totales</h3>
                             <p id="kpiSemanas">0</p>
+                        </div>
+                        <div class="kpi-card">
+                            <h3>Total</h3>
+                            <p id="kpiTotalAdmin" style="font-size: 1.2rem;">$0.00 MXN</p>
                         </div>
                     </div>
 
@@ -450,6 +463,8 @@
                                     <th>Ciudad</th>
                                     <th>Fechas</th>
                                     <th style="text-align: center;">Días</th>
+                                    <th style="text-align: right;">Monto</th>
+                                    <th style="text-align: center;">Facturado</th>
                                 </tr>
                             </thead>
                             <tbody id="tablaReporteCuerpo">
