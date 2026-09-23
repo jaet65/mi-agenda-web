@@ -1027,7 +1027,7 @@ function actualizarHeaderAdmin() {
             const semanasUltimo = statsPorAno[ultimoAno].toFixed(1);
 
             if (statsDiv) {
-                statsDiv.innerHTML = `📊 ${ultimoAno}: ${semanasUltimo} Sem <span style="font-size:0.8em">ℹ️</span>`;
+                statsDiv.innerHTML = `${semanasUltimo} Sem`;
                 statsDiv.onclick = function () {
                     const listaUl = document.getElementById("listaStats");
                     listaUl.innerHTML = "";
@@ -1053,6 +1053,7 @@ function actualizarHeaderAdmin() {
         if (statsDiv) statsDiv.style.display = "inline-block";
 
         // --- 2. Tarjeta Monto Total Por Año (Abre Summary / Reporte Ejecutivo) ---
+        // Tarjetas de Header Stats
         if (montoStatsDiv) {
             const mYears = Object.keys(montosPorAno).sort();
             if (mYears.length === 0) {
@@ -1064,7 +1065,7 @@ function actualizarHeaderAdmin() {
                 const ultimoAnoMonto = mYears[mYears.length - 1];
                 const montoUltimo = montosPorAno[ultimoAnoMonto] || 0;
                 const montoFormatted = Number(montoUltimo).toLocaleString("es-MX", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
-                montoStatsDiv.innerHTML = `💰 ${ultimoAnoMonto}: $${montoFormatted} MXN <span style="font-size:0.8em">ℹ️</span>`;
+                montoStatsDiv.innerHTML = `${montoFormatted} MXN`;
                 montoStatsDiv.title = "Ver Reporte Ejecutivo";
                 montoStatsDiv.onclick = function () {
                     window.abrirReporteModal(ultimoAnoMonto);
