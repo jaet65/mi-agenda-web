@@ -3308,6 +3308,9 @@ window.exportarReportePDF = async function () {
         html2canvas: {
             scale: 2,
             backgroundColor: null,
+            // Forzar ancho de escritorio para que los media queries móviles no apliquen
+            windowWidth: 1200,
+            windowHeight: 900,
             onclone: function (doc) {
                 // Set CSS variables only in the cloned document so the live UI doesn't flash transparent
                 const docRoot = doc.documentElement;
@@ -3319,12 +3322,18 @@ window.exportarReportePDF = async function () {
                 docRoot.style.setProperty("--hover-bg", "rgba(0,0,0,0.03)");
                 docRoot.style.setProperty("--border-color", "#cccccc");
 
+                // Forzar layout de escritorio: evita que los @media (max-width: 768px) apliquen
+                docRoot.style.setProperty("min-width", "1024px", "important");
+                doc.body.style.setProperty("min-width", "1024px", "important");
+
                 doc.body.style.setProperty("background", "transparent", "important");
                 docRoot.style.setProperty("background", "transparent", "important");
 
                 const el = doc.getElementById("reporteParaPdf");
                 if (el) {
                     el.classList.add("pdf-export-mode"); // Sólo en el clon
+                    // Asegurar que el contenido del reporte use el ancho completo de escritorio
+                    el.style.setProperty("min-width", "700px", "important");
                     let anc = el.parentElement;
                     while (anc && anc !== doc.body && anc !== docRoot) {
                         anc.style.setProperty("background", "transparent", "important");
@@ -3446,6 +3455,9 @@ window.exportarReportePNG = async function () {
         html2canvas: {
             scale: 2,
             backgroundColor: null, // Permitir transparencia original
+            // Forzar ancho de escritorio para que los media queries móviles no apliquen
+            windowWidth: 1200,
+            windowHeight: 900,
             onclone: function (doc) {
                 const docRoot = doc.documentElement;
                 docRoot.style.setProperty("--text-color", "#000000");
@@ -3456,12 +3468,18 @@ window.exportarReportePNG = async function () {
                 docRoot.style.setProperty("--hover-bg", "transparent");
                 docRoot.style.setProperty("--border-color", "#cccccc");
 
+                // Forzar layout de escritorio: evita que los @media (max-width: 768px) apliquen
+                docRoot.style.setProperty("min-width", "1024px", "important");
+                doc.body.style.setProperty("min-width", "1024px", "important");
+
                 doc.body.style.setProperty("background", "transparent", "important");
                 docRoot.style.setProperty("background", "transparent", "important");
 
                 const el = doc.getElementById("reporteParaPdf");
                 if (el) {
                     el.classList.add("pdf-export-mode");
+                    // Asegurar que el contenido del reporte use el ancho completo de escritorio
+                    el.style.setProperty("min-width", "700px", "important");
 
                     let anc = el.parentElement;
                     while (anc && anc !== doc.body && anc !== docRoot) {
