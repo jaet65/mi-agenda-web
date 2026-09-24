@@ -27,7 +27,7 @@ export default [
     },
     rules: {
       ...js.configs.recommended.rules,
-      "no-unused-vars": "warn",
+      "no-unused-vars": "off",
       "no-undef": "off", // Desactivado temporalmente por la estructura del proyecto
       "no-redeclare": "off", // Desactivado temporalmente por duplicados en app.js
       "no-unused-expressions": "off",

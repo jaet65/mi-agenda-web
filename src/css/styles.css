@@ -1731,7 +1731,9 @@
             background: var(--card-bg);
             border-radius: 12px;
             box-shadow: 0 4px 6px var(--shadow-color);
-            overflow: hidden;
+            overflow-x: auto;
+            overflow-y: hidden;
+            -webkit-overflow-scrolling: touch;
             border: 1px solid var(--border-color-light);
             margin-bottom: 20px;
         }
@@ -1740,6 +1742,14 @@
             width: 100%;
             border-collapse: collapse;
             font-size: 0.85rem;
+        }
+
+        .dashboard-table-detail {
+            min-width: 680px;
+        }
+
+        .dashboard-table-summary {
+            min-width: 420px;
         }
 
         .dashboard-table th {
