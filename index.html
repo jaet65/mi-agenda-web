@@ -308,8 +308,32 @@
                         <label for="detCostoInput"><strong>Costo de la Reservación:</strong></label>
                         <div class="input-currency-wrapper">
                             <span class="currency-symbol">$</span>
-                            <input type="number" id="detCostoInput" placeholder="0.00" step="1.00" min="0"
-                                class="input-costo" onkeydown="if(event.key==='Enter') guardarAdminFinanzas()">
+                            <input type="text" id="detCostoInput" placeholder="0.00" inputmode="decimal"
+                                autocomplete="off" class="input-costo"
+                                oninput="actualizarResumenAdminFinanzas()"
+                                onkeydown="if(event.key==='Enter') guardarAdminFinanzas()">
+                        </div>
+                        <div class="costo-calculadora" aria-label="Calculadora de costo">
+                            <button type="button" onclick="calculadoraCosto('C')">C</button>
+                            <button type="button" onclick="calculadoraCosto('(')">(</button>
+                            <button type="button" onclick="calculadoraCosto(')')">)</button>
+                            <button type="button" class="costo-calculadora-operador" onclick="calculadoraCosto('÷')">÷</button>
+                            <button type="button" onclick="calculadoraCosto('7')">7</button>
+                            <button type="button" onclick="calculadoraCosto('8')">8</button>
+                            <button type="button" onclick="calculadoraCosto('9')">9</button>
+                            <button type="button" class="costo-calculadora-operador" onclick="calculadoraCosto('×')">×</button>
+                            <button type="button" onclick="calculadoraCosto('4')">4</button>
+                            <button type="button" onclick="calculadoraCosto('5')">5</button>
+                            <button type="button" onclick="calculadoraCosto('6')">6</button>
+                            <button type="button" class="costo-calculadora-operador" onclick="calculadoraCosto('-')">−</button>
+                            <button type="button" onclick="calculadoraCosto('1')">1</button>
+                            <button type="button" onclick="calculadoraCosto('2')">2</button>
+                            <button type="button" onclick="calculadoraCosto('3')">3</button>
+                            <button type="button" class="costo-calculadora-operador" onclick="calculadoraCosto('+')">+</button>
+                            <button type="button" class="costo-calculadora-borrar" onclick="calculadoraCosto('⌫')">⌫</button>
+                            <button type="button" onclick="calculadoraCosto('0')">0</button>
+                            <button type="button" onclick="calculadoraCosto('.')">.</button>
+                            <button type="button" class="costo-calculadora-igual" onclick="calculadoraCosto('=')">=</button>
                         </div>
                     </div>
 
@@ -415,7 +439,7 @@
                     <!-- Margen superior extra para el membrete -->
                     <div style="height: 1px;" class="margin-membrete"></div>
                     <h3 style="text-align: center; margin-top: 0; font-size: 1.5rem; margin-bottom: 5px;"
-                        id="tituloDocumentoReporte">Reporte Ejecutivo</h3>
+                        id="tituloDocumentoReporte">Summary Report</h3>
                     <p style="text-align: center; color: var(--text-color-muted); font-size: 0.9em; margin-bottom: 20px;"
                         id="subtituloReporte"></p>
 

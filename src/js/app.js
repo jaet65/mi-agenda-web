@@ -156,6 +156,60 @@ window.toggleMenu = function () {
     }
 };
 
+
+function obtenerAnosConReservas() {
+    const anos = new Set();
+
+    globalReservas.forEach(reserva => {
+        const fechaInicio = reserva.data?.fechaInicio;
+        const fechaFin = reserva.data?.fechaFin || fechaInicio;
+        if (!fechaInicio) return;
+
+        const anoInicio = new Date(`${fechaInicio}T12:00:00`).getFullYear();
+        const anoFin = new Date(`${fechaFin}T12:00:00`).getFullYear();
+        if (Number.isNaN(anoInicio)) return;
+
+        const limite = Number.isNaN(anoFin) ? anoInicio : anoFin;
+        for (let ano = Math.min(anoInicio, limite); ano <= Math.max(anoInicio, limite); ano++) {
+            anos.add(ano);
+        }
+    });
+
+    return Array.from(anos).sort((a, b) => b - a);
+}
+
+function alternarSelectorAnosCalendario() {
+    const selectorActual = document.getElementById("selectorAnosCalendario");
+    if (selectorActual) {
+        selectorActual.remove();
+        return;
+    }
+
+    const selector = document.createElement("div");
+    selector.id = "selectorAnosCalendario";
+    selector.className = "calendar-year-picker";
+    selector.setAttribute("role", "listbox");
+
+    const anos = obtenerAnosConReservas();
+    if (anos.length === 0) {
+        selector.innerHTML = "<span class=\"calendar-year-empty\">No hay años con reservas</span>";
+    } else {
+        anos.forEach(ano => {
+            const boton = document.createElement("button");
+            boton.type = "button";
+            boton.textContent = ano;
+            boton.setAttribute("role", "option");
+            boton.onclick = () => {
+                calendar.changeView("multiMonthYear");
+                calendar.gotoDate(new Date(ano, 0, 1));
+                selector.remove();
+            };
+            selector.appendChild(boton);
+        });
+    }
+
+    calendarElement.appendChild(selector);
+}
 const firebaseConfig = {
     apiKey: "AIzaSyCN7AD2GO_Ks4tcMxLMkG6jODKUaTPwlIk",
     authDomain: "agendaservicios.firebaseapp.com",
@@ -324,6 +378,18 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // 2. Renderizar el calendario vacío (Instantáneo)
     calendar.render();
+    calendarElement.addEventListener("click", function (event) {
+        const titulo = event.target.closest(".fc-toolbar-title");
+        const selector = document.getElementById("selectorAnosCalendario");
+
+        if (titulo) {
+            event.preventDefault();
+            event.stopPropagation();
+            alternarSelectorAnosCalendario();
+        } else if (selector && !selector.contains(event.target)) {
+            selector.remove();
+        }
+    });
 
     // 3. Inicializar Mapa (Ligero si no agregamos pines aún)
     map = L.map("map-canvas").setView([23.6345, -102.5528], 5);
@@ -2076,6 +2142,81 @@ window.habilitarEdicionDrive = function () {
     btnEliminar.style.display = "block";
 };
 // --- FUNCIONES DE FINANZAS Y FACTURACIÓN (VISTA ADMINISTRADOR) ---
+function evaluarExpresionCosto(expresion) {
+    const tokens = expresion.replace(/×/g, "*").replace(/÷/g, "/").match(/\d+(?:\.\d+)?|[+\-*/()]|\s+/g);
+    if (!tokens || tokens.join("").replace(/\s/g, "") !== expresion.replace(/\s/g, "").replace(/×/g, "*").replace(/÷/g, "/")) return null;
+
+    const valores = tokens.filter(token => !/^\s+$/.test(token));
+    let posicion = 0;
+    const leerPrimario = () => {
+        const token = valores[posicion++];
+        if (token === "(") {
+            const resultado = leerSuma();
+            if (valores[posicion++] !== ")") throw new Error("Paréntesis inválidos");
+            return resultado;
+        }
+        if (token === "+" || token === "-") {
+            const valor = leerPrimario();
+            return token === "-" ? -valor : valor;
+        }
+        const numero = Number(token);
+        if (!Number.isFinite(numero)) throw new Error("Número inválido");
+        return numero;
+    };
+    const leerMultiplicacion = () => {
+        let resultado = leerPrimario();
+        while (valores[posicion] === "*" || valores[posicion] === "/") {
+            const operador = valores[posicion++];
+            const siguiente = leerPrimario();
+            if (operador === "/" && siguiente === 0) throw new Error("División entre cero");
+            resultado = operador === "*" ? resultado * siguiente : resultado / siguiente;
+        }
+        return resultado;
+    };
+    const leerSuma = () => {
+        let resultado = leerMultiplicacion();
+        while (valores[posicion] === "+" || valores[posicion] === "-") {
+            const operador = valores[posicion++];
+            const siguiente = leerMultiplicacion();
+            resultado = operador === "+" ? resultado + siguiente : resultado - siguiente;
+        }
+        return resultado;
+    };
+
+    try {
+        const resultado = leerSuma();
+        if (posicion !== valores.length || !Number.isFinite(resultado)) return null;
+        return resultado;
+    } catch (error) {
+        return null;
+    }
+}
+
+window.calculadoraCosto = function (valor) {
+    const inputCosto = document.getElementById("detCostoInput");
+    if (!inputCosto) return;
+
+    if (valor === "C") {
+        inputCosto.value = "";
+    } else if (valor === "⌫") {
+        inputCosto.value = inputCosto.value.slice(0, -1);
+    } else if (valor === "=") {
+        const resultado = evaluarExpresionCosto(inputCosto.value);
+        if (resultado === null || resultado < 0) {
+            inputCosto.setCustomValidity("Ingresa una operación válida.");
+            inputCosto.reportValidity();
+            return;
+        }
+        inputCosto.value = Number(resultado.toFixed(2)).toString();
+    } else {
+        inputCosto.value += valor;
+    }
+
+    inputCosto.setCustomValidity("");
+    inputCosto.focus();
+    window.actualizarResumenAdminFinanzas();
+};
+
 window.toggleColapsoAdminFinanzas = function () {
     const body = document.getElementById("adminFinanzasBody");
     const icono = document.getElementById("iconoColapsoAdminFinanzas");
@@ -2106,8 +2247,8 @@ window.actualizarResumenAdminFinanzas = function () {
 
     let textoCosto = "";
     if (valCosto !== "") {
-        const num = parseFloat(valCosto);
-        if (!isNaN(num)) {
+        const num = evaluarExpresionCosto(valCosto);
+        if (num !== null && num >= 0) {
             textoCosto = `$${num.toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
         }
     }
@@ -2191,8 +2332,8 @@ window.guardarAdminFinanzas = async function () {
     const valCosto = inputCosto ? inputCosto.value.trim() : "";
     let costoFinal = null;
     if (valCosto !== "") {
-        const num = parseFloat(valCosto);
-        if (isNaN(num) || num < 0) {
+        const num = evaluarExpresionCosto(valCosto);
+        if (num === null || num < 0) {
             alert("⚠️ Por favor ingresa un monto válido mayor o igual a 0.");
             if (inputCosto) inputCosto.focus();
             return;
@@ -2360,6 +2501,11 @@ window.mostrarDetalles = function (evento) {
     // Fechas — Clickeables para navegar al calendario
     const fechaInicioStr = evento.start.toISOString().split("T")[0];
     const fechaFinStr = evento.extendedProps.fechaFinReal || fechaInicioStr;
+    const fechaInicio = new Date(`${fechaInicioStr}T12:00:00`);
+    const fechaFin = new Date(`${fechaFinStr}T12:00:00`);
+    const diasReservados = Number.isNaN(fechaInicio.getTime()) || Number.isNaN(fechaFin.getTime())
+        ? 1
+        : Math.max(1, Math.floor((fechaFin - fechaInicio) / (1000 * 60 * 60 * 24)) + 1);
     const detFechasEl = document.getElementById("detFechas");
     detFechasEl.innerHTML = `
         <span id="det-fecha-link"
@@ -2371,6 +2517,7 @@ window.mostrarDetalles = function (evento) {
             ${fechaInicioStr} ➝ ${fechaFinStr}
         </span>
         <span title="Ver en el calendario" style="font-size:0.8em; color:#999; margin-left:4px;">📅</span>
+        <span style="margin-left:6px; color:var(--text-color-muted);">• ${diasReservados} ${diasReservados === 1 ? "día" : "días"}</span>
     `;
 
     // Lógica de Finanzas y Facturación (Exclusivo Administrador)

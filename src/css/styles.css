@@ -359,6 +359,61 @@
             display: block;
         }
 
+        #calendar {
+            position: relative;
+        }
+
+        .fc-toolbar-title {
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .fc-toolbar-title:hover {
+            color: var(--accent-color);
+        }
+
+        .calendar-year-picker {
+            position: absolute;
+            top: 42px;
+            left: 50%;
+            z-index: 20;
+            display: grid;
+            grid-template-columns: repeat(2, minmax(90px, 1fr));
+            gap: 6px;
+            width: min(260px, calc(100% - 20px));
+            max-height: 260px;
+            padding: 10px;
+            overflow-y: auto;
+            transform: translateX(-50%);
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            box-shadow: 0 5px 16px var(--shadow-color);
+        }
+
+        .calendar-year-picker button {
+            min-height: 36px;
+            border: 1px solid var(--border-color-light);
+            border-radius: 5px;
+            background: var(--hover-bg);
+            color: var(--text-color);
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .calendar-year-picker button:hover,
+        .calendar-year-picker button:focus-visible {
+            background: var(--accent-color);
+            color: #fff;
+        }
+
+        .calendar-year-empty {
+            grid-column: 1 / -1;
+            padding: 8px;
+            color: var(--text-color-muted);
+            text-align: center;
+        }
+
         #map-view {
             width: 100%;
             height: 100%;
@@ -1206,6 +1261,43 @@
         .input-costo {
             padding-left: 26px !important;
             font-weight: 600;
+        }
+
+        .costo-calculadora {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 6px;
+            margin-top: 8px;
+        }
+
+        .costo-calculadora button {
+            min-height: 38px;
+            padding: 6px;
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            background: var(--card-bg);
+            color: var(--text-color);
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.15s ease, border-color 0.15s ease;
+        }
+
+        .costo-calculadora button:hover,
+        .costo-calculadora button:focus-visible {
+            background: var(--hover-bg);
+            border-color: var(--accent-color);
+        }
+
+        .costo-calculadora-operador,
+        .costo-calculadora-igual {
+            background: var(--accent-color) !important;
+            color: #fff !important;
+            border-color: var(--accent-color) !important;
+        }
+
+        .costo-calculadora-borrar {
+            color: var(--text-color-muted) !important;
         }
 
         /* Casilla de verificación de 3 estados (Tri-state) */
