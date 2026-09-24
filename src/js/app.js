@@ -2948,20 +2948,20 @@ function testNotificaciones() {
 
 // 1. Registrar Service Worker
 // Registra el Service Worker de forma condicional
-if ('serviceWorker' in navigator) {
+if ("serviceWorker" in navigator) {
     // Comprueba si estás en HTTPS o en localhost seguro
-    const isSecureOrigin = window.location.protocol === 'https:' || window.location.hostname === 'localhost';
+    const isSecureOrigin = window.location.protocol === "https:" || window.location.hostname === "localhost";
 
     if (isSecureOrigin) {
-        navigator.serviceWorker.register('/sw.js')
+        navigator.serviceWorker.register("/sw.js")
             .then((registration) => {
-                console.log('Service Worker registrado:', registration.scope);
+                console.log("Service Worker registrado:", registration.scope);
             })
             .catch((error) => {
-                console.warn('Service Worker no se registró (Modo desarrollo):', error);
+                console.warn("Service Worker no se registró (Modo desarrollo):", error);
             });
     } else {
-        console.log('Service Worker omitido en HTTP local.');
+        console.log("Service Worker omitido en HTTP local.");
     }
 }
 
@@ -3040,14 +3040,29 @@ function consolidarEstadoFactura(estados) {
     return (estados || []).some(esEstadoFacturada) ? "Facturada" : "Sin facturar";
 }
 
+function consolidarEstadoFacturaCliente(estados) {
+    const estadosFactura = estados || [];
+    const facturadas = estadosFactura.filter(esEstadoFacturada).length;
+
+    if (facturadas === 0) return "Sin facturar";
+    if (facturadas === estadosFactura.length) return "Facturada";
+    return "Parcial";
+}
+
+function iconoEstadoFacturaCliente(estado) {
+    if (estado === "Parcial") return "🟨";
+    return iconoEstadoFactura(estado);
+}
+
 function iconoEstadoFactura(estado) {
-    return esEstadoFacturada(estado) ? "✅" : "⬜";
+    return esEstadoFacturada(estado) ? "🟩" : "⬜";
 }
 
 window.generarReporte = function () {
     const selectAno = document.getElementById("filtroAnoReporte").value;
     const inputCliente = document.getElementById("filtroClienteReporte").value.toLowerCase().trim();
     const tbody = document.getElementById("tablaReporteCuerpo");
+    const resumenClienteTbody = document.getElementById("tablaResumenClienteCuerpo");
     const subtitulo = document.getElementById("subtituloReporte");
     const kpiTotal = document.getElementById("kpiTotal");
     const kpiClientes = document.getElementById("kpiClientes");
@@ -3056,6 +3071,7 @@ window.generarReporte = function () {
     const kpiClientePrincipalMonto = document.getElementById("kpiClientePrincipalMonto");
 
     tbody.innerHTML = "";
+    if (resumenClienteTbody) resumenClienteTbody.innerHTML = "";
 
     // Filtrar globalReservas
     let reservasFiltradas = globalReservas.filter(r => {
@@ -3163,6 +3179,9 @@ window.generarReporte = function () {
 
     if (reservasAgrupadas.length === 0) {
         tbody.innerHTML = "<tr><td colspan=\"3\" style=\"text-align: center; padding: 15px; color: var(--text-color-muted);\">No hay reservaciones que coincidan con los filtros.</td></tr>";
+        if (resumenClienteTbody) {
+            resumenClienteTbody.innerHTML = "<tr><td colspan=\"3\" style=\"text-align: center; padding: 15px; color: var(--text-color-muted);\">No hay clientes que coincidan con los filtros.</td></tr>";
+        }
         kpiClientes.textContent = "0";
         kpiCiudad.textContent = "-";
         if (kpiClientePrincipalDias) kpiClientePrincipalDias.textContent = "-";
@@ -3207,6 +3226,39 @@ window.generarReporte = function () {
         `;
         tbody.appendChild(tr);
     });
+
+    if (resumenClienteTbody) {
+        const resumenPorCliente = {};
+        reservasAgrupadas.forEach(r => {
+            const cliente = (r.data.cliente || "").trim();
+            if (!cliente) return;
+
+            const clienteKey = cliente.toLowerCase();
+            if (!resumenPorCliente[clienteKey]) {
+                resumenPorCliente[clienteKey] = {
+                    nombre: cliente,
+                    monto: 0,
+                    estadosFactura: []
+                };
+            }
+
+            resumenPorCliente[clienteKey].monto += Number(r.data.costo || 0);
+            resumenPorCliente[clienteKey].estadosFactura.push(r.data.estadoFactura || "Sin facturar");
+        });
+
+        Object.values(resumenPorCliente)
+            .sort((a, b) => a.nombre.localeCompare(b.nombre, "es", { sensitivity: "base" }))
+            .forEach(cliente => {
+                const tr = document.createElement("tr");
+                const estadoFactura = consolidarEstadoFacturaCliente(cliente.estadosFactura);
+                tr.innerHTML = `
+                    <td>${cliente.nombre}</td>
+                    <td style="text-align: right;">${cliente.monto.toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} MXN</td>
+                    <td style="text-align: center;" title="${estadoFactura}">${iconoEstadoFacturaCliente(estadoFactura)}</td>
+                `;
+                resumenClienteTbody.appendChild(tr);
+            });
+    }
 
     // Actualizar otros KPIs
     kpiClientes.textContent = clientesSet.size;
