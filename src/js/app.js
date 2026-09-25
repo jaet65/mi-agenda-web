@@ -326,11 +326,19 @@ document.addEventListener("DOMContentLoaded", function () {
         eventDidMount: function (info) {
             if (info.el) {
                 info.el.setAttribute("data-event-id", info.event.id);
+                const dayCell = info.el.closest(".fc-daygrid-day");
+                if (dayCell) {
+                    const eventCount = dayCell.querySelectorAll(".fc-daygrid-event").length;
+                    dayCell.style.setProperty("--day-event-count", eventCount);
+                }
             }
         },
         height: "100%",
+        aspectRatio: 1,
         initialView: "multiMonthYear",
         locale: "es",
+        dayMaxEvents: false,
+        dayMaxEventRows: false,
 
         customButtons: {
             // CAMBIO 1: Al hacer clic en HOY, forzamos la vista de AÑO y vamos a la fecha

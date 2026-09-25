@@ -1519,11 +1519,11 @@
         }
 
         .fc-daygrid-event {
-            min-height: 26px;
+            min-height: calc(20px / var(--day-event-count, 1));
         }
 
         .fc-daygrid-event .fc-event-main {
-            padding: 4px 2px;
+            padding: 0 2px;
         }
 
         /* --- ESTILOS DE LEYENDA --- */

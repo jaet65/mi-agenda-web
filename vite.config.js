@@ -6,7 +6,7 @@ export default defineConfig({
   server: {
     port: 5173,
     host: true,
-    https: false, // Habilita HTTPS
+    https: true, // Habilita HTTPS
   },
   plugins: [
     basicSsl() // Genera automáticamente un certificado SSL válido para desarrollo local
