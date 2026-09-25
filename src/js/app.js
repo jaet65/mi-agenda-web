@@ -561,6 +561,7 @@ function actualizarUIConEstadoAdmin() {
     const menuReporte = document.getElementById("mobile-btn-reporte");
     const menuHojaRuta = document.getElementById("mobile-btn-hoja-ruta");
     const menuImport = document.getElementById("mobile-btn-import");
+    const menuExportExcel = document.getElementById("mobile-btn-export-excel");
 
     if (esAdmin) {
         if (adminStatus && auth.currentUser) adminStatus.innerText = "🔰";
@@ -572,6 +573,7 @@ function actualizarUIConEstadoAdmin() {
         if (menuReporte) menuReporte.style.display = "block";
         if (menuHojaRuta) menuHojaRuta.style.display = "block";
         if (menuImport) menuImport.style.display = "block";
+        if (menuExportExcel) menuExportExcel.style.display = "block";
     } else {
         if (adminStatus) adminStatus.style.display = "none";
 
@@ -581,6 +583,7 @@ function actualizarUIConEstadoAdmin() {
         if (menuReporte) menuReporte.style.display = "none";
         if (menuHojaRuta) menuHojaRuta.style.display = "none";
         if (menuImport) menuImport.style.display = "none";
+        if (menuExportExcel) menuExportExcel.style.display = "none";
     }
     actualizarHeaderAdmin();
 }
@@ -2972,6 +2975,105 @@ MODO DE PRECISIÓN:
         }
     };
     reader.readAsArrayBuffer(archivo);
+};
+
+function prepararValorParaExcel(valor) {
+    if (valor === null || valor === undefined) return "";
+    if (valor instanceof Date) return valor.toISOString();
+    if (typeof valor?.toDate === "function") return valor.toDate().toISOString();
+    if (typeof valor === "object") return JSON.stringify(valor);
+    return valor;
+}
+
+function prepararFechaExcel(valor) {
+    if (!valor) return "";
+    const partes = valor.toString().split("-").map(Number);
+    if (partes.length !== 3 || partes.some(Number.isNaN)) return "";
+    return new Date(partes[0], partes[1] - 1, partes[2]);
+}
+
+function consolidarReservacionesParaExcel(reservas) {
+    const reservasPorGrupo = new Map();
+
+    reservas.forEach(reserva => {
+        const grupoId = reserva.data?.groupId || reserva.id;
+        const reservaExistente = reservasPorGrupo.get(grupoId);
+        if (!reservaExistente) {
+            reservasPorGrupo.set(grupoId, { ...reserva, data: { ...reserva.data } });
+            return;
+        }
+
+        const datosExistentes = reservaExistente.data;
+        const datosActuales = reserva.data || {};
+        if (datosActuales.fechaInicio && (!datosExistentes.fechaInicio || datosActuales.fechaInicio < datosExistentes.fechaInicio)) {
+            datosExistentes.fechaInicio = datosActuales.fechaInicio;
+        }
+        if (datosActuales.fechaFin && (!datosExistentes.fechaFin || datosActuales.fechaFin > datosExistentes.fechaFin)) {
+            datosExistentes.fechaFin = datosActuales.fechaFin;
+        }
+        if ((datosExistentes.costo === null || datosExistentes.costo === undefined || datosExistentes.costo === "") && datosActuales.costo !== undefined) {
+            datosExistentes.costo = datosActuales.costo;
+        }
+        if (!datosExistentes.pdfUrl && datosActuales.pdfUrl) datosExistentes.pdfUrl = datosActuales.pdfUrl;
+        if (datosActuales.estadoFactura === "Facturada") datosExistentes.estadoFactura = "Facturada";
+    });
+
+    return Array.from(reservasPorGrupo.values());
+}
+
+window.exportarReservacionesExcel = function () {
+    const reservasExportables = consolidarReservacionesParaExcel(
+        globalReservas.filter(reserva => reserva.data?.esEspecial !== true)
+    );
+    if (!reservasExportables.length) {
+        alert("No hay reservaciones guardadas para exportar.");
+        return;
+    }
+
+    const columnas = [
+        "Cliente",
+        "Ciudad",
+        "Direccion",
+        "Fecha Inicio",
+        "Fecha Fin",
+        "Costo",
+        "Facturado",
+        "PdfUrl"
+    ];
+    const campos = ["cliente", "ciudad", "direccion", "fechaInicio", "fechaFin", "costo", "estadoFactura", "pdfUrl"];
+    const filas = reservasExportables.map(reserva => {
+        const fila = {};
+        campos.forEach((campo, indice) => {
+            const valor = reserva.data?.[campo];
+            if (campo === "fechaInicio" || campo === "fechaFin") {
+                fila[columnas[indice]] = prepararFechaExcel(valor);
+            } else if (campo === "costo") {
+                const costo = Number(valor);
+                fila[columnas[indice]] = valor === null || valor === undefined || valor === "" || Number.isNaN(costo)
+                    ? ""
+                    : costo;
+            } else {
+                fila[columnas[indice]] = prepararValorParaExcel(valor);
+            }
+        });
+        return fila;
+    });
+
+    const hoja = XLSX.utils.json_to_sheet(filas, { header: columnas });
+    filas.forEach((_, indiceFila) => {
+        const fechaInicio = hoja[XLSX.utils.encode_cell({ c: 3, r: indiceFila + 1 })];
+        const fechaFin = hoja[XLSX.utils.encode_cell({ c: 4, r: indiceFila + 1 })];
+        const costo = hoja[XLSX.utils.encode_cell({ c: 5, r: indiceFila + 1 })];
+        if (fechaInicio) fechaInicio.z = "dd/mm/yyyy";
+        if (fechaFin) fechaFin.z = "dd/mm/yyyy";
+        if (costo) costo.z = "$#,##0.00";
+    });
+    hoja["!cols"] = columnas.map(columna => ({ wch: Math.min(Math.max(columna.length + 2, 14), 32) }));
+    const libro = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(libro, hoja, "Reservaciones");
+
+    const fecha = new Date().toISOString().split("T")[0];
+    XLSX.writeFile(libro, `Reservaciones_${fecha}.xlsx`);
 };
 
 // --- Función auxiliar para copiar texto al portapapeles ---
