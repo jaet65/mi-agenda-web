@@ -1837,6 +1837,74 @@
             color: var(--text-color-light);
         }
 
+        .dashboard-chart {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color-light);
+            box-sizing: border-box;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px var(--shadow-color);
+            margin-bottom: 20px;
+            padding: 16px;
+            width: 100%;
+        }
+
+        .dashboard-chart h3 {
+            color: var(--text-color-muted);
+            font-size: 1rem;
+            margin: 0 0 16px;
+            text-align: center;
+        }
+
+        .year-chart {
+            box-sizing: border-box;
+            min-width: 0;
+            overflow: hidden;
+            padding: 8px 0 0;
+            width: 100%;
+        }
+
+        .year-line-chart {
+            display: block;
+            height: 200px;
+            max-width: 100%;
+            min-width: 0;
+            width: 100%;
+        }
+
+        .year-chart-line {
+            fill: none;
+            stroke: #007bff;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            stroke-width: 3;
+        }
+
+        .year-chart-point {
+            fill: var(--card-bg);
+            stroke: #17a2b8;
+            stroke-width: 3;
+        }
+
+        .year-chart-value,
+        .year-chart-label {
+            fill: var(--text-color-muted);
+            font-family: inherit;
+            font-size: 12px;
+            text-anchor: middle;
+        }
+
+        .year-chart-label {
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .pdf-export-mode .dashboard-chart h3,
+        .pdf-export-mode .year-chart-value,
+        .pdf-export-mode .year-chart-label {
+            color: #000 !important;
+            fill: #000 !important;
+        }
+
         .dashboard-table-container {
             background: var(--card-bg);
             border-radius: 12px;

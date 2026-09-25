@@ -3218,6 +3218,8 @@ window.generarReporte = function () {
     const inputCliente = document.getElementById("filtroClienteReporte").value.toLowerCase().trim();
     const tbody = document.getElementById("tablaReporteCuerpo");
     const resumenClienteTbody = document.getElementById("tablaResumenClienteCuerpo");
+    const graficaMontosPorAno = document.getElementById("graficaMontosPorAno");
+    const graficaMontosPorAnoCuerpo = document.getElementById("graficaMontosPorAnoCuerpo");
     const subtitulo = document.getElementById("subtituloReporte");
     const kpiTotal = document.getElementById("kpiTotal");
     const kpiClientes = document.getElementById("kpiClientes");
@@ -3247,6 +3249,12 @@ window.generarReporte = function () {
 
         return matchAno && matchCliente;
     });
+
+    renderizarGraficaMontosPorAno(
+        selectAno === "todos" ? reservasFiltradas : [],
+        graficaMontosPorAno,
+        graficaMontosPorAnoCuerpo
+    );
 
     // Ordenar por cliente y luego fecha
     reservasFiltradas.sort((a, b) => {
@@ -3517,6 +3525,97 @@ window.generarReporte = function () {
     }
 };
 
+function renderizarGraficaMontosPorAno(reservas, contenedor, cuerpo) {
+    if (!contenedor || !cuerpo) return;
+
+    cuerpo.innerHTML = "";
+    contenedor.hidden = reservas.length === 0;
+    if (reservas.length === 0) return;
+
+    const montosPorAno = {};
+    const gruposProcesadosPorAno = {};
+
+    reservas.forEach(reserva => {
+        if (!reserva.start) return;
+
+        const ano = reserva.start.getFullYear();
+        const grupoId = reserva.data.groupId || reserva.id;
+        if (!gruposProcesadosPorAno[ano]) gruposProcesadosPorAno[ano] = new Set();
+        if (gruposProcesadosPorAno[ano].has(grupoId)) return;
+
+        gruposProcesadosPorAno[ano].add(grupoId);
+        montosPorAno[ano] = (montosPorAno[ano] || 0) + Number(reserva.data.costo || 0);
+    });
+
+    const anos = Object.keys(montosPorAno).sort((a, b) => a - b);
+    const svgNamespace = "http://www.w3.org/2000/svg";
+    const ancho = Math.max(anos.length * 120, 520);
+    const alto = 240;
+    const margen = { arriba: 30, derecha: 24, abajo: 38, izquierda: 24 };
+    const anchoUtil = ancho - margen.izquierda - margen.derecha;
+    const altoUtil = alto - margen.arriba - margen.abajo;
+    const montoMaximo = Math.max(...anos.map(ano => montosPorAno[ano]), 0);
+    const svg = document.createElementNS(svgNamespace, "svg");
+    svg.classList.add("year-line-chart");
+    svg.setAttribute("viewBox", `0 0 ${ancho} ${alto}`);
+    svg.setAttribute("role", "img");
+    svg.setAttribute("aria-label", "Ingresos por año");
+
+    const puntos = anos.map((ano, indice) => {
+        const monto = montosPorAno[ano];
+        const x = anos.length === 1
+            ? ancho / 2
+            : margen.izquierda + (anchoUtil / (anos.length - 1)) * indice;
+        const y = margen.arriba + altoUtil - (montoMaximo > 0 ? (monto / montoMaximo) * altoUtil : 0);
+        return { ano, monto, x, y };
+    });
+
+    const linea = document.createElementNS(svgNamespace, "polyline");
+    linea.classList.add("year-chart-line");
+    linea.setAttribute("points", puntos.map(punto => `${punto.x},${punto.y}`).join(" "));
+    svg.appendChild(linea);
+
+    puntos.forEach(punto => {
+        const valor = document.createElementNS(svgNamespace, "text");
+        valor.classList.add("year-chart-value");
+        valor.setAttribute("x", punto.x);
+        valor.setAttribute("y", Math.max(punto.y - 12, 14));
+        valor.textContent = `$${punto.monto.toLocaleString("es-MX", { maximumFractionDigits: 0 })}`;
+        svg.appendChild(valor);
+
+        const circulo = document.createElementNS(svgNamespace, "circle");
+        circulo.classList.add("year-chart-point");
+        circulo.setAttribute("cx", punto.x);
+        circulo.setAttribute("cy", punto.y);
+        circulo.setAttribute("r", "5");
+        circulo.setAttribute("aria-label", `${punto.ano}: ${punto.monto.toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} MXN`);
+        svg.appendChild(circulo);
+
+        const etiqueta = document.createElementNS(svgNamespace, "text");
+        etiqueta.classList.add("year-chart-label");
+        etiqueta.setAttribute("x", punto.x);
+        etiqueta.setAttribute("y", alto - 12);
+        etiqueta.textContent = punto.ano;
+        svg.appendChild(etiqueta);
+    });
+
+    cuerpo.appendChild(svg);
+}
+
+function prepararGraficaParaExportacion(doc) {
+    const grafica = doc.getElementById("graficaMontosPorAno");
+    const cuerpo = doc.getElementById("graficaMontosPorAnoCuerpo");
+    const svg = cuerpo?.querySelector(".year-line-chart");
+    if (!grafica || !cuerpo || !svg) return;
+
+    grafica.style.setProperty("width", "100%", "important");
+    cuerpo.style.setProperty("width", "100%", "important");
+    cuerpo.style.setProperty("min-width", "0", "important");
+    cuerpo.style.setProperty("overflow", "visible", "important");
+    svg.style.setProperty("width", "100%", "important");
+    svg.style.setProperty("min-width", "0", "important");
+}
+
 window.exportarReportePDF = async function () {
     const elemento = document.getElementById("reporteParaPdf");
     // Guardar estilos originales
@@ -3559,6 +3658,7 @@ window.exportarReportePDF = async function () {
                         anc = anc.parentElement;
                     }
                 }
+                prepararGraficaParaExportacion(doc);
             }
         }
     };
@@ -3706,6 +3806,7 @@ window.exportarReportePNG = async function () {
                         anc = anc.parentElement;
                     }
                 }
+                prepararGraficaParaExportacion(doc);
             }
         }
     };
