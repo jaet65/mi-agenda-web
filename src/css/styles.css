@@ -1508,6 +1508,24 @@
             font-weight: bold;
         }
 
+        .evento-con-costo-admin {
+            background-color: #f0ad24 !important;
+            border-color: #c88900 !important;
+        }
+
+        .evento-con-costo-admin .fc-event-main,
+        .evento-con-costo-admin .fc-event-title {
+            color: #1f2937 !important;
+        }
+
+        .fc-daygrid-event {
+            min-height: 26px;
+        }
+
+        .fc-daygrid-event .fc-event-main {
+            padding: 4px 2px;
+        }
+
         /* --- ESTILOS DE LEYENDA --- */
         .legend-container {
             padding: 6px 5px;
