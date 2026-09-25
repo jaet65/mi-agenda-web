@@ -3226,6 +3226,7 @@ window.generarReporte = function () {
     const kpiCiudad = document.getElementById("kpiCiudad");
     const kpiClientePrincipalDias = document.getElementById("kpiClientePrincipalDias");
     const kpiClientePrincipalMonto = document.getElementById("kpiClientePrincipalMonto");
+    const kpiComparadorTotal = document.getElementById("kpiComparadorTotal");
 
     tbody.innerHTML = "";
     if (resumenClienteTbody) resumenClienteTbody.innerHTML = "";
@@ -3349,6 +3350,7 @@ window.generarReporte = function () {
         kpiCiudad.textContent = "-";
         if (kpiClientePrincipalDias) kpiClientePrincipalDias.textContent = "-";
         if (kpiClientePrincipalMonto) kpiClientePrincipalMonto.textContent = "-";
+        actualizarComparadorTotal(selectAno, inputCliente, 0, kpiComparadorTotal);
         return;
     }
 
@@ -3521,9 +3523,70 @@ window.generarReporte = function () {
     if (kpiSemanas) {
         kpiSemanas.textContent = (totalDiasGlobales / 5).toFixed(1);
         const kpiTotalAdmin = document.getElementById("kpiTotalAdmin");
-        if (kpiTotalAdmin) { kpiTotalAdmin.textContent = `$${Number(totalAdmin).toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} MXN`; }
+        if (kpiTotalAdmin) {
+            kpiTotalAdmin.textContent = `$${Number(totalAdmin).toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} MXN`;
+        }
+        actualizarComparadorTotal(selectAno, inputCliente, totalAdmin, kpiComparadorTotal);
     }
 };
+
+function obtenerMontoAnualParaComparacion(ano, clienteFiltro) {
+    const gruposProcesados = new Set();
+    let total = 0;
+
+    globalReservas.forEach(reserva => {
+        if (reserva.data.esEspecial === true || !reserva.start || reserva.start.getFullYear() !== ano) return;
+
+        const cliente = (reserva.data.cliente || "").toLowerCase();
+        if (clienteFiltro && !cliente.includes(clienteFiltro)) return;
+
+        const grupoId = reserva.data.groupId || reserva.id;
+        if (gruposProcesados.has(grupoId)) return;
+
+        gruposProcesados.add(grupoId);
+        total += Number(reserva.data.costo || 0);
+    });
+
+    return total;
+}
+
+function actualizarComparadorTotal(anoSeleccionado, clienteFiltro, totalActual, elemento) {
+    if (!elemento) return;
+
+    elemento.classList.remove("positive", "negative");
+    if (anoSeleccionado === "todos") {
+        elemento.textContent = "Selecciona un año para comparar";
+        return;
+    }
+
+    const ano = parseInt(anoSeleccionado, 10);
+    if (Number.isNaN(ano)) {
+        elemento.textContent = "Sin comparación disponible";
+        return;
+    }
+
+    const anoAnterior = ano - 1;
+    const totalAnterior = obtenerMontoAnualParaComparacion(anoAnterior, clienteFiltro);
+    const diferencia = totalActual - totalAnterior;
+    const porcentaje = totalAnterior !== 0 ? Math.abs((diferencia / totalAnterior) * 100) : null;
+    const diferenciaTexto = `$${Math.abs(diferencia).toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+    if (totalAnterior === 0 && totalActual === 0) {
+        elemento.textContent = `Sin ingresos en ${anoAnterior}`;
+        return;
+    }
+
+    if (totalAnterior === 0) {
+        elemento.classList.add("positive");
+        elemento.textContent = `▲ Nuevo ingreso vs ${anoAnterior}`;
+        return;
+    }
+
+    const direccion = diferencia >= 0 ? "▲" : "▼";
+    const variacion = porcentaje !== null ? `${porcentaje.toFixed(1)}%` : "0.0%";
+    elemento.classList.add(diferencia >= 0 ? "positive" : "negative");
+    elemento.textContent = `${direccion} ${variacion} (${diferencia >= 0 ? "+" : "-"}${diferenciaTexto}) vs ${anoAnterior}`;
+}
 
 function renderizarGraficaMontosPorAno(reservas, contenedor, cuerpo) {
     if (!contenedor || !cuerpo) return;

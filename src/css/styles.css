@@ -1837,6 +1837,23 @@
             color: var(--text-color-light);
         }
 
+        .kpi-comparison {
+            color: var(--text-color-muted);
+            display: block;
+            font-size: 0.72rem;
+            font-weight: 600;
+            line-height: 1.35;
+            margin-top: 6px;
+        }
+
+        .kpi-comparison.positive {
+            color: #16803c;
+        }
+
+        .kpi-comparison.negative {
+            color: #c0392b;
+        }
+
         .dashboard-chart {
             background: var(--card-bg);
             border: 1px solid var(--border-color-light);
