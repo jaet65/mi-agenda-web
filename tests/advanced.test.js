@@ -18,7 +18,7 @@ vi.mock("firebase/firestore", () => ({
     setDoc: vi.fn()
 }));
 vi.mock("firebase/auth", () => ({
-    getAuth: vi.fn(),
+    getAuth: vi.fn(() => ({ currentUser: null })),
     GoogleAuthProvider: vi.fn(),
     signInWithPopup: vi.fn(),
     signOut: vi.fn(),
@@ -107,6 +107,21 @@ describe("Pruebas Avanzadas - Interacción y Lógica", () => {
         expect(menu.classList.contains("open")).toBe(false);
     });
 
+    it("solo debería mostrar el vínculo de comprobación a administradores", async () => {
+        const { onAuthStateChanged } = await import("firebase/auth");
+        const authCallback = onAuthStateChanged.mock.calls.at(-1)[1];
+        const links = [
+            document.getElementById("desktop-btn-comprobacion"),
+            document.getElementById("mobile-btn-comprobacion")
+        ];
+
+        authCallback({ email: "magraz@corporativomaf.com" });
+        links.forEach(link => expect(link.style.display).toBe("inline-flex"));
+
+        authCallback(null);
+        links.forEach(link => expect(link.style.display).toBe("none"));
+    });
+
     it("guardarReserva debería validar campos obligatorios", async () => {
         // Aseguramos que los campos están vacíos
         document.getElementById("nombreInput").value = "";
@@ -163,4 +178,3 @@ describe("Pruebas Avanzadas - Interacción y Lógica", () => {
         expect(tbody.querySelector("td")).not.toBeNull();
     });
 });
-

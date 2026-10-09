@@ -562,10 +562,14 @@ function actualizarUIConEstadoAdmin() {
     const menuHojaRuta = document.getElementById("mobile-btn-hoja-ruta");
     const menuImport = document.getElementById("mobile-btn-import");
     const menuExportExcel = document.getElementById("mobile-btn-export-excel");
+    const desktopComprobacion = document.getElementById("desktop-btn-comprobacion");
+    const mobileComprobacion = document.getElementById("mobile-btn-comprobacion");
 
     if (esAdmin) {
         if (adminStatus && auth.currentUser) adminStatus.innerText = "🔰";
         if (adminStatus) adminStatus.style.display = "inline-block";
+        if (desktopComprobacion) desktopComprobacion.style.display = "inline-flex";
+        if (mobileComprobacion) mobileComprobacion.style.display = "inline-flex";
 
         // Items del menú
         if (menuLogin) menuLogin.style.display = "none";
@@ -576,6 +580,8 @@ function actualizarUIConEstadoAdmin() {
         if (menuExportExcel) menuExportExcel.style.display = "block";
     } else {
         if (adminStatus) adminStatus.style.display = "none";
+        if (desktopComprobacion) desktopComprobacion.style.display = "none";
+        if (mobileComprobacion) mobileComprobacion.style.display = "none";
 
         // Items del menú
         if (menuLogin) menuLogin.style.display = "block";

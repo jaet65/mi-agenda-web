@@ -16,8 +16,8 @@
     <meta property="og:description" content="Gestión de itinerarios y servicios TrackSIM.">
     <meta property="og:image" content="favicon.ico">
 
-  <script type="module" crossorigin src="/assets/main-D3wq_zTi.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/main-BQ2oIfKq.css">
+  <script type="module" crossorigin src="/assets/main-4oY6Zb7F.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/main-DrzaaizF.css">
 </head>
 
 <body>
@@ -49,6 +49,10 @@
             <span id="admin-monto-stats"></span>
 
             <div class="desktop-buttons">
+                <a id="desktop-btn-comprobacion" class="external-app-link" style="display:none;"
+                    href="https://comprobacionmaf.web.app/" target="_blank" rel="noopener noreferrer">
+                    🧾 Comprobación
+                </a>
                 <input type="file" id="fileInput" accept=".xlsx, .xls" style="display: none;"
                     onchange="procesarArchivoExcel(this)">
             </div>
@@ -63,6 +67,10 @@
             <button id="mobile-btn-export" onclick="exportarCalendario(); toggleMenu()">📅 Sync Calendar</button>
 
             <div class="mobile-section-title">Navegación</div>
+            <a id="mobile-btn-comprobacion" class="external-app-link" style="display:none;"
+                href="https://comprobacionmaf.web.app/" target="_blank" rel="noopener noreferrer">
+                🧾 Comprobación
+            </a>
             <button id="mobile-btn-map" onclick="mostrarMapa(); toggleMenu()">🗺️ Mapa</button>
             <button id="mobile-btn-reporte" onclick="abrirReporteModal(); toggleMenu()"
                 style="display:none; background-color: #17a2b8; color: white;">📊 Summary </button>
@@ -71,7 +79,7 @@
             <button id="mobile-btn-import" onclick="abrirSelectorCSV(); toggleMenu()"
                 style="display:none; background-color: #6f42c1; color: white;">📥 Import</button>
             <button id="mobile-btn-export-excel" onclick="exportarReservacionesExcel(); toggleMenu()"
-                style="display:none; background-color: #198754; color: white;">📤 Exportar Excel</button>
+                style="display:none; background-color: #198754; color: white;">📤 Export</button>
 
             <hr style="width:100%; border:0; border-top:1px solid #eee; margin:5px 0;">
 

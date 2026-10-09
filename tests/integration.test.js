@@ -75,6 +75,20 @@ describe("Smoke Test - Integración de Funcionalidades", () => {
         expect(document.getElementById("mobile-btn-login")).not.toBeNull();
     });
 
+    it("debería ofrecer el vínculo a la página de comprobación en escritorio y móvil", () => {
+        const url = "https://comprobacionmaf.web.app/";
+        const desktopLink = document.getElementById("desktop-btn-comprobacion");
+        const mobileLink = document.getElementById("mobile-btn-comprobacion");
+
+        [desktopLink, mobileLink].forEach(link => {
+            expect(link.getAttribute("href")).toBe(url);
+            expect(link.getAttribute("target")).toBe("_blank");
+            expect(link.getAttribute("rel")).toContain("noopener");
+            expect(link.getAttribute("rel")).toContain("noreferrer");
+            expect(link.style.display).toBe("none");
+        });
+    });
+
     it("debería tener el contenedor del calendario y el mapa", () => {
         expect(document.getElementById("calendar")).not.toBeNull();
         expect(document.getElementById("map-canvas")).not.toBeNull();

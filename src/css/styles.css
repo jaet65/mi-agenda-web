@@ -204,6 +204,26 @@
             gap: 10px;
         }
 
+        .external-app-link {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 4px 8px;
+            border: 1px solid var(--border-color-light);
+            border-radius: 12px;
+            background: var(--hover-bg);
+            color: var(--text-color-muted);
+            font-size: 0.72rem;
+            text-decoration: none;
+            white-space: nowrap;
+            transition: color 0.2s ease, background-color 0.2s ease;
+        }
+
+        .external-app-link:hover {
+            color: var(--accent-color);
+            background: var(--card-bg);
+        }
+
         /* MENÚ DESPLEGABLE COMPARTIR (Escritorio) */
         .dropdown-share {
             position: relative;
@@ -291,6 +311,11 @@
             border-radius: 6px;
             cursor: pointer;
             font-size: 0.95rem;
+        }
+
+        .mobile-menu .external-app-link {
+            align-self: flex-start;
+            margin: 2px 0 5px 5px;
         }
 
         .mobile-menu button:hover {
