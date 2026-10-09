@@ -3022,48 +3022,50 @@ function consolidarReservacionesParaExcel(reservas) {
 }
 
 window.exportarReservacionesExcel = function () {
-    const reservasExportables = consolidarReservacionesParaExcel(
-        globalReservas.filter(reserva => reserva.data?.esEspecial !== true)
-    );
+    const reservasExportables = consolidarReservacionesParaExcel(globalReservas);
     if (!reservasExportables.length) {
         alert("No hay reservaciones guardadas para exportar.");
         return;
     }
 
     const columnas = [
+        "Inicio",
+        "Fin",
         "Cliente",
         "Ciudad",
-        "Direccion",
-        "Fecha Inicio",
-        "Fecha Fin",
+        "Dirección Texto",
+        "Lat",
+        "Lng",
+        "Esp",
         "Costo",
         "Facturado",
-        "PdfUrl"
+        "Pdfurl"
     ];
-    const campos = ["cliente", "ciudad", "direccion", "fechaInicio", "fechaFin", "costo", "estadoFactura", "pdfUrl"];
     const filas = reservasExportables.map(reserva => {
-        const fila = {};
-        campos.forEach((campo, indice) => {
-            const valor = reserva.data?.[campo];
-            if (campo === "fechaInicio" || campo === "fechaFin") {
-                fila[columnas[indice]] = prepararFechaExcel(valor);
-            } else if (campo === "costo") {
-                const costo = Number(valor);
-                fila[columnas[indice]] = valor === null || valor === undefined || valor === "" || Number.isNaN(costo)
-                    ? ""
-                    : costo;
-            } else {
-                fila[columnas[indice]] = prepararValorParaExcel(valor);
-            }
-        });
-        return fila;
+        const datos = reserva.data || {};
+        const costo = Number(datos.costo);
+        return {
+            "Inicio": prepararFechaExcel(datos.fechaInicio),
+            "Fin": prepararFechaExcel(datos.fechaFin),
+            "Cliente": prepararValorParaExcel(datos.cliente),
+            "Ciudad": prepararValorParaExcel(datos.ciudad),
+            "Dirección Texto": prepararValorParaExcel(datos.direccion),
+            "Lat": prepararValorParaExcel(datos.lat),
+            "Lng": prepararValorParaExcel(datos.lng),
+            "Esp": datos.esEspecial === true ? "X" : "",
+            "Costo": datos.costo === null || datos.costo === undefined || datos.costo === "" || Number.isNaN(costo)
+                ? ""
+                : costo,
+            "Facturado": prepararValorParaExcel(datos.estadoFactura || "Sin facturar"),
+            "Pdfurl": prepararValorParaExcel(datos.pdfUrl)
+        };
     });
 
     const hoja = XLSX.utils.json_to_sheet(filas, { header: columnas });
     filas.forEach((_, indiceFila) => {
-        const fechaInicio = hoja[XLSX.utils.encode_cell({ c: 3, r: indiceFila + 1 })];
-        const fechaFin = hoja[XLSX.utils.encode_cell({ c: 4, r: indiceFila + 1 })];
-        const costo = hoja[XLSX.utils.encode_cell({ c: 5, r: indiceFila + 1 })];
+        const fechaInicio = hoja[XLSX.utils.encode_cell({ c: 0, r: indiceFila + 1 })];
+        const fechaFin = hoja[XLSX.utils.encode_cell({ c: 1, r: indiceFila + 1 })];
+        const costo = hoja[XLSX.utils.encode_cell({ c: 8, r: indiceFila + 1 })];
         if (fechaInicio) fechaInicio.z = "dd/mm/yyyy";
         if (fechaFin) fechaFin.z = "dd/mm/yyyy";
         if (costo) costo.z = "$#,##0.00";
